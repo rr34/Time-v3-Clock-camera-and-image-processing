@@ -1,0 +1,30 @@
+type,px_x,px_y,alt_rel,az_rel,misc
+camera_name,,,,,slayer mobile
+sensor_dimensions,4000,3000,,,
+lens_name,,,,,native
+zoom_factor,,,,,1
+settings_notes,,,,,
+image_dimensions,4000,2250,,,
+orientation,,,,,portrait
+quadrant,,,,,BL
+calibration,,,0,0,targets_diameter 1.0
+calibration,1126,1972,,,target_top
+calibration,1152,1998,,,target_right
+calibration,1126,2023,,,target_bottom
+calibration,1100,1997,,,target_left
+calibration,1100,2999,-20,0,grid_align_vertical_left
+calibration,1140,2998,-20,0,grid_align_vertical_right
+calibration,300,1990,0,-15,grid_align_horizontal_top
+calibration,300,2030,0,-15,grid_align_horizontal_bottom
+calibration,1126,2253,-5,0,grid_point
+calibration,1127,2514,-10,0,grid_point
+calibration,1126,2783,-15,0,grid_point
+calibration,870,1996,0,-5,grid_point
+calibration,871,2251,-5,-5,grid_point
+calibration,871,2513,-10,-5,grid_point
+calibration,870,2782,-15,-5,grid_point
+calibration,608.5,1995.5,0,-10,grid_point
+calibration,608.5,2252.5,-5,-10,grid_point
+calibration,609,2514,-10,-10,grid_point
+calibration,607,2784.5,-15,-10,grid_point
+calibration,,,,,end

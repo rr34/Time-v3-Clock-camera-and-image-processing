@@ -1,9 +1,7 @@
-from matplotlib import image
 import numpy as np
 import pandas as pd
-from numpy.core.function_base import linspace
-from pandas.core.frame import DataFrame
 from sklearn import linear_model
+from functions import *
 
 class CameraAim(object):
 	"""
@@ -27,12 +25,12 @@ class CameraAim(object):
 	makes the coding more straightforward than trying to "fix" this.
 	TODO: make a visual version of reference pixel data entry to avoid errors. It is really a mind-bend!
 	"""
-	def __init__(self, camera_name=None, image_width=None, image_height=None, lens_name=None,
-				 zoom=None, settings_notes=None, aperture=None, reference_pixels=None,
-				 source_file_location=None, ref_data_type="whole_image", pixel_aim=None):
+	def __init__(self, camera_name=None, sensor_dimensions=None, lens_name=None,
+				 zoom_factor=None, settings_notes=None, image_dimensions=None, orientation=None, aperture=None,
+				 calibration_file=None, pixel_aim_file=None):
 				 
 		"""
-        Parameters
+        Parameters.
         ----------
 		camera_name : the name of the camera. Can include some lens and settings notes for quick
 			identification
@@ -50,30 +48,21 @@ class CameraAim(object):
 		aperture : (optional) the aperture should not affect the angles of the pixels, but is
 			here for completeness as desired.
 			
-		reference_pixels : either reference_pixels or source_file_location with reference pixels
-			must be specified in order to define the properties of the camera.
-			
-		source_file_location : (optional) camera properties should be able to be stored for quick
-			future use.
+		calibration_file : (optional) file containing the calibration reference pixels data.
 			
 		"""
  
 	
 		self.camera_name = camera_name
-		self.image_width = image_width
-		self.image_height = image_height
-		self.max_x_ref = image_width-1
-		self.max_y_ref = image_height-1
+		# all parameters / the rest are defined with a calibration CSV file and calibrate method
+		"""
+		self.sensor_width = sensor_dimensions[0]
+		self.sensor_height = sensor_dimensions[1]
+		self.max_x_ref = self.image_width-1
+		self.max_y_ref = self.image_height-1
 		self.center_x_ref = (self.max_x_ref / 2)
 		self.center_y_ref = (self.max_y_ref / 2)
-		self.lens_name = lens_name
-		self.zoom = zoom
-		self.settings_notes = settings_notes
-		self.aperture = aperture
-		self.source_file_location = source_file_location
-		self.reference_pixels_df = pd.read_csv(source_file_location)
-		self.ref_data_type=ref_data_type
-		self.dataframe_columns = ['px_x', 'px_y', 'alt', 'az']
+		"""
 
 
 	# TODO def __repr__(self):
@@ -83,33 +72,129 @@ class CameraAim(object):
 
 	
 	# @classmethod ??
-	def angles_array_extrapolation(self):
+	# generates alt, az, pixel_delta data file called pixel_aim. resolution is 1920 wide regardless of camera resolution
+	# designed to be done just one time per camera / lens / settings system
+	def calibrate(self, calibration_file):
 
-		reference_pixels_df = self.reference_pixels_df
+		calibration_df = pd.read_csv(calibration_file)
 
-		# make the center pixel the zero pixel
-		"""
-		reference_pixels_df['px_x'] = reference_pixels_df['px_x'] - self.center_x_ref
-		reference_pixels_df['px_y'] = reference_pixels_df['px_y'] - self.center_y_ref
-		"""
+		# calibration data includes most of requirements to initialize the object.
+		lens_name = calibration_df[calibration_df['type'] == 'lens_name']['misc'].iat[0]
+		zoom_factor = calibration_df[calibration_df['type'] == 'zoom_factor']['misc'].iat[0]
+		settings_notes = calibration_df[calibration_df['type'] == 'settings_notes']['misc'].iat[0]
+		orientation = calibration_df[calibration_df['type'] == 'orientation']['misc'].iat[0]
+		calibration_quadrant = calibration_df[calibration_df['type'] == 'quadrant']['misc'].iat[0]
+		sensor_dimensions = [calibration_df[calibration_df['type'] == 'sensor_dimensions']['px_x'].iat[0], calibration_df[calibration_df['type'] == 'sensor_dimensions']['px_y'].iat[0]]
+		max_sensor_index = np.subtract(sensor_dimensions, 1)
+		image_dimensions = [calibration_df[calibration_df['type'] == 'image_dimensions']['px_x'].iat[0], calibration_df[calibration_df['type'] == 'image_dimensions']['px_y'].iat[0]]
+		max_image_index = np.subtract(image_dimensions, 1)
+		center_px = max_image_index / 2 # usually x.5, non-integer, bc even number of pixels means center is a boundary rather than a pixel
+		if orientation == 'portrait':
+			center_px = center_px[::-1]
 
+
+		# generate accurate reference pixels from the calibration measurements
+		# initialize variables
+		section_count = 0
+		target_top = 0
+		target_right = 0
+		target_bottom = 0
+		target_left = 0
+		aim_px = center_px
+		grid_align_v_left = 0
+		grid_align_v_right = 0
+		grid_align_h_top = 0
+		grid_align_h_bottom = 0
+		reference_pixels = []
+		reference_pixels.append([center_px[0], center_px[1], 0, 0])
+
+		# for loop now row by row because data has to be processed in order
+		for row in calibration_df[calibration_df['type'] == 'calibration'].iterrows():
+			# prepare the for loop
+			row = row[1] # row[0] is just the index. I want the data, don't care about the index
+			do_what = row['misc']
+			if do_what == 'end':
+				break
+			# the only numerical do_what is the angular size of target, so...
+			elif 'targets_diameter' in do_what:
+				targets_diameter_degrees = float(do_what.split()[1])
+				section_count += 1 # means new calibration section, so increment, first is 1
+				aim_target_pos_altaz_relcenter = [row['alt_rel'], row['az_rel']] # is the altaz of the target position AIMING for in the current section, relative to center
+			elif do_what == 'target_top':
+				target_top = [row['px_x'], row['px_y']]
+			elif do_what == 'target_right':
+				target_right = [row['px_x'], row['px_y']]
+			elif do_what == 'target_bottom':
+				target_bottom = [row['px_x'], row['px_y']]
+			elif do_what == 'target_left':
+				target_left = [row['px_x'], row['px_y']]
+			elif do_what == 'grid_align_vertical_left':
+				grid_align_v_left = [row['px_x'], row['px_y']]
+				v_align_degrees_reltarget = [row['alt_rel'], row['az_rel']] # is the vertical align target rel to target
+			elif do_what == 'grid_align_vertical_right':
+				grid_align_v_right = [row['px_x'], row['px_y']]
+			elif do_what == 'grid_align_horizontal_top':
+				grid_align_h_top = [row['px_x'], row['px_y']]
+				h_align_altaz_reltarget = [row['alt_rel'], row['az_rel']] # is the horizontal align target rel to target
+			elif do_what == 'grid_align_horizontal_bottom':
+				grid_align_h_bottom = [row['px_x'], row['px_y']]
+			# if four sides of target have been set, find hit pixel, find altaz adjustment (= position of the target in the image), then re-zero variables
+			if 0 not in (target_top, target_right, target_bottom, target_left):
+				hit_px, target_pos_altaz_relaim = target_miss(target_top, target_right, target_bottom, target_left, targets_diameter_degrees, aim_px)
+				target_top = 0
+				target_right = 0
+				target_bottom = 0
+				target_left = 0
+				print('shooting results: ', section_count, aim_px, hit_px, target_pos_altaz_relaim, '\n')
+			# if vertical grid alignment grid point has been recorded, calculate grid rotation error, record point, re-zero variables
+			if 0 not in (grid_align_v_left, grid_align_v_right):
+				if aim_target_pos_altaz_relcenter[1] == 0: # can only use vertical align point if aligned on the azimuth axis
+					grid_rotation_error_degreesCCW = grid_rotation_error(grid_align_v_top, grid_align_v_bottom, v_align_altaz_reltarget, targets_diameter_degrees, hit_px, orientation='vertical')
+
+				# re-zero and move on to reference pixels
+				grid_align_v_left = 0
+				grid_align_v_right = 0
+
+			if do_what == 'grid_point':
+				theta, r = altaz_to_special_polar(float(row['alt_rel']), float(row['az_rel']))
+				grid_rotation_adjust_alt_relgridpoint =  math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.sin(theta*math.pi/180) * -1
+				alt = float(row['alt_rel']) + aim_target_pos_altaz_relcenter[0] + target_pos_altaz_relaim[0] + grid_rotation_adjust_alt
+				grid_rotation_adjust_az =  math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.cos(theta*math.pi/180)
+				az = float(row['az_rel']) + aim_target_pos_altaz_relcenter[1] + target_pos_altaz_relaim[1] + grid_rotation_adjust_az
+				row_data = [float(row['px_x']), float(row['px_y']), alt, az]
+				reference_pixels.append(row_data)
+
+		reference_pixels = np.array(reference_pixels)
+		print(reference_pixels)
+		
 		# create the model to predict the rest of the pixels' alt
-		independent_vars = reference_pixels_df[['px_x', 'px_y']] # becomes a dataframe with just the two labeled columns
-		dependent_vars = reference_pixels_df['alt']
+		independent_vars = reference_pixels_df[['px_x', 'px_y']].to_numpy()
+		dependent_vars = reference_pixels_df['alt'].to_numpy()
 		alt_model = linear_model.LinearRegression()
 		alt_model.fit(independent_vars, dependent_vars)
 
-		# create the "meshgrid" dataframe for the entire image
+		# create the 3D array with meshgrids for first two layers
+		pixel_aim = np.empty([self.image_height, self.image_width, 4]) # I want height rows of width columns each row.
+		x = np.arange(self.image_width)
+		y = np.arange(self.image_height)
+		pixel_aim[:,:,0], pixel_aim[:,:,1] = np.meshgrid(x,y) # !!!index is [row#,column#] therefore [y,x] !!!
+		pixel_aim[:,:,2] = alt_model.predict(pixel_aim[:,:,[0,1]].reshape(-1,2)).reshape(self.image_height, self.image_width)
+		
+		
+		"""
+		# create the "meshgrid" dataframe for the entire image, Note: this works ***slowly*** using dataframe and for loops.
 		camera_aim_df = DataFrame(columns=self.dataframe_columns)
 		print(camera_aim_df)
 		for x in np.arange(step=100, stop=self.max_x_ref):
 			for y in np.arange(step=100, stop=self.max_y_ref):
 				camera_aim_df.loc[len(camera_aim_df.index)] = [x, y, np.nan, np.nan]
 
+
 		# fill in the meshgrid dataframe with predicted values
 		camera_aim_df['alt'] = alt_model.predict(camera_aim_df[['px_x', 'px_y']])
-
-		return camera_aim_df
+		"""
+		
+		return pixel_aim
 		
 		"""
 		# first, if the data is for one quadrant, complete the reference pixel dataframe by mirroring
@@ -131,10 +216,6 @@ class CameraAim(object):
 
 
 		# start working with numpy arrays here, create the 3D array with meshgrids for first two layers
-		pixel_aim = np.empty(shape=(self.image_height, self.image_width, 4)) # see note above. Shape is row COUNT x column COUNT! NOT "row width x column width". Layers are x values, y values alt values, az values
-		x = np.linspace(0, self.image_width-1, self.image_width)
-		y = np.linspace(0, self.image_height-1, self.image_height)
-		pixel_aim[:,:,0], pixel_aim[:,:,1] = np.meshgrid(x, y)
 
 		return pixel_aim
 	"""
