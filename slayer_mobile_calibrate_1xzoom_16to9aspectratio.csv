@@ -6,25 +6,68 @@ zoom_factor,,,,,1
 settings_notes,,,,,
 image_dimensions,4000,2250,,,
 orientation,,,,,portrait
-quadrant,,,,,BL
-calibration,,,0,0,targets_diameter 1.0
-calibration,1126,1972,,,target_top
-calibration,1152,1998,,,target_right
-calibration,1126,2023,,,target_bottom
-calibration,1100,1997,,,target_left
-calibration,1100,2999,-20,0,grid_align_vertical_left
-calibration,1140,2998,-20,0,grid_align_vertical_right
-calibration,300,1990,0,-15,grid_align_horizontal_top
-calibration,300,2030,0,-15,grid_align_horizontal_bottom
-calibration,1126,2253,-5,0,grid_point
-calibration,1127,2514,-10,0,grid_point
-calibration,1126,2783,-15,0,grid_point
-calibration,870,1996,0,-5,grid_point
-calibration,871,2251,-5,-5,grid_point
-calibration,871,2513,-10,-5,grid_point
-calibration,870,2782,-15,-5,grid_point
-calibration,608.5,1995.5,0,-10,grid_point
-calibration,608.5,2252.5,-5,-10,grid_point
-calibration,609,2514,-10,-10,grid_point
-calibration,607,2784.5,-15,-10,grid_point
+quadrant,,,,,LB
+targets_diameter,,,,,1
+total_sections,,,,,4
+calibration,,,0,0,new_section 0
+calibration,1122,1976,0,0,target_top
+calibration,1121,2023,0,0,target_bottom
+calibration,1098,1999,0,0,target_left
+calibration,1145,1999,0,0,target_right
+calibration,1118,3005,-20,0,grid_align_vertical_left
+calibration,1169,3004,-20,0,grid_align_vertical_right
+calibration,384,1989,0,-15,grid_align_horizontal_top
+calibration,385,2038,0,-15,grid_align_horizontal_bottom
+calibration,127,2239,-5,0,grid_point
+calibration,1133,2485,-10,0,grid_point
+calibration,1137.5,2737,-15,0,grid_point
+calibration,1142.5,3004.5,-20,0,grid_point_align_v_section 1
+calibration,881,2003,0,-5,grid_point
+calibration,887,2243,-5,-5,grid_point
+calibration,893,2489,-10,-5,grid_point
+calibration,897,2740,-15,-5,grid_point
+calibration,637,2009,0,-10,grid_point
+calibration,642,2249,-5,-10,grid_point
+calibration,648,2494,-10,-10,grid_point
+calibration,652,2747,-15,-10,grid_point
+calibration,384,2013,0,-15,grid_point_align_h_section 2
+calibration,,,-20,0,new_section 1
+calibration,1131,3128,0,0,target_top
+calibration,1132,3186,0,0,target_bottom
+calibration,1104,3157,0,0,target_left
+calibration,1158,3156,0,0,target_right
+calibration,305,3148,0,-15,grid_align_horizontal_top
+calibration,299,3208,0,-15,grid_align_horizontal_bottom
+calibration,1137,3459,-5,0,grid_point
+calibration,1146,3789,-10,0,grid_point
+calibration,860,3162,0,-5,grid_point
+calibration,857,3465,-5,-5,grid_point
+calibration,855,3795,-10,-5,grid_point
+calibration,584,3170,0,-10,grid_point
+calibration,572,3473,-5,-10,grid_point
+calibration,560,3802,-10,-10,grid_point
+calibration,302,3177,0,-15,grid_point_align_h_section 3
+calibration,,,0,-15,new_section 2
+calibration,366,1979,0,0,target_top
+calibration,366,2031,0,0,target_bottom
+calibration,338,2006,0,0,target_left
+calibration,393,2005,0,0,target_right
+calibration,373,2269,-5,0,grid_point
+calibration,382,2539,-10,0,grid_point
+calibration,386,2817,-15,0,grid_point
+calibration,392,3108,-20,0,grid_point_align_v_section 3
+calibration,81,2012,0,-5,grid_point
+calibration,90,2282,-5,-5,grid_point
+calibration,98,2560,-10,-5,grid_point
+calibration,106,2841,-15,-5,grid_point
+calibration,,,-20,-15,new_section 3
+calibration,362,3113,0,0,target_top
+calibration,361,3172,0,0,target_bottom
+calibration,333,3145,0,0,target_left
+calibration,390,3140,0,0,target_right
+calibration,340,3452,-5,0,grid_point
+calibration,319,3790,-10,0,grid_point
+calibration,66,3147,0,-5,grid_point
+calibration,36,3463,-5,-5,grid_point
+calibration,2,3810,-10,-5,grid_point
 calibration,,,,,end
