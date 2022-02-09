@@ -1,5 +1,6 @@
 import math
 import numpy as np
+import pickle
 
 # AltAz to polar coordinates, imagining the image 2D. theta from positive altitude axis in direction of positive azimuth axis. r is "flat degrees" from center
 def altaz_to_special_polar(alt, az):
@@ -51,21 +52,25 @@ def target_miss(target_left, target_right, target_top, target_bottom, targets_di
 	return target_pos_px, target_pos_altaz_rel
 
 # from two edge pixel coordinates of known-angular-size grid alignment point, angular distance of the alignment point from grid target, and the target position in the image, calculate the angular rotation error of the entire grid, CCW is positive.
-def grid_rotation_error(orientation, grid_align1_px, grid_align2_px, grid_align_altaz_reltarget, targets_diameter_degrees, target_pos_px):
+def grid_rotation_error(align_orientation, align1_px, align2_px, align_altaz_reltarget, targets_diameter_degrees, target_pos_px):
 	# find error rotation angle using vertical grid align target
-	if orientation == 'horizontal':
+	if align_orientation == 'horizontal':
 		xy_index = 1 # align with the y pixel coordinate
-		altaz_index = 1
-	elif orientation == 'vertical':
+		altaz_index = 1 # use the azimuth for the distance from center in degrees
+	elif align_orientation == 'vertical':
 		xy_index = 0 # align with the x pixel coordinate
-		altaz_index = 0
+		altaz_index = 0 # use the altitude for the distance from center in degrees
 	else:
-		print('must specify orientation')
+		print('must specify align_orientation')
 
-	grid_align_center_px = np.divide(np.add(grid_align1_px, grid_align2_px), 2)
-	grid_align_diameter_px = np.sqrt((grid_align2_px[0] - grid_align1_px[0])**2 + (grid_align2_px[1] - grid_align1_px[1])**2)
-	pixel_delta = targets_diameter_degrees / grid_align_diameter_px # degrees per pixel at the alignment point
-	miss = (target_pos_px[xy_index] - grid_align_center_px[xy_index]) * pixel_delta # grid align pixel not aligned with hit target pixel in degrees at grid align point
-	grid_rotation_error_degreesCCW = math.atan(miss / grid_align_altaz_reltarget[altaz_index]) * 180/math.pi # converted to a rotation angle
+	align_center_px = np.divide(np.add(align1_px, align2_px), 2)
+	align_diameter_px = np.sqrt((align2_px[0] - align1_px[0])**2 + (align2_px[1] - align1_px[1])**2)
+	pixel_delta = targets_diameter_degrees / align_diameter_px # degrees per pixel at the alignment point
+	miss_altaz_rel = (target_pos_px[xy_index] - align_center_px[xy_index]) * pixel_delta # grid align pixel not in same pixel line with hit target pixel in degrees at grid align point
+	grid_rotation_error_degreesCCW = math.atan(miss_altaz_rel / align_altaz_reltarget[altaz_index]) * 180/math.pi # converted to a rotation angle
 
 	return grid_rotation_error_degreesCCW, pixel_delta
+
+def save_to_file(obj, filename):
+	with open(filename, 'wb') as outp: # overwrites any existing file
+		pickle.dump(obj, outp, 5)
