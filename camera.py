@@ -31,8 +31,8 @@ class CameraAim(object):
 		"""
         Parameters.
         ----------
-		camera_name : the name of the camera. Can include some lens and settings notes for quick
-			identification
+		camera_name : the name of the camera together with some lens and settings notes for quick
+			identification as each 
 			
 		image_width : the width of the camera's sensor in pixels. This should be the maximum
 			resolution of the camera.
@@ -50,11 +50,10 @@ class CameraAim(object):
 		calibration_file : (optional) file containing the calibration reference pixels data.
 			
 		"""
- 
-	
-		self.camera_name = camera_name
+
 		# all parameters / the rest are defined with a calibration CSV file and calibrate method
 		"""
+		self.camera_name = camera_name
 		self.sensor_width = sensor_dimensions[0]
 		self.sensor_height = sensor_dimensions[1]
 		self.max_x_ref = self.image_width-1
@@ -78,6 +77,8 @@ class CameraAim(object):
 		calibration_df = pd.read_csv(calibration_file)
 
 		# calibration data includes most of requirements to initialize the object.
+		camera_name = calibration_df[calibration_df['type'] == 'camera_name']['misc'].iat[0]
+		self.camera_name = camera_name
 		lens_name = calibration_df[calibration_df['type'] == 'lens_name']['misc'].iat[0]
 		self.lens_name = lens_name
 		zoom_factor = calibration_df[calibration_df['type'] == 'zoom_factor']['misc'].iat[0]
