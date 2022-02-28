@@ -1,0 +1,209 @@
+---------------------
+
+from PIL import Image, PngImagePlugin
+from PIL.ExifTags import TAGS
+
+jpg_file = Image.open('slayer_cal_image.jpg')
+
+
+info_to_add = PngImagePlugin.PngInfo()
+awim_pickle = 'whatever I want??'
+info_to_add.add_text('1234', awim_pickle)
+
+png_file = Image.open('slayer_cal_image.png')
+png_file.save('slayer_cal_image_1.png', 'PNG', pnginfo=info_to_add)
+png_file_1 = Image.open('slayer_cal_image_1.png')
+
+print(png_file_1.text['1234'])
+
+exif_data = jpg_file._getexif()
+
+exif_data.update({'37510': 'user comment here with a whole pickle'})
+
+# print(exif_data['37510'])
+
+---------------------
+
+		"""
+		# whole matrix slices
+		px_slice = (slice(0, max_image_index[0]+1), slice(0, max_image_index[1]+1), slice(0, 2))
+		alt_slice = (slice(0, max_image_index[0]+1), slice(0, max_image_index[1]+1), slice(2, 3))
+		az_slice = (slice(0, max_image_index[0]+1), slice(0, max_image_index[1]+1), slice(3, 4))
+
+		# quadrants dimensions, indices, slices used for filling the matrix quadrant-by-quadrant
+		img_q_dims = np.divide(image_dimensions, 2).astype(int) # is integer assuming even dims, which they always are as far as I know
+		min_Lq_x = 0
+		max_Lq_x = img_q_dims[0] - 1
+		min_Rq_x = img_q_dims[0]
+		max_Rq_x = max_image_index[0]
+		min_Tq_y = 0
+		max_Tq_y = img_q_dims[1] - 1
+		min_Bq_y = img_q_dims[1]
+		max_Bq_y = max_image_index[1]
+		LT_px_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(0, 2))
+		LT_alt_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(2, 3))
+		LT_az_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(3, 4))
+		RT_px_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(0, 2))
+		RT_alt_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(2, 3))
+		RT_az_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Tq_y, max_Tq_y+1), slice(3, 4))
+		LB_px_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(0, 2))
+		LB_alt_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(2, 3))
+		LB_az_slice = (slice(min_Lq_x, max_Lq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(3, 4))
+		RB_px_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(0, 2))
+		RB_alt_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(2, 3))
+		RB_az_slice = (slice(min_Rq_x, max_Rq_x+1), slice(min_Bq_y, max_Bq_y+1), slice(3, 4))
+
+		# other slices
+		center_square_slice = (slice(max_Lq_x-3, min_Rq_x+3), slice(max_Tq_y-3, min_Bq_y+3), slice(0, 4))
+		center_h_slice = (slice(max_Lq_x-1, min_Rq_x+2), slice(max_Tq_y-10, min_Bq_y+10), slice(0, 4))
+
+		if calibration_quadrant == 'LB':
+			x_y_px = np.empty(pixel_aim[LB_px_slice].shape)
+			x_y_px[:,:] = pixel_aim[LB_px_slice]
+			x_y_px[:,:,0] = np.subtract(x_y_px[:,:,0], center_px[0])
+			x_y_px[:,:,1] = np.subtract(x_y_px[:,:,1], center_px[1])
+			x_y_px = x_y_px.reshape(-1,2)
+			# x_y_px = scale.fit_transform(x_y_px)
+			x_y_px_poly = poly.fit_transform(x_y_px)
+			pixel_aim[LB_alt_slice] = alt_model.predict(x_y_px_poly).reshape((img_q_dims[0], img_q_dims[1], 1))
+			pixel_aim[LB_az_slice] = az_model.predict(x_y_px_poly).reshape((img_q_dims[0], img_q_dims[1], 1))
+			pixel_aim[RB_alt_slice] = np.flipud(pixel_aim[LB_alt_slice])
+			pixel_aim[RB_az_slice] = np.flipud(pixel_aim[LB_az_slice] * -1)
+			pixel_aim[LT_alt_slice] = np.fliplr(pixel_aim[LB_alt_slice] * -1)
+			pixel_aim[LT_az_slice] = np.fliplr(pixel_aim[LB_az_slice])
+			pixel_aim[RT_alt_slice] = np.fliplr(pixel_aim[RB_alt_slice] * -1)
+			pixel_aim[RT_az_slice] = np.fliplr(pixel_aim[RB_az_slice])
+		"""
+
+------------------------------------
+
+def generate_image_aim_object():
+    # get the camera from a file
+    what_camera_filename = tkinter.filedialog.askopenfilename()
+    camera_aim_pickle = open(what_camera_filename, 'rb')
+    what_camera = pickle.load(camera_aim_pickle)
+    camera_aim_pickle.close()
+
+    # get the image data manually:
+    lat_long = [0,0]
+    moment = 0
+    center_px = [2000, 1125]
+    center_altaz = [10, 255]
+
+    this_image = camera.ImageAim(img_capture_latlng=lat_long, img_capture_moment=moment, img_center_px=center_px, img_center_px_altaz=center_altaz)
+    this_image.represent_img()
+
+----------------------------------------------
+
+	def make_image_aim(self, img_filename, img_ID, img_capture_latlng, img_capture_moment, img_center_px, img_center_px_altaz):
+		self.img_filename = img_filename
+		self.img_ID = img_ID
+		self.img_capture_latlng = img_capture_latlng
+		self.img_capture_moment = img_capture_moment
+		self.img_center_px = img_center_px
+		self.img_center_px_altaz = img_center_px_altaz
+
+----------------------------------------------
+
+		for row in cal_df['align' in cal_df['type']].iterrows():
+			# prepare the for loop
+			row = row[1] # row[0] is just the index. I want the data, don't care about the index
+			do_what = row['type']
+			# check for special grid point types and record in appropriate variable
+			if do_what == 'end':
+				break
+				aim_target_pos_altaz_relcenter = [row['alt_rel'], row['az_rel']] # is the altaz of the target position AIMING for in the current section, relative to center
+			elif do_what == 'cal_target':
+				target_top = [row['px_x'], row['px_y']]
+			elif do_what == 'target_right':
+				target_right = [row['px_x'], row['px_y']]
+			elif do_what == 'target_bottom':
+				target_bottom = [row['px_x'], row['px_y']]
+			elif do_what == 'target_left':
+				target_left = [row['px_x'], row['px_y']]
+			elif do_what == 'align_vertical_left':
+				align_v_left = [row['px_x'], row['px_y']]
+				align_altaz_reltarget = [row['alt_rel'], row['az_rel']] # is the vertical align target rel to target
+			elif do_what == 'align_vertical_right':
+				align_v_right = [row['px_x'], row['px_y']]
+			elif do_what == 'align_horizontal_top':
+				align_h_top = [row['px_x'], row['px_y']]
+				align_altaz_reltarget = [row['alt_rel'], row['az_rel']] # is the horizontal align target rel to target
+			elif do_what == 'align_horizontal_bottom':
+				align_h_bottom = [row['px_x'], row['px_y']]
+			# if the four sides of target have been set, find hit pixel, find altaz adjustment (= position of the target in the image), then re-zero variables
+			if 'reset' not in (target_left, target_right, target_top, target_bottom):
+				target_pos_px, target_pos_altaz_relaim = target_miss(target_left, target_right, target_top, target_bottom, targets_diameter_degrees, crosshairs_log[section_count])
+				target_top = 'reset'
+				target_right = 'reset'
+				target_bottom = 'reset'
+				target_left = 'reset'
+				# print('shooting result, section ', section_count, ': aimed ', crosshairs_log[section_count], ' target position in image ', target_pos_px, 'actual target to crosshairs altaz ',  target_pos_altaz_relaim, '\n')
+
+			# if align, find grid rotation error and pixel delta. BUT if rotation error is invalid, zero it
+			if ('reset' not in (align_v_left, align_v_right)) or ('reset' not in (align_h_top, align_h_bottom)):
+				if 'horizontal' in do_what:
+					align_orientation = 'horizontal'
+					align1_px = align_h_top
+					align2_px = align_h_bottom
+				elif 'vertical' in do_what:
+					align_orientation = 'vertical'
+					align1_px = align_v_left
+					align2_px = align_v_right
+				grid_rotation_error_degreesCCW, pixel_delta_at_align = grid_rotation_error(align_orientation=align_orientation, align1_px=align1_px, align2_px=align2_px, align_altaz_reltarget=align_altaz_reltarget, targets_diameter_degrees=targets_diameter_degrees, target_pos_px=target_pos_px)
+
+				if (align_orientation == 'horizontal' and aim_target_pos_altaz_relcenter[0] != 0) or (align_orientation == 'vertical' and aim_target_pos_altaz_relcenter[1] != 0):
+					grid_rotation_error_degreesCCW = 0
+					# TODO for the case of section zero on both the alt and az axes, average the errors instead of using just one
+				
+				# reset variables and move on to grid points
+				align_v_left = 'reset'
+				align_v_right = 'reset'
+				align_h_top = 'reset'
+				align_h_bottom = 'reset'
+			
+			# THE ONLY VALUES RECORDED CONTAIN "grid_point", set case-by-case with adjustments, then record at end
+			if 'grid_point' in do_what:
+				theta, r = altaz_to_special_polar(float(row['alt_rel']), float(row['az_rel']))
+				grid_rotation_adjust_alt_relgridpoint =  math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.sin(theta*math.pi/180)
+				grid_rotation_adjust_az_relgridpoint =  math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.cos(theta*math.pi/180) * -1
+				
+				# if normal grid point
+				if do_what == 'grid_point': # adjust the altaz for grid points
+					row_x_px = float(row['px_x'])
+					row_az = aim_target_pos_altaz_relcenter[1] + float(row['az_rel']) + target_pos_altaz_relaim[1] + grid_rotation_adjust_az_relgridpoint
+					row_y_px = float(row['px_y'])
+					row_alt = aim_target_pos_altaz_relcenter[0] + float(row['alt_rel']) + target_pos_altaz_relaim[0] + grid_rotation_adjust_alt_relgridpoint
+				# if a vertical align grid point, set values, then set pixel coordinate as crosshairs for next section target
+				elif 'grid_point_crosshairs' in do_what: # adjust the pixel for align points, not the altaz
+					row_x_px = float(row['px_x']) + pixel_delta_at_align * (target_pos_altaz_relaim[1] + grid_rotation_adjust_az_relgridpoint)
+					row_az = aim_target_pos_altaz_relcenter[1] + float(row['az_rel'])
+					row_y_px = float(row['px_y'])
+					row_alt = aim_target_pos_altaz_relcenter[0] + float(row['alt_rel'])
+					for_section = int(row['misc'].split()[1])
+					crosshairs_log[for_section] = [row_x_px, row_y_px]
+					# TODO: for case where crosshairs can come from either of two previous sections, average the location.
+				# if a horizontal align grid point, set values, then set pixel coordinate as crosshairs for next section target
+				elif 'grid_point_crosshairs' in do_what:
+					row_x_px = float(row['px_x'])
+					row_az = aim_target_pos_altaz_relcenter[1] + float(row['az_rel'])
+					if aim_target_pos_altaz_relcenter[0] == 0:
+						row_y_px = center_px[1]
+						row_y_px = float(row['px_y']) - pixel_delta_at_align * (target_pos_altaz_relaim[0] + grid_rotation_adjust_alt_relgridpoint)
+					row_alt = aim_target_pos_altaz_relcenter[0] + float(row['alt_rel'])
+					for_section = int((row['misc'].split())[1])
+					crosshairs_log[for_section] = [row_x_px, row_y_px]
+
+				"""
+				# if grid point is on azimuth axis, force x to center and az to zero
+				if aim_target_pos_altaz_relcenter[1] + float(row['az_rel']) == 0:
+					row_x_px = center_px[0]
+					row_az = 0
+				# if grid point is on altitude axis, force y to center and alt to zero
+				if aim_target_pos_altaz_relcenter[0] + float(row['alt_rel']) == 0:
+					row_y_px = center_px[1]
+					row_alt = 0
+				"""
+
+				row_data = {'x_px': row_x_px, 'y_px': row_y_px, 'alt': row_alt, 'az': row_az}
+				reference_pixels.loc[len(reference_pixels.index)] = row_data
