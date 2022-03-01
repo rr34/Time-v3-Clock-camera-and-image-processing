@@ -32,7 +32,7 @@ def display_camera_aim_object():
     this_camera = pickle.load(camera_aim_pickle)
     camera_aim_pickle.close()
 
-    # this_camera.represent_camera()
+    this_camera.represent_camera()
 
     plot_dims = [160, 90]
     x_axis_px = np.linspace(0, this_camera.center_px[0], plot_dims[0])
@@ -41,16 +41,32 @@ def display_camera_aim_object():
     px_meshgrid = np.empty([plot_dims[1], plot_dims[0], 2])
     px_meshgrid[:,:,0] = px_x_axis
     px_meshgrid[:,:,1] = px_y_axis
+    azalt_predicted = this_camera.px_azalt_models_convert(input=px_meshgrid, direction='px_to_azalt')
 
-    azalt_predicted = this_camera.cam_px_to_azalt(px=px_meshgrid)
-
-    fig, (ax1, ax2) = pyplot.subplots(1, 2, subplot_kw={"projection": "3d"})
-    fig.suptitle('Az / Alt from Pixels')
+    fig1, (ax1, ax2) = pyplot.subplots(1, 2, subplot_kw={"projection": "3d"})
+    fig1.suptitle('Az / Alt from Pixels')
     ax1.set_title('Azimuth')
     ax1.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], azalt_predicted[:,:,0], cmap = cm.viridis)
-    ax1.scatter(this_camera.reference_pixels['x_px'], this_camera.reference_pixels['y_px'], this_camera.reference_pixels['az'], s=50, c='purple')
+    ax1.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['az'], s=50, c='purple')
     ax2.set_title('Altitude')
     ax2.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], azalt_predicted[:,:,1], cmap=cm.inferno)
-    ax2.scatter(this_camera.reference_pixels['x_px'], this_camera.reference_pixels['y_px'], this_camera.reference_pixels['alt'], s=50, c='red')
+    ax2.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['alt'], s=50, c='red')
+
+    az_axis = np.linspace(this_camera.azalt_edges[3,0], this_camera.azalt_edges[1,0], plot_dims[0])
+    alt_axis = np.linspace(this_camera.azalt_edges[2,1], this_camera.azalt_edges[0,1], plot_dims[1])
+    az_axis, alt_axis = np.meshgrid(az_axis, alt_axis)
+    azalt_meshgrid = np.empty([plot_dims[1], plot_dims[0], 2])
+    azalt_meshgrid[:,:,0] = az_axis
+    azalt_meshgrid[:,:,1] = alt_axis
+    px_predicted = this_camera.px_azalt_models_convert(input=azalt_meshgrid, direction='azalt_to_px')
+
+    fig2, (ax3, ax4) = pyplot.subplots(1, 2, subplot_kw={"projection": "3d"})
+    fig2.suptitle('Pixels from Az / Alt')
+    ax3.set_title('x Pixel')
+    ax3.plot_surface(azalt_meshgrid[:,:,0], azalt_meshgrid[:,:,1], px_predicted[:,:,0], cmap = cm.viridis)
+    ax3.scatter(this_camera.ref_df['az'], this_camera.ref_df['alt'], this_camera.ref_df['px_x'], s=50, c='purple')
+    ax4.set_title('y Pixel')
+    ax4.plot_surface(azalt_meshgrid[:,:,0], azalt_meshgrid[:,:,1], px_predicted[:,:,1], cmap=cm.inferno)
+    ax4.scatter(this_camera.ref_df['az'], this_camera.ref_df['alt'], this_camera.ref_df['px_y'], s=50, c='red')
 
     pyplot.show()

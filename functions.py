@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import pickle
+import pandas as pd
 
 # AzAlt to polar coordinates, imagining the image 2D. theta from positive altitude axis in direction of positive azimuth axis. r is "flat degrees" from center
 def azalt_to_special_polar(az, alt):
@@ -68,3 +69,55 @@ def grid_rotation_error(align_orientation, align1_px, align2_px, align_azalt_rel
 	grid_rotation_error_degreesCCW = math.atan(miss_azalt_rel / align_azalt_reltarget[azalt_index]) * 180/math.pi # converted to a rotation angle
 
 	return grid_rotation_error_degreesCCW, pixel_delta
+
+# simply standardize coordinate type:
+# single coordinate is a list. more than one is a 2-dim Numpy array of two columns
+def coord_standard(obj):
+	some_data = False
+	number_of_rows = 0
+
+	if isinstance(obj, pd.DataFrame):
+		if obj.empty:
+			description = 'Completely empty DataFrame'
+		elif len(obj.index) == 1 and obj.shape[1] == 2:
+			if all(pd.notnull(obj).values[0]):
+				some_data = True
+				description = 'DataFrame containing one coordinate pair'
+				obj_shape = (1,2)
+				obj = [obj.values[0,0], obj.values[0,1]]
+		elif len(obj.index) == 2 and obj.shape[1] == 2:
+			if all(pd.notnull(obj).values[0]):
+				some_data = True
+				description = 'DataFrame containing two coordinate pairs'
+				obj_shape = (2,2)
+				obj = np.array([obj.values[0], obj.values[1]])
+		elif obj.shape[1] == 2:
+			if all(pd.notnull(obj).values[0]):
+				some_data = True
+				description = 'DataFrame containing multiple coordinate pairs'
+				obj_shape = ('more than two',2)
+				obj = obj.values
+				obj = obj.reshape(-1,2)
+		else:
+			print('Some other condition?')
+	elif isinstance(obj, np.ndarray):
+		if any(np.isnan(obj)):
+			description = 'Numpy array with some non-values'
+			# TODO (?) handle values that are present
+		elif obj.ndim == 1 and obj.size == 2:
+			obj = [obj[0], obj[1]]
+		elif obj.ndim == 2 and obj.shape[0] == 1 and obj.shape[1] == 2 and all(~np.isnan(obj)):
+			some_data = True
+			description = 'Numpy array of one coordinate pair'
+			obj_shape = (1,2)
+			obj = [obj[0,0], obj[0,1]]
+		elif obj.ndim == 2 and all(~np.isnan(obj)):
+			some_data = True
+			description = 'Numpy array of multiple coordinate pairs'
+			obj = obj.reshape(-1,2)
+		elif obj.ndim == 3:
+			print('handle this?')
+		else:
+			print('some other condition?')
+	
+	return some_data, obj

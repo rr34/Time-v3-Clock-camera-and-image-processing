@@ -207,3 +207,22 @@ def generate_image_aim_object():
 
 				row_data = {'x_px': row_x_px, 'y_px': row_y_px, 'alt': row_alt, 'az': row_az}
 				reference_pixels.loc[len(reference_pixels.index)] = row_data
+
+
+	def cam_px_to_azalt(self, px):
+		if type(px) == list:
+			px = np.array(px, dtype=float).reshape(-1,2)
+		if px.ndim == 2:
+			azalt = np.zeros(px.shape)
+			px_poly = self.poly.fit_transform(px)
+			azalt = self.azalt_model.predict(px_poly)
+		elif px.ndim == 3:
+			full_shape = px.shape
+			azalt = np.zeros(full_shape)
+			if full_shape[2] == 2:
+				# layer_shape = px[:,:,0].shape
+				px = px.reshape(-1,2)
+				px_poly = self.poly.fit_transform(px)
+				azalt = self.azalt_model.predict(px_poly).reshape(full_shape)
+
+		return azalt

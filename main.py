@@ -20,7 +20,7 @@ def button1_clicked():
     y_px = float(entry2.get())
     px_entry = [x_px, y_px]
 
-    altaz = current_camera.cam_px_to_altaz(px_entry)
+    altaz = current_camera.px_azalt_models_convert(px_entry, 'px_to_azalt')
     output_str.set(str(altaz))
 
 def button2_clicked():
