@@ -1,10 +1,14 @@
 import tkinter
 import pickle
-from datetime import datetime
+from datetime import datetime, timedelta
+from pytz import timezone
+import PIL
 import functions
 import actions
 
 global current_camera
+global current_image
+global GPS_info_present, img_latlng, img_elevation, image_capture_moment
 
 def load_camera():
     global current_camera
@@ -15,28 +19,57 @@ def load_camera():
 
     current_camera_str.set(str(current_camera.camera_name))
 
-def button1_clicked():
-    x_px = float(entry1.get())
-    y_px = float(entry2.get())
-    px_entry = [x_px, y_px]
+def load_image():
+    # load the image, display the exif data, prompt the user for appropriate input
+    global current_image
+    global GPS_info_present, img_latlng, img_elevation, image_capture_moment
+    image_filename = tkinter.filedialog.askopenfilename()
+    current_image = PIL.Image.open(image_filename)
+    current_image_str.set(image_filename)
 
-    altaz = current_camera.px_azalt_models_convert(px_entry, 'px_to_azalt')
-    output_str.set(str(altaz))
+    GPS_info_present, img_latlng, img_elevation, image_capture_moment = actions.get_exif(current_image)
+    info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'))
+    output1_str.set(info_str)
 
-def button2_clicked():
-    global current_camera
-    image_filename = 'slayer_cal_image_1080p.png'
-    img_capture_moment = datetime.now().isoformat(timespec='seconds')
-    earth_latlng = [40.0, -83.0]
-    center_ref = [959.5, 539.5]
-    azalt_ref = [180.0, 10.0]
+    entry1_label_str.set('Enter lat,long OR leave blank to accept EXIF lat, long')
+    entry2_label_str.set('Elevation in meters OR leave blank to accept EXIF elevation')
+    entry3_label_str.set('yyyy-mm-ddTHH:mm:ss OR leave blank to accept EXIF time')
 
-    current_camera.awim_metadata_to_image(image_filename=image_filename, date_gregorian_ns_time_utc = img_capture_moment, earth_latlng=earth_latlng, center_ref=center_ref, azalt_ref=azalt_ref)
-        
+def continue1():
+    if azalt_source_var.get() == 'Pixel x, y of sun':
+        entry4_label_str.set('Enter pixel x,y of sun')
+        entry5_label_str.set('NR')
+    elif azalt_source_var.get() == 'Any pixel x, y on horizon':
+        entry4_label_str.set('Enter any pixel x,y on horizon')
+        entry5_label_str.set('NR')
+    elif azalt_source_var.get() == 'Pixel x,y on horizon, known azimuth':
+        entry4_label_str.set('Pixel x, y on horizon')
+        entry5_label_str.set('Azimuth')
+
+def continue2():
+    global current_camera, current_image
+    global GPS_info_present, img_latlng, img_elevation, image_capture_moment
+
+    if not GPS_info_present:
+        entry1_str = entry1.get()
+        img_latlng = [float(entry1_str.split(',')[0]), float(entry1_str.split(',')[1])]
+        img_elevation = float(entry2.get())
+
+    what_object = 'sun'
+    center_ref = 'center'
+    img_orientation = 'landscape'
+    entry4_str = entry4.get()
+    celestial_object_px = [float(entry4_str.split(',')[0]), float(entry4_str.split(',')[1])]
+
+    current_camera.azalt_ref_from_celestial(current_image, image_capture_moment, img_latlng, center_ref, what_object, celestial_object_px, img_orientation)
+
+    awim_dictionary = current_camera.awim_metadata_generate(self, current_image, image_capture_moment, earth_latlng, center_ref, azalt_ref, img_orientation)
+
+
 awim = tkinter.Tk()
 
 awim.title('Astronomical Wide Image Mapper by Time v3 Technology')
-awim.geometry('800x1200')
+awim.geometry('1200x800')
 
 menu_bar = tkinter.Menu(awim)
 
@@ -53,34 +86,89 @@ camera_menu.add_command(label='Display camera aim object', command=actions.displ
 # camera_menu.add_command(label='Convert a single pixel to altaz', command=single_px_to_altaz)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
-image_menu.add_command(label='Generate image astronomical data file', command=lambda: awimmetadata.png_add_metadata(current_camera))
+image_menu.add_command(label='Load Image', command=load_image)
+image_menu.add_command(label='Attach AWIM Data to image with Sun Position', command=lambda: awimmetadata.png_add_metadata(current_camera, current_image))
 image_menu.add_command(label='Batch generate image astronomical data files', command=actions.do_nothing)
 
 menu_bar.add_cascade(label='File', menu=file_menu, underline=0)
 menu_bar.add_cascade(label='Camera', menu=camera_menu, underline=0)
 menu_bar.add_cascade(label='Image', menu=image_menu, underline=0)
 
-current_camera_str = tkinter.StringVar()
-current_camera_str.set('None yet')
-output_str = tkinter.StringVar()
-output_str.set('Nothing yet')
+# Entries and outputs:
+# Rows 0 and 1 are current camera and current image.
+# Entries and outputs start on row 2
+# Column 0 is entry labels and button.
+# Column 1 is entries. 
+# Column 2 is output labels
+# Column 3 is outputs
+row_height = 10
+column_width = 40
 
-entry1_label = tkinter.Label(awim, text='Enter x coordinate, center is zero: ')
-entry1_label.grid(row=0, column=0)
+current_camera_label = tkinter.Label(awim, text='Current camera: ')
+current_camera_str = tkinter.StringVar()
+current_camera_str.set('None selected yet.')
+current_camera_identify = tkinter.Label(awim, textvariable=current_camera_str)
+current_camera_label.grid(row=0, column=0, ipady=row_height, ipadx=column_width)
+current_camera_identify.grid(row=0, column=1, ipady=row_height, ipadx=column_width)
+
+current_image_label = tkinter.Label(awim, text='Current image: ')
+current_image_str = tkinter.StringVar()
+current_image_str.set('None selected yet.')
+current_image_identify = tkinter.Label(awim, textvariable=current_image_str)
+current_image_label.grid(row=1, column=0, ipady=row_height, ipadx=column_width)
+current_image_identify.grid(row=1, column=1, ipady=row_height, ipadx=column_width)
+
+output1_str = tkinter.StringVar()
+output1_str.set('Output 1 label placeholder')
+output1_label = tkinter.Label(awim, textvariable=output1_str)
+output1_label.grid(row=2, column=1, ipady=row_height, ipadx=column_width)
+
+entry1_label_str = tkinter.StringVar()
+entry1_label_str.set('Entry 1 text placeholder')
+entry1_label = tkinter.Label(awim, textvariable=entry1_label_str)
 entry1 = tkinter.Entry(awim)
-entry1.grid(row=0, column=1)
-entry2_label = tkinter.Label(awim, text='Enter y coordinate, center is zero: ')
-entry2_label.grid(row=1, column=0)
+entry1_label.grid(row=3, column=0, ipadx=column_width)
+entry1.grid(row=3, column=1, ipadx=column_width)
+
+entry2_label_str = tkinter.StringVar()
+entry2_label_str.set('Entry 2 text placeholder')
+entry2_label = tkinter.Label(awim, textvariable=entry2_label_str)
 entry2 = tkinter.Entry(awim)
-entry2.grid(row=1, column=1)
-entry_button1 = tkinter.Button(awim, text='Enter', command=button1_clicked)
-entry_button1.grid(row=2, column=0)
-output_label = tkinter.Label(awim, textvariable=output_str)
-output_label.grid(row=3, column=0)
-current_camera_label = tkinter.Label(awim, textvariable=current_camera_str)
-current_camera_label.grid(row=0, column=3)
-entry_button2 = tkinter.Button(awim, text='Attach AWIM Data', command=button2_clicked)
-entry_button2.grid(row=0, column=4)
+entry2_label.grid(row=4, column=0, ipadx=column_width)
+entry2.grid(row=4, column=1, ipadx=column_width)
+
+entry3_label_str = tkinter.StringVar()
+entry3_label_str.set('Entry 2 text placeholder')
+entry3_label = tkinter.Label(awim, textvariable=entry3_label_str)
+entry3 = tkinter.Entry(awim)
+entry3_label.grid(row=5, column=0, ipadx=column_width)
+entry3.grid(row=5, column=1, ipadx=column_width)
+
+azalt_source_var = tkinter.StringVar(awim)
+azalt_source_var.set('Pixel x, y of sun')
+azalt_source_menu = tkinter.OptionMenu(awim, azalt_source_var, 'Pixel x, y of sun', 'Any pixel x, y on horizon', 'Pixel x, y on horizon, known azimuth')
+azalt_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
+
+continue_button = tkinter.Button(awim, text='Continue', command=continue1)
+continue_button.grid(row=7, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
+
+entry4_label_str = tkinter.StringVar()
+entry4_label_str.set('Entry 4 text placeholder')
+entry4_label = tkinter.Label(awim, textvariable=entry4_label_str)
+entry4 = tkinter.Entry(awim)
+entry4_label.grid(row=8, column=0, ipadx=column_width)
+entry4.grid(row=8, column=1, ipadx=column_width)
+
+entry5_label_str = tkinter.StringVar()
+entry5_label_str.set('Entry 5 text placeholder')
+entry5_label = tkinter.Label(awim, textvariable=entry5_label_str)
+entry5 = tkinter.Entry(awim)
+entry5_label.grid(row=9, column=0, ipadx=column_width)
+entry5.grid(row=9, column=1, ipadx=column_width)
+
+entry_button2 = tkinter.Button(awim, text='View AWIM Data', command=continue2)
+entry_button2.grid(row=10, column=0, columnspan=2, ipadx=column_width)
+
 
 awim.config(menu=menu_bar)
 

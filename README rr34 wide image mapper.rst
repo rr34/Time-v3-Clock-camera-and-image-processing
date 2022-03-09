@@ -41,3 +41,8 @@
  Software is often used to cover up challenging questions with instant answers and enable humans to un-know things.
  Software can also be used to shine light on questions and enable humans to challenge themselves to ask ask questions previously thought un-knowable by shining light on
  questions rather than the answers.
+
+ Coding data standardization notes:
+ - Any coordinate values are stored as a list of two floats with the horizontal value first, i.e. [azimuth, altitude], [x pixel, y pixel], [latitude, longitude]
+ - for lists of coordinates, store as a 2-dim, two-column Numpy array OR a 3-dim Numpy array such that the 0-layer is horizontal, 1-layer is vertical
+ - All time information is stored as  "aware" datetime object where date is Gregorian NS, time is UTC. datetime tzinfo source is datetime.timezone.UTC

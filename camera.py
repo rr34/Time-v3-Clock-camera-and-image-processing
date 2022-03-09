@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 from PIL import Image, PngImagePlugin
 import pickle
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from functions import *
 
 
@@ -323,20 +326,16 @@ class CameraAim(object):
 		px_RT = [center_px[0], center_px[1]]
 		px_LB = [0-center_px[0], 0-center_px[1]]
 		px_RB = [center_px[0], 0-center_px[1]]
-		px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB))
-		self.px_corners = px_corners.reshape(-1,2)
+		self.px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
 		azalt_LT, azalt_RT, azalt_LB, azalt_RB = self.px_azalt_models_convert(input=self.px_corners, direction='px_to_azalt')
-		azalt_corners = np.concatenate((azalt_LT, azalt_RT, azalt_LB, azalt_RB))
-		self.azalt_corners = azalt_corners.reshape(-1,2)
+		self.azalt_corners = np.concatenate((azalt_LT, azalt_RT, azalt_LB, azalt_RB)).reshape(-1,2)
 		px_top = [0, center_px[1]]
 		px_right = [center_px[0], 0]
 		px_bottom = [0, 0-center_px[1]]
 		px_left = [0-center_px[0], 0]
-		px_edges = np.concatenate((px_top, px_right, px_bottom, px_left))
-		self.px_edges = px_edges.reshape(-1,2)
+		self.px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
 		azalt_top, azalt_right, azalt_bottom, azalt_left = self.px_azalt_models_convert(input=self.px_edges, direction='px_to_azalt')
-		azalt_edges = np.concatenate((azalt_top, azalt_right, azalt_bottom, azalt_left))
-		self.azalt_edges = azalt_edges.reshape(-1,2)
+		self.azalt_edges = np.concatenate((azalt_top, azalt_right, azalt_bottom, azalt_left)).reshape(-1,2)
 
 
 	def represent_camera(self):
@@ -353,37 +352,92 @@ class CameraAim(object):
 		print('Pixels per degree horizontal: ', self.cal_image_dimensions[0] / (2*self.azalt_edges[1,0]))
 		print('Pixels per degree vertical: ', self.cal_image_dimensions[1] / (2*self.azalt_edges[0,1]))
 
-	# generate awim data in form of a single dictionary for embedding in any image file.
-	def awim_metadata_to_image(self, image_filename, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref):
-		image_type = image_filename.split('.')[-1]
-		current_image = Image.open(image_filename)
+	# generate awim data in form of a single dictionary for embedding in any image file
+	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation):
+		if img_orientation == 'portrait':
+			cam_sensor_dimensions = [self.sensor_dimensions[1], self.sensor_dimensions[0]]
 		image_dimensions = current_image.size
 		max_image_index = np.subtract(image_dimensions, 1)
+		img_center = np.divide(max_image_index, 2)
+		img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
+		cam_aspect_ratio = cam_sensor_dimensions[0] / cam_sensor_dimensions[1]
+		if img_aspect_ratio != cam_aspect_ratio:
+			print('error: image aspect ratio does not match camera aspect ratio, but it should')
+		else:
+			img_resize_factor = image_dimensions[0] / cam_sensor_dimensions[0]
+		if center_ref == 'center':
+			center_ref = img_center
 
-		azalt_model_coefficients = pd.DataFrame(self.azalt_model.coef_, columns=self.azalt_model.feature_names_in_, index=['az_predict', 'alt_predict'])
-		px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+		if img_orientation == 'landscape':
+			azalt_model_coefficients = pd.DataFrame(self.azalt_model.coef_, columns=self.azalt_model.feature_names_in_, index=['az_predict', 'alt_predict'])
+			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape
+			azalt_model_coefficients = pd.DataFrame(self.azalt_model.coef_, columns=self.azalt_model.feature_names_in_, index=['az_predict', 'alt_predict'])
+			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+		azalt_model_coefficients /= img_resize_factor
+		px_model_coefficients *= img_resize_factor
+
+		px_LT = [0-img_center[0], img_center[1]]
+		px_RT = [img_center[0], img_center[1]]
+		px_LB = [0-img_center[0], 0-img_center[1]]
+		px_RB = [img_center[0], 0-img_center[1]]
+		img_px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
+		img_azalt_LT, img_azalt_RT, img_azalt_LB, img_azalt_RB = self.px_azalt_models_convert(input=np.divide(img_px_corners, img_resize_factor), direction='px_to_azalt')
+		img_azalt_corners = np.concatenate((img_azalt_LT, img_azalt_RT, img_azalt_LB, img_azalt_RB)).reshape(-1,2)
+		img_azalt_corners[:,0] = (img_azalt_corners[:,0] + azalt_ref[0]) % 360
+		img_azalt_corners[:,1] = img_azalt_corners[:,1] + azalt_ref[1]
+		px_top = [0, img_center[1]]
+		px_right = [img_center[0], 0]
+		px_bottom = [0, 0-img_center[1]]
+		px_left = [0-img_center[0], 0]
+		img_px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
+		img_azalt_top, img_azalt_right, img_azalt_bottom, img_azalt_left = self.px_azalt_models_convert(input=np.divide(img_px_edges, img_resize_factor), direction='px_to_azalt')
+		img_azalt_edges = np.concatenate((img_azalt_top, img_azalt_right, img_azalt_bottom, img_azalt_left)).reshape(-1,2)
+		img_azalt_edges[:,0] = (img_azalt_edges[:,0] + azalt_ref[0]) % 360
+		img_azalt_edges[:,1] = img_azalt_edges[:,1] + azalt_ref[1]
 
 		earth_latlng_string = ', '.join(str(i) for i in earth_latlng)
 		image_dimensions_string = ', '.join(str(i) for i in image_dimensions)
 		center_ref_string = ', '.join(str(i) for i in center_ref)
 		azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
-		px_corners_string = ', '.join(str(i) for i in px_corners)
-		azalt_corners_string = ', '.join(str(i) for i in azalt_corners)
-		px_edges_string = ', '.join(str(i) for i in px_edges)
-		azalt_edges_string = ', '.join(str(i) for i in azalt_edges)
 		azalt_model_coefficients_csv = azalt_model_coefficients.to_csv()
 		px_model_coefficients_csv = px_model_coefficients.to_csv()
+		px_corners_string = ', '.join(str(i) for i in img_px_corners)
+		azalt_corners_string = ', '.join(str(i) for i in img_azalt_corners)
+		px_edges_string = ', '.join(str(i) for i in img_px_edges)
+		azalt_edges_string = ', '.join(str(i) for i in img_azalt_edges)
 
-		exif_dictionary = {'Earth Lat / Long': earth_latlng_string, 'Date / Time, Gregorian NS / Zulu': date_gregorian_ns_time_utc, 'Image Dimensions': image_dimensions_string, 'Center Reference Pixel': center_ref_string, 'Az / Alt Reference': azalt_ref_string, 'Az / Alt Model': azalt_model_coefficients_csv, 'Pixel Corners': px_corners_string, 'Az / Alt Corners': azalt_corners_string, 'Pixel Edges': px_edges_string, 'Az / Alt Edges': azalt_edges_string, 'Pixel Model': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type}
+		awim_dictionary = {'Earth Lat / Long': earth_latlng_string, 'Date / Time, Gregorian NS / UTC': date_gregorian_ns_time_utc, 'Image Dimensions': image_dimensions_string, 'Center Reference Pixel': center_ref_string, 'Az / Alt Reference': azalt_ref_string, 'Az / Alt Model': azalt_model_coefficients_csv, 'Pixel Corners': px_corners_string, 'Az / Alt Corners': azalt_corners_string, 'Pixel Edges': px_edges_string, 'Az / Alt Edges': azalt_edges_string, 'Pixel Model': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type}
 
-		# create the info object, add the awim data to the info object, save the png with the info object 
-		png_data_container = PngImagePlugin.PngInfo()
-		for key, value in exif_dictionary.items():
-			print(key)
-			print(value)
-			png_data_container.add_text(key, value)
+		return awim_dictionary
 
-		current_image.save('slayer_cal_image_with_bigtxtdictionary2.png', 'PNG', pnginfo=png_data_container)
+	def azalt_ref_from_celestial(self, image, capture_moment, earth_latlng, center_ref, what_object, object_px, img_orientation):
+		image_dimensions = image.size
+		max_image_index = np.subtract(image_dimensions, 1)
+		img_center = np.divide(max_image_index, 2)
+		if center_ref == 'center':
+			center_ref = img_center
+		img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
+		cam_aspect_ratio = self.cal_image_dimensions[0] / self.cal_image_dimensions[1]
+		if img_aspect_ratio != cam_aspect_ratio:
+			print('error: image aspect ratio does not match camera aspect ratio, but it should')
+		else:
+			img_resize_factor = image_dimensions[0] / self.sensor_dimensions[0]
+
+		object_px_rel = [object_px[0] - center_ref[0], center_ref[1] - object_px[1]]
+
+		img_astropy_time = Time(capture_moment)
+		img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
+		img_astropy_frame = AltAz(obstime=img_astropy_time, location=img_astropy_location)
+		if what_object == 'sun':
+			sun_altaz = get_sun(img_astropy_time).transform_to(img_astropy_frame)
+
+		object_azalt_rel = self.px_azalt_models_convert(input=np.divide(object_px_rel, img_resize_factor), direction='px_to_azalt')
+		img_azalt_corners[:,0] = (img_azalt_corners[:,0] + azalt_ref[0]) % 360
+		img_azalt_corners[:,1] = img_azalt_corners[:,1] + azalt_ref[1]
+
+
+		return awim_dictionary
 
 	def px_azalt_models_convert(self, input, direction):
 		if isinstance(input, list): # models require numpy arrays
