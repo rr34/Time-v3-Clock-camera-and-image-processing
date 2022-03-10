@@ -3,9 +3,6 @@ import numpy as np
 import pandas as pd
 from PIL import Image, PngImagePlugin
 import pickle
-import astropy.units as u
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 from functions import *
 
 
@@ -26,9 +23,6 @@ class CameraAim(object):
 	Therefore, for an image that is 1920x1080 the array will be 1080 rows x 1920 columns.
 	Image (0, 0) = array [0, 0]
 	Image (0, 1919) = array [1919, 0]
-	AltAz is altitude bottom to top then azimuth left to right. This makes readability difficult and
-	viewing the reference pixel data kind of a mind-bend but sticking with the standard is necessary and
-	makes the coding more straightforward than trying to "fix" this.
 	TODO: make a visual version of reference pixel data entry to avoid errors. It is really a mind-bend!
 	"""
 
@@ -84,40 +78,40 @@ class CameraAim(object):
 
 		# first for loop: each calc step represented by a "calculate_and_record" row: get vars, check if there, handle cases
 		# crosshairs case 1: record center as original crosshairs
-		# crosshairs case 2. on az axis (vertical)
-		# crosshairs case 3. on alt axis (horizontal)
+		# crosshairs case 2. on xsph axis (vertical)
+		# crosshairs case 3. on ysph axis (horizontal)
 		# crosshairs case 4. not on an axis, "floating"
-		# target miss: calculate the target position azalt relative to the original crosshairs, used for all ref points with same az/alt _sect
+		# target miss: calculate the target position xysph relative to the original crosshairs, used for all ref points with same xsph,ysph _sect
 		# NOT USED, calculate the target center from edges just to compare to the actual recorded center, which is used
-		# rotation error: (°CCW) from the align points, used for all ref points with same az/alt _sect
-		# pixel delta: °/px used for adjusting pixel location (instead of azalt) for "floating" crosshairs
+		# rotation error: (°CCW) from the align points, used for all ref points with same xsph,ysph _sect
+		# pixel delta: °/px used for adjusting pixel location (instead of xysph) for "floating" crosshairs
 		# IF NOT BLANK marks the "check for values" if statement
 		for row in cal_df[cal_df['type'] == 'calculate_and_record'].iterrows():
 			# prepare variables
-			azalt_sect = row[1][['az_sect', 'alt_sect']].values
-			azalt_rel = row[1][['az_rel', 'alt_rel']].values
-			azalt_total = [azalt_sect[0]+azalt_rel[0], azalt_sect[1]+azalt_rel[1]]
-			cal_df.loc[row[0], 'az_total'] = azalt_total[0]
-			cal_df.loc[row[0], 'alt_total'] = azalt_total[1]
+			xysph_sect = row[1][['xsph_sect', 'ysph_sect']].values
+			xysph_rel = row[1][['xsph_rel', 'ysph_rel']].values
+			xysph_total = [xysph_sect[0]+xysph_rel[0], xysph_sect[1]+xysph_rel[1]]
+			cal_df.loc[row[0], 'xsph_total'] = xysph_total[0]
+			cal_df.loc[row[0], 'ysph_total'] = xysph_total[1]
 
-			df_find_rows_section = (cal_df['az_sect']==row[1]['az_sect']) & (cal_df['alt_sect']==row[1]['alt_sect'])
+			df_find_rows_section = (cal_df['xsph_sect']==row[1]['xsph_sect']) & (cal_df['ysph_sect']==row[1]['ysph_sect'])
 			df_section = cal_df[df_find_rows_section]
-			df_find_rows_pt = (cal_df['az_sect']==row[1]['az_sect']) & (cal_df['alt_sect']==row[1]['alt_sect']) & (cal_df['az_rel']==row[1]['az_rel']) & (cal_df['alt_rel']==row[1]['alt_rel'])
+			df_find_rows_pt = (cal_df['xsph_sect']==row[1]['xsph_sect']) & (cal_df['ysph_sect']==row[1]['ysph_sect']) & (cal_df['xsph_rel']==row[1]['xsph_rel']) & (cal_df['ysph_rel']==row[1]['ysph_rel'])
 			df_pt = cal_df[df_find_rows_pt]
 
 			df_find_row_target = (df_section['misc']=='target_center')
 			target_center_section = df_section[df_find_row_target][['rec_x', 'rec_y']].values[0]
 
-			df_find_crosshairs_sect = (cal_df['az_total']==azalt_sect[0]) & (cal_df['alt_total']==azalt_sect[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='this_section_crosshairs')
+			df_find_crosshairs_sect = (cal_df['xsph_total']==xysph_sect[0]) & (cal_df['ysph_total']==xysph_sect[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='this_section_crosshairs')
 			crosshairs_section = cal_df[df_find_crosshairs_sect][['out1', 'out2']].values[0]
 
 			if row[1]['misc'] == 'this_section_crosshairs':
-				if azalt_total[0]==0 and azalt_total[1]==0: # origin only
+				if xysph_total[0]==0 and xysph_total[1]==0: # origin only
 					cal_df.loc[row[0], 'out1'] = center_px[0]
 					cal_df.loc[row[0], 'out2'] = center_px[1]
 				else:
 					# retrieve crosshairs from previous section(s)
-					df_find_crosshairs = (cal_df['az_total']==azalt_total[0]) & (cal_df['alt_total']==azalt_total[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='crosshairs')
+					df_find_crosshairs = (cal_df['xsph_total']==xysph_total[0]) & (cal_df['ysph_total']==xysph_total[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='crosshairs')
 					crosshairs_array = cal_df[df_find_crosshairs][['out1', 'out2']]
 					not_blank, crosshairs = coord_standard(crosshairs_array)
 					if not_blank: # IF NOT BLANK
@@ -132,41 +126,41 @@ class CameraAim(object):
 				df_find_recorded = (df_pt['misc']=='center') & (df_pt['type']=='ref_point')
 				px = df_pt[df_find_recorded][['rec_x', 'rec_y']]
 				not_blank, px = coord_standard(px)
-				# if a px is recorded, case 2 on az axis, case 3 on alt axis, case 4 on neither axis
+				# if a px is recorded, case 2 on xsph axis, case 3 on ysph axis, case 4 on neither axis
 				if not_blank: # IF NOT BLANK
-					if azalt_total[0]==0:
+					if xysph_total[0]==0:
 						px_dist = math.sqrt((px[0] - target_center_section[0])**2 + (px[1] - target_center_section[1])**2)
 						crosshairs_px = [center_px[0], crosshairs_section[1] + px_dist]
 						cal_df.loc[row[0], 'out1'] = crosshairs_px[0]
 						cal_df.loc[row[0], 'out2'] = crosshairs_px[1]
-					elif azalt_total[1]==0:
+					elif xysph_total[1]==0:
 						px_dist = math.sqrt((px[0] - target_center_section[0])**2 + (px[1] - target_center_section[1])**2)
 						crosshairs_px = [crosshairs_section[0] - px_dist, center_px[1]]
 						cal_df.loc[row[0], 'out1'] = crosshairs_px[0]
 						cal_df.loc[row[0], 'out2'] = crosshairs_px[1]
-					else: # adjust the pixel for crosshairs, not the azalt
-						df_find_row_tpaara = (df_section['misc']=='target_pos_azalt_relaim')
-						target_pos_azalt_relaim = df_section[df_find_row_tpaara][['out1', 'out2']].values[0]
+					else: # adjust the pixel for crosshairs, not the xysph
+						df_find_row_tpaara = (df_section['misc']=='target_pos_xysph_relaim')
+						target_pos_xysph_relaim = df_section[df_find_row_tpaara][['out1', 'out2']].values[0]
 						df_find_row_pdaa_v = (df_section['misc']=='rotation_error_v_and_px_delta')
 						pixel_delta_at_align_v = df_section[df_find_row_pdaa_v][['out2']].values[0]
 						df_find_row_pdaa_h = (df_section['misc']=='rotation_error_h_and_px_delta')
 						pixel_delta_at_align_h = df_section[df_find_row_pdaa_h][['out2']].values[0]
 						# note there is no grid rotation error for these cases because not on an axis
 						crosshairs_px = np.array([1,2])
-						crosshairs_px[0] = px[0] + pixel_delta_at_align * target_pos_azalt_relaim[0]
-						crosshairs_px[1] = px[1] - pixel_delta_at_align * target_pos_azalt_relaim[1]
+						crosshairs_px[0] = px[0] + pixel_delta_at_align * target_pos_xysph_relaim[0]
+						crosshairs_px[1] = px[1] - pixel_delta_at_align * target_pos_xysph_relaim[1]
 						cal_df.loc[row[0], 'out1'] = crosshairs_px[0]
 						cal_df.loc[row[0], 'out2'] = crosshairs_px[1]
 
-			elif row[1]['misc'] == 'target_pos_azalt_relaim':
+			elif row[1]['misc'] == 'target_pos_xysph_relaim':
 				target_top = df_pt[df_pt['misc']=='target_top'][['rec_x', 'rec_y']].values[0]
 				target_right = df_pt[df_pt['misc']=='target_right'][['rec_x', 'rec_y']].values[0]
 				target_bottom = df_pt[df_pt['misc']=='target_bottom'][['rec_x', 'rec_y']].values[0]
 				target_left = df_pt[df_pt['misc']=='target_left'][['rec_x', 'rec_y']].values[0]
 
-				target_pos_azalt_relaim = target_miss(target_left, target_right, target_top, target_bottom, target_center_section, targets_diameter_degrees, crosshairs_section)
-				cal_df.loc[row[0], 'out1'] = target_pos_azalt_relaim[0]
-				cal_df.loc[row[0], 'out2'] = target_pos_azalt_relaim[1]
+				target_pos_xysph_relaim = target_miss(target_left, target_right, target_top, target_bottom, target_center_section, targets_diameter_degrees, crosshairs_section)
+				cal_df.loc[row[0], 'out1'] = target_pos_xysph_relaim[0]
+				cal_df.loc[row[0], 'out2'] = target_pos_xysph_relaim[1]
 
 			elif row[1]['misc'] == 'target_center_calculated_from_edges':
 				target_top = df_pt[df_pt['misc']=='target_top'][['rec_x', 'rec_y']].values[0]
@@ -183,7 +177,7 @@ class CameraAim(object):
 				align1_px = df_section[df_section['misc']=='vertical_left'][['rec_x', 'rec_y']].values[0]
 				align2_px = df_section[df_section['misc']=='vertical_right'][['rec_x', 'rec_y']].values[0]
 				if not math.isnan(align1_px[0]): # IF NOT BLANK
-					grid_rotation_error_degreesCCW, pixel_delta_at_align = grid_rotation_error(align_orientation=align_orientation, align1_px=align1_px, align2_px=align2_px, align_azalt_reltarget=azalt_rel, targets_diameter_degrees=targets_diameter_degrees, target_pos_px=target_center_section)
+					grid_rotation_error_degreesCCW, pixel_delta_at_align = grid_rotation_error(align_orientation=align_orientation, align1_px=align1_px, align2_px=align2_px, align_xysph_reltarget=xysph_rel, targets_diameter_degrees=targets_diameter_degrees, target_pos_px=target_center_section)
 					cal_df.loc[row[0], 'out1'] = grid_rotation_error_degreesCCW
 					cal_df.loc[row[0], 'out2'] = pixel_delta_at_align
 
@@ -192,35 +186,35 @@ class CameraAim(object):
 				align1_px = df_section[df_section['misc']=='horizontal_top'][['rec_x', 'rec_y']].values[0]
 				align2_px = df_section[df_section['misc']=='horizontal_bottom'][['rec_x', 'rec_y']].values[0]
 				if not math.isnan(align1_px[0]): # IF NOT BLANK
-					grid_rotation_error_degreesCCW, pixel_delta_at_align = grid_rotation_error(align_orientation=align_orientation, align1_px=align1_px, align2_px=align2_px, align_azalt_reltarget=azalt_rel, targets_diameter_degrees=targets_diameter_degrees, target_pos_px=target_center_section)
+					grid_rotation_error_degreesCCW, pixel_delta_at_align = grid_rotation_error(align_orientation=align_orientation, align1_px=align1_px, align2_px=align2_px, align_xysph_reltarget=xysph_rel, targets_diameter_degrees=targets_diameter_degrees, target_pos_px=target_center_section)
 					cal_df.loc[row[0], 'out1'] = grid_rotation_error_degreesCCW
 					cal_df.loc[row[0], 'out2'] = pixel_delta_at_align
 
 
 
 		# second for loop: each reference point represented by a "ref_point" row
-		# ref point case 1: record the center as a reference point bc defining as original azalt = [0,0]
-		# ref point case 2: like crosshairs case 2, on az axis (vertical)
-		# ref point case 3: like crosshairs case 3. on alt axis (horizontal)
+		# ref point case 1: record the center as a reference point bc defining as original xysph = [0,0]
+		# ref point case 2: like crosshairs case 2, on xsph axis (vertical)
+		# ref point case 3: like crosshairs case 3. on ysph axis (horizontal)
 		# ref point case 4: normal ref point
 		for row in cal_df[cal_df['type'] == 'ref_point'].iterrows():
 			# prepare variables
 			px = row[1][['rec_x', 'rec_y']].values
-			azalt_sect = row[1][['az_sect', 'alt_sect']].values
-			azalt_rel = row[1][['az_rel', 'alt_rel']].values
-			azalt_total = [azalt_sect[0]+azalt_rel[0], azalt_sect[1]+azalt_rel[1]]
-			cal_df.loc[row[0], 'az_total'] = azalt_total[0]
-			cal_df.loc[row[0], 'alt_total'] = azalt_total[1]
+			xysph_sect = row[1][['xsph_sect', 'ysph_sect']].values
+			xysph_rel = row[1][['xsph_rel', 'ysph_rel']].values
+			xysph_total = [xysph_sect[0]+xysph_rel[0], xysph_sect[1]+xysph_rel[1]]
+			cal_df.loc[row[0], 'xsph_total'] = xysph_total[0]
+			cal_df.loc[row[0], 'ysph_total'] = xysph_total[1]
 
-			df_find_rows_section = (cal_df['az_sect']==row[1]['az_sect']) & (cal_df['alt_sect']==row[1]['alt_sect'])
+			df_find_rows_section = (cal_df['xsph_sect']==row[1]['xsph_sect']) & (cal_df['ysph_sect']==row[1]['ysph_sect'])
 			df_section = cal_df[df_find_rows_section]
-			df_find_rows_pt = (cal_df['az_sect']==row[1]['az_sect']) & (cal_df['alt_sect']==row[1]['alt_sect']) & (cal_df['az_rel']==row[1]['az_rel']) & (cal_df['alt_rel']==row[1]['alt_rel'])
+			df_find_rows_pt = (cal_df['xsph_sect']==row[1]['xsph_sect']) & (cal_df['ysph_sect']==row[1]['ysph_sect']) & (cal_df['xsph_rel']==row[1]['xsph_rel']) & (cal_df['ysph_rel']==row[1]['ysph_rel'])
 			df_pt = cal_df[df_find_rows_pt]
 
 			df_find_row_target = (df_section['misc']=='target_center')
 			target_center_section = df_section[df_find_row_target][['rec_x', 'rec_y']].values[0]
 
-			df_find_crosshairs_sect = (cal_df['az_total']==azalt_sect[0]) & (cal_df['alt_total']==azalt_sect[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='this_section_crosshairs')
+			df_find_crosshairs_sect = (cal_df['xsph_total']==xysph_sect[0]) & (cal_df['ysph_total']==xysph_sect[1]) & (cal_df['type']=='calculate_and_record') & (cal_df['misc']=='this_section_crosshairs')
 			crosshairs_section = cal_df[df_find_crosshairs_sect][['out1', 'out2']].values[0]
 
 			if not math.isnan(px[0]) and not math.isnan(px[1]): # IF NOT BLANK
@@ -232,45 +226,45 @@ class CameraAim(object):
 				df_gredCCW_pd_h = df_section[df_section['misc']=='rotation_error_h_and_px_delta']
 				grid_rotation_error_degreesCCW_h = float(df_gredCCW_pd_h[['out1']].values[0])
 				pixel_delta_h = float(df_gredCCW_pd_h[['out2']].values[0])
-				if azalt_sect[0]==0 and azalt_sect[1]==0 and not math.isnan(grid_rotation_error_degreesCCW_v) and not math.isnan(grid_rotation_error_degreesCCW_h):
+				if xysph_sect[0]==0 and xysph_sect[1]==0 and not math.isnan(grid_rotation_error_degreesCCW_v) and not math.isnan(grid_rotation_error_degreesCCW_h):
 					grid_rotation_error_degreesCCW = (grid_rotation_error_degreesCCW_v + grid_rotation_error_degreesCCW_h) / 2
-				elif azalt_sect[0]==0 and azalt_sect[1]!=0 and not math.isnan(grid_rotation_error_degreesCCW_v):
+				elif xysph_sect[0]==0 and xysph_sect[1]!=0 and not math.isnan(grid_rotation_error_degreesCCW_v):
 					grid_rotation_error_degreesCCW = grid_rotation_error_degreesCCW_v
-				elif azalt_sect[0]!=0 and azalt_sect[1]==0 and not math.isnan(grid_rotation_error_degreesCCW_h):
+				elif xysph_sect[0]!=0 and xysph_sect[1]==0 and not math.isnan(grid_rotation_error_degreesCCW_h):
 					grid_rotation_error_degreesCCW = grid_rotation_error_degreesCCW_h
 				else:
 					grid_rotation_error_degreesCCW = 0 # CATCH-ALL FOR BLANKS
 			
 				# record the ref pixels for the 4 cases
-				if azalt_total[0]==0 and azalt_total[1]==0: # origin
+				if xysph_total[0]==0 and xysph_total[1]==0: # origin
 					cal_df.loc[row[0], 'px_x'] = center_px[0]
 					cal_df.loc[row[0], 'px_y'] = center_px[1]
-					cal_df.loc[row[0], 'az'] = 0
-					cal_df.loc[row[0], 'alt'] = 0
-				elif azalt_total[0]==0 and azalt_total[1]!=0:
+					cal_df.loc[row[0], 'xsph'] = 0
+					cal_df.loc[row[0], 'ysph'] = 0
+				elif xysph_total[0]==0 and xysph_total[1]!=0: # on the y axis
 					px_dist = math.sqrt((px[0] - target_center_section[0])**2 + (px[1] - target_center_section[1])**2)
 					cal_df.loc[row[0], 'px_x'] = center_px[0]
 					cal_df.loc[row[0], 'px_y'] = crosshairs_section[1] + px_dist
-					cal_df.loc[row[0], 'az'] = azalt_total[0]
-					cal_df.loc[row[0], 'alt'] = azalt_total[1]
-				elif azalt_total[0]!=0 and azalt_total[1]==0:
+					cal_df.loc[row[0], 'xsph'] = xysph_total[0]
+					cal_df.loc[row[0], 'ysph'] = xysph_total[1]
+				elif xysph_total[0]!=0 and xysph_total[1]==0: # on the x axis
 					px_dist = math.sqrt((px[0] - target_center_section[0])**2 + (px[1] - target_center_section[1])**2)
 					cal_df.loc[row[0], 'px_x'] = crosshairs_section[0] - px_dist
 					cal_df.loc[row[0], 'px_y'] = center_px[1]
-					cal_df.loc[row[0], 'az'] = azalt_total[0]
-					cal_df.loc[row[0], 'alt'] = azalt_total[1]
-				else:
-					target_pos_azalt_relaim = df_section[(df_section['misc']=='target_pos_azalt_relaim')][['out1', 'out2']].values[0]
-					theta, r = azalt_to_special_polar(azalt_total[0], azalt_total[1])
-					grid_rotation_adjust_azalt_relgridpoint =  [math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.cos(theta*math.pi/180) * -1, math.tan(grid_rotation_error_degreesCCW*math.pi/180) * r * math.sin(theta*math.pi/180)]
+					cal_df.loc[row[0], 'xsph'] = xysph_total[0]
+					cal_df.loc[row[0], 'ysph'] = xysph_total[1]
+				else: # anywhere else
+					target_pos_xysph_relaim = df_section[(df_section['misc']=='target_pos_xysph_relaim')][['out1', 'out2']].values[0]
+					xysph_polar = xysph_to_special_polar(xysph_rel)
+					grid_rotation_error_xysph_relgridpoint =  [math.tan(grid_rotation_error_degreesCCW*math.pi/180) * xysph_polar[0] * -1*math.sin(xysph_polar[1]*math.pi/180), math.tan(grid_rotation_error_degreesCCW*math.pi/180) * xysph_polar[0] * math.cos(xysph_polar[1]*math.pi/180)]
 					cal_df.loc[row[0], 'px_x'] = px[0]
 					cal_df.loc[row[0], 'px_y'] = px[1]
-					cal_df.loc[row[0], 'az'] = azalt_total[0] + target_pos_azalt_relaim[0] + grid_rotation_adjust_azalt_relgridpoint[0]
-					cal_df.loc[row[0], 'alt'] = azalt_total[1] + target_pos_azalt_relaim[1] + grid_rotation_adjust_azalt_relgridpoint[1]
+					cal_df.loc[row[0], 'xsph'] = xysph_total[0] + target_pos_xysph_relaim[0] + grid_rotation_error_xysph_relgridpoint[0]
+					cal_df.loc[row[0], 'ysph'] = xysph_total[1] + target_pos_xysph_relaim[1] + grid_rotation_error_xysph_relgridpoint[1]
 
 		cal_df.to_csv('slay cal output.csv')
 		ref_df_filter = pd.notnull(cal_df['px_x'])
-		ref_df = pd.DataFrame(cal_df[ref_df_filter][['px_x', 'px_y', 'az', 'alt']])
+		ref_df = pd.DataFrame(cal_df[ref_df_filter][['px_x', 'px_y', 'xsph', 'ysph']])
 
 		# standardize the reference pixels:
 		# center, convert to positive values (RB quadrant in PhotoShop coordinate system), then orient landscape
@@ -278,8 +272,8 @@ class CameraAim(object):
 		ref_df['px_y'] = ref_df['px_y'] - center_px[1]
 		if calibration_quadrant == 'LB':
 			ref_df['px_x'] = ref_df['px_x'] * -1
-			ref_df['az'] = ref_df['az'] * -1
-			ref_df['alt'] = ref_df['alt'] * -1
+			ref_df['xsph'] = ref_df['xsph'] * -1
+			ref_df['ysph'] = ref_df['ysph'] * -1
 		if calibration_orientation == 'portrait':
 			center_px = center_px[::-1]
 			sensor_dimensions = sensor_dimensions[::-1]
@@ -287,9 +281,9 @@ class CameraAim(object):
 			cal_image_dimensions = cal_image_dimensions[::-1]
 			max_image_index = max_image_index[::-1]
 			ref_df['px_x'], ref_df['px_y'] = ref_df['px_y'], ref_df['px_x']
-			ref_df['alt'], ref_df['az'] = ref_df['az'], ref_df['alt']
+			ref_df['ysph'], ref_df['xsph'] = ref_df['xsph'], ref_df['ysph']
 
-		# create the px to azalt models
+		# create the px to xysph models
 		from sklearn.preprocessing import PolynomialFeatures
 		from sklearn.linear_model import LinearRegression
 
@@ -299,12 +293,12 @@ class CameraAim(object):
 		ref_df.to_csv('slay ref df.csv')
 
 		independent_poly_px = pd.DataFrame(data=poly1.fit_transform(ref_df[['px_x', 'px_y']]), columns=poly1.get_feature_names_out(ref_df[['px_x', 'px_y']].columns))
-		azalt_model = LinearRegression(fit_intercept=False)
-		azalt_model.fit(independent_poly_px, ref_df[['az', 'alt']])
+		xysph_model = LinearRegression(fit_intercept=False)
+		xysph_model.fit(independent_poly_px, ref_df[['xsph', 'ysph']])
 
-		independent_poly_azalt = pd.DataFrame(data=poly2.fit_transform(ref_df[['az', 'alt']]), columns=poly2.get_feature_names_out(ref_df[['az', 'alt']].columns))
+		independent_poly_xysph = pd.DataFrame(data=poly2.fit_transform(ref_df[['xsph', 'ysph']]), columns=poly2.get_feature_names_out(ref_df[['xsph', 'ysph']].columns))
 		px_model = LinearRegression(fit_intercept=False)
-		px_model.fit(independent_poly_azalt, ref_df[['px_x', 'px_y']])
+		px_model.fit(independent_poly_xysph, ref_df[['px_x', 'px_y']])
 		
 		self.camera_name = camera_name
 		self.lens_name = lens_name
@@ -318,7 +312,7 @@ class CameraAim(object):
 		self.ref_df = ref_df
 		self.poly1 = poly1
 		self.poly2 = poly2
-		self.azalt_model = azalt_model
+		self.xysph_model = xysph_model
 		self.px_model = px_model
 		self.pixel_map_type = pixel_map_type
 
@@ -327,15 +321,15 @@ class CameraAim(object):
 		px_LB = [0-center_px[0], 0-center_px[1]]
 		px_RB = [center_px[0], 0-center_px[1]]
 		self.px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
-		azalt_LT, azalt_RT, azalt_LB, azalt_RB = self.px_azalt_models_convert(input=self.px_corners, direction='px_to_azalt')
-		self.azalt_corners = np.concatenate((azalt_LT, azalt_RT, azalt_LB, azalt_RB)).reshape(-1,2)
+		xysph_LT, xysph_RT, xysph_LB, xysph_RB = self.px_xysph_models_convert(input=self.px_corners, direction='px_to_xysph')
+		self.xysph_corners = np.concatenate((xysph_LT, xysph_RT, xysph_LB, xysph_RB)).reshape(-1,2)
 		px_top = [0, center_px[1]]
 		px_right = [center_px[0], 0]
 		px_bottom = [0, 0-center_px[1]]
 		px_left = [0-center_px[0], 0]
 		self.px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
-		azalt_top, azalt_right, azalt_bottom, azalt_left = self.px_azalt_models_convert(input=self.px_edges, direction='px_to_azalt')
-		self.azalt_edges = np.concatenate((azalt_top, azalt_right, azalt_bottom, azalt_left)).reshape(-1,2)
+		xysph_top, xysph_right, xysph_bottom, xysph_left = self.px_xysph_models_convert(input=self.px_edges, direction='px_to_xysph')
+		self.xysph_edges = np.concatenate((xysph_top, xysph_right, xysph_bottom, xysph_left)).reshape(-1,2)
 
 
 	def represent_camera(self):
@@ -346,11 +340,11 @@ class CameraAim(object):
 		print('Sensor Dimensions: ', self.sensor_dimensions)
 		print('Image Dimensions: ', self.cal_image_dimensions)
 		print('Pixel Corners LT, RT, LB, RB:\n', self.px_corners)
-		print('Az / Alt Corners LT, RT, LB, RB:\n', self.azalt_corners)
+		print('x,y Spherical Corners LT, RT, LB, RB:\n', self.xysph_corners)
 		print('Pixel Edges Top, Right, Bottom, Left:\n', self.px_edges)
-		print('Az / Alt Edges Top, Right, Bottom, Left:\n', self.azalt_edges)
-		print('Pixels per degree horizontal: ', self.cal_image_dimensions[0] / (2*self.azalt_edges[1,0]))
-		print('Pixels per degree vertical: ', self.cal_image_dimensions[1] / (2*self.azalt_edges[0,1]))
+		print('x,y Spherical Edges Top, Right, Bottom, Left:\n', self.xysph_edges)
+		print('Pixels per degree horizontal: ', self.cal_image_dimensions[0] / (2*self.xysph_edges[1,0]))
+		print('Pixels per degree vertical: ', self.cal_image_dimensions[1] / (2*self.xysph_edges[0,1]))
 
 	# generate awim data in form of a single dictionary for embedding in any image file
 	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation):
@@ -369,12 +363,12 @@ class CameraAim(object):
 			center_ref = img_center
 
 		if img_orientation == 'landscape':
-			azalt_model_coefficients = pd.DataFrame(self.azalt_model.coef_, columns=self.azalt_model.feature_names_in_, index=['az_predict', 'alt_predict'])
+			xysph_model_coefficients = pd.DataFrame(self.xysph_model.coef_, columns=self.xysph_model.feature_names_in_, index=['xsph_predict', 'ysph_predict'])
 			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
 		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape
-			azalt_model_coefficients = pd.DataFrame(self.azalt_model.coef_, columns=self.azalt_model.feature_names_in_, index=['az_predict', 'alt_predict'])
+			xysph_model_coefficients = pd.DataFrame(self.xysph_model.coef_, columns=self.xysph_model.feature_names_in_, index=['xsph_predict', 'ysph_predict'])
 			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-		azalt_model_coefficients /= img_resize_factor
+		xysph_model_coefficients /= img_resize_factor
 		px_model_coefficients *= img_resize_factor
 
 		px_LT = [0-img_center[0], img_center[1]]
@@ -382,64 +376,37 @@ class CameraAim(object):
 		px_LB = [0-img_center[0], 0-img_center[1]]
 		px_RB = [img_center[0], 0-img_center[1]]
 		img_px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
-		img_azalt_LT, img_azalt_RT, img_azalt_LB, img_azalt_RB = self.px_azalt_models_convert(input=np.divide(img_px_corners, img_resize_factor), direction='px_to_azalt')
-		img_azalt_corners = np.concatenate((img_azalt_LT, img_azalt_RT, img_azalt_LB, img_azalt_RB)).reshape(-1,2)
-		img_azalt_corners[:,0] = (img_azalt_corners[:,0] + azalt_ref[0]) % 360
-		img_azalt_corners[:,1] = img_azalt_corners[:,1] + azalt_ref[1]
+		img_xysph_LT, img_xysph_RT, img_xysph_LB, img_xysph_RB = self.px_xysph_models_convert(input=np.divide(img_px_corners, img_resize_factor), direction='px_to_xysph')
+		img_xysph_corners = np.concatenate((img_xysph_LT, img_xysph_RT, img_xysph_LB, img_xysph_RB)).reshape(-1,2)
+		img_xysph_corners[:,0] = (img_xysph_corners[:,0] + azalt_ref[0]) % 360
+		img_xysph_corners[:,1] = img_xysph_corners[:,1] + azalt_ref[1]
 		px_top = [0, img_center[1]]
 		px_right = [img_center[0], 0]
 		px_bottom = [0, 0-img_center[1]]
 		px_left = [0-img_center[0], 0]
 		img_px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
-		img_azalt_top, img_azalt_right, img_azalt_bottom, img_azalt_left = self.px_azalt_models_convert(input=np.divide(img_px_edges, img_resize_factor), direction='px_to_azalt')
-		img_azalt_edges = np.concatenate((img_azalt_top, img_azalt_right, img_azalt_bottom, img_azalt_left)).reshape(-1,2)
-		img_azalt_edges[:,0] = (img_azalt_edges[:,0] + azalt_ref[0]) % 360
-		img_azalt_edges[:,1] = img_azalt_edges[:,1] + azalt_ref[1]
+		img_xysph_top, img_xysph_right, img_xysph_bottom, img_xysph_left = self.px_xysph_models_convert(input=np.divide(img_px_edges, img_resize_factor), direction='px_to_xysph')
+		img_xysph_edges = np.concatenate((img_xysph_top, img_xysph_right, img_xysph_bottom, img_xysph_left)).reshape(-1,2)
+		img_xysph_edges[:,0] = (img_xysph_edges[:,0] + azalt_ref[0]) % 360
+		img_xysph_edges[:,1] = img_xysph_edges[:,1] + azalt_ref[1]
 
 		earth_latlng_string = ', '.join(str(i) for i in earth_latlng)
 		image_dimensions_string = ', '.join(str(i) for i in image_dimensions)
 		center_ref_string = ', '.join(str(i) for i in center_ref)
 		azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
-		azalt_model_coefficients_csv = azalt_model_coefficients.to_csv()
+		xysph_model_coefficients_csv = xysph_model_coefficients.to_csv()
 		px_model_coefficients_csv = px_model_coefficients.to_csv()
 		px_corners_string = ', '.join(str(i) for i in img_px_corners)
-		azalt_corners_string = ', '.join(str(i) for i in img_azalt_corners)
+		xysph_corners_string = ', '.join(str(i) for i in img_xysph_corners)
 		px_edges_string = ', '.join(str(i) for i in img_px_edges)
-		azalt_edges_string = ', '.join(str(i) for i in img_azalt_edges)
+		xysph_edges_string = ', '.join(str(i) for i in img_xysph_edges)
 
-		awim_dictionary = {'Earth Lat / Long': earth_latlng_string, 'Date / Time, Gregorian NS / UTC': date_gregorian_ns_time_utc, 'Image Dimensions': image_dimensions_string, 'Center Reference Pixel': center_ref_string, 'Az / Alt Reference': azalt_ref_string, 'Az / Alt Model': azalt_model_coefficients_csv, 'Pixel Corners': px_corners_string, 'Az / Alt Corners': azalt_corners_string, 'Pixel Edges': px_edges_string, 'Az / Alt Edges': azalt_edges_string, 'Pixel Model': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type}
-
-		return awim_dictionary
-
-	def azalt_ref_from_celestial(self, image, capture_moment, earth_latlng, center_ref, what_object, object_px, img_orientation):
-		image_dimensions = image.size
-		max_image_index = np.subtract(image_dimensions, 1)
-		img_center = np.divide(max_image_index, 2)
-		if center_ref == 'center':
-			center_ref = img_center
-		img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
-		cam_aspect_ratio = self.cal_image_dimensions[0] / self.cal_image_dimensions[1]
-		if img_aspect_ratio != cam_aspect_ratio:
-			print('error: image aspect ratio does not match camera aspect ratio, but it should')
-		else:
-			img_resize_factor = image_dimensions[0] / self.sensor_dimensions[0]
-
-		object_px_rel = [object_px[0] - center_ref[0], center_ref[1] - object_px[1]]
-
-		img_astropy_time = Time(capture_moment)
-		img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
-		img_astropy_frame = AltAz(obstime=img_astropy_time, location=img_astropy_location)
-		if what_object == 'sun':
-			sun_altaz = get_sun(img_astropy_time).transform_to(img_astropy_frame)
-
-		object_azalt_rel = self.px_azalt_models_convert(input=np.divide(object_px_rel, img_resize_factor), direction='px_to_azalt')
-		img_azalt_corners[:,0] = (img_azalt_corners[:,0] + azalt_ref[0]) % 360
-		img_azalt_corners[:,1] = img_azalt_corners[:,1] + azalt_ref[1]
-
+		awim_dictionary = {'Earth Lat / Long': earth_latlng_string, 'Date / Time, Gregorian NS / UTC': date_gregorian_ns_time_utc, 'Image Dimensions': image_dimensions_string, 'Center Reference Pixel': center_ref_string, 'Az / Alt Reference': azalt_ref_string, 'x,y Spherical Model': xysph_model_coefficients_csv, 'Pixel Corners': px_corners_string, 'x,y Spherical Corners': xysph_corners_string, 'Pixel Edges': px_edges_string, 'x,y Spherical Edges': xysph_edges_string, 'Pixel Model': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type}
 
 		return awim_dictionary
 
-	def px_azalt_models_convert(self, input, direction):
+
+	def px_xysph_models_convert(self, input, direction):
 		if isinstance(input, list): # models require numpy arrays
 			input = np.array(input, dtype=float).reshape(-1,2)
 
@@ -448,10 +415,10 @@ class CameraAim(object):
 		output_sign = np.where(input < 0, -1, 1) # models are positive values only. Save sign.
 		input = np.abs(input)
 		input = input.reshape(-1,2)
-		if direction == 'px_to_azalt':
+		if direction == 'px_to_xysph':
 			input_poly = self.poly1.fit_transform(input)
-			output = self.azalt_model.predict(input_poly).reshape(full_shape)
-		elif direction == 'azalt_to_px':
+			output = self.xysph_model.predict(input_poly).reshape(full_shape)
+		elif direction == 'xysph_to_px':
 			input_poly = self.poly2.fit_transform(input)
 			output = self.px_model.predict(input_poly).reshape(full_shape)
 		output = np.multiply(output, output_sign)

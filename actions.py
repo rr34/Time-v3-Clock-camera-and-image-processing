@@ -8,6 +8,9 @@ import PIL
 import datetime
 from pytz import timezone
 import pytz
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import camera
 from functions import *
 
@@ -16,7 +19,7 @@ def do_nothing():
     button = Button(filewin, text='Do nothing button')
     Button.pack()
 
-# process a calibration .csv file, save as a .awim, visualize the calibration pixel/azalt data together with resulting pixel/azalt values
+# process a calibration .csv file, save as a .awim, visualize the calibration pixel/x,y spherical data together with resulting pixel/x,y spherical values
 def generate_camera_aim_object():
 
     # create a CameraAim object with calibration CSV file, then save using automatic name from calibration data
@@ -45,33 +48,33 @@ def display_camera_aim_object():
     px_meshgrid = np.empty([plot_dims[1], plot_dims[0], 2])
     px_meshgrid[:,:,0] = px_x_axis
     px_meshgrid[:,:,1] = px_y_axis
-    azalt_predicted = this_camera.px_azalt_models_convert(input=px_meshgrid, direction='px_to_azalt')
+    xysph_predicted = this_camera.px_xysph_models_convert(input=px_meshgrid, direction='px_to_xysph')
 
     fig1, (ax1, ax2) = pyplot.subplots(1, 2, subplot_kw={"projection": "3d"})
-    fig1.suptitle('Az / Alt from Pixels')
-    ax1.set_title('Azimuth')
-    ax1.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], azalt_predicted[:,:,0], cmap = cm.viridis)
-    ax1.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['az'], s=50, c='purple')
-    ax2.set_title('Altitude')
-    ax2.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], azalt_predicted[:,:,1], cmap=cm.inferno)
-    ax2.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['alt'], s=50, c='red')
+    fig1.suptitle('x,y Spherical from Pixels')
+    ax1.set_title('x Spherical')
+    ax1.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], xysph_predicted[:,:,0], cmap = cm.viridis)
+    ax1.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['xsph'], s=50, c='purple')
+    ax2.set_title('y Spherical')
+    ax2.plot_surface(px_meshgrid[:,:,0], px_meshgrid[:,:,1], xysph_predicted[:,:,1], cmap=cm.inferno)
+    ax2.scatter(this_camera.ref_df['px_x'], this_camera.ref_df['px_y'], this_camera.ref_df['ysph'], s=50, c='red')
 
-    az_axis = np.linspace(this_camera.azalt_edges[3,0], this_camera.azalt_edges[1,0], plot_dims[0])
-    alt_axis = np.linspace(this_camera.azalt_edges[2,1], this_camera.azalt_edges[0,1], plot_dims[1])
-    az_axis, alt_axis = np.meshgrid(az_axis, alt_axis)
-    azalt_meshgrid = np.empty([plot_dims[1], plot_dims[0], 2])
-    azalt_meshgrid[:,:,0] = az_axis
-    azalt_meshgrid[:,:,1] = alt_axis
-    px_predicted = this_camera.px_azalt_models_convert(input=azalt_meshgrid, direction='azalt_to_px')
+    xsph_axis = np.linspace(this_camera.xysph_edges[3,0], this_camera.xysph_edges[1,0], plot_dims[0])
+    ysph_axis = np.linspace(this_camera.xysph_edges[2,1], this_camera.xysph_edges[0,1], plot_dims[1])
+    xsph_axis, ysph_axis = np.meshgrid(xsph_axis, ysph_axis)
+    xysph_meshgrid = np.empty([plot_dims[1], plot_dims[0], 2])
+    xysph_meshgrid[:,:,0] = xsph_axis
+    xysph_meshgrid[:,:,1] = ysph_axis
+    px_predicted = this_camera.px_xysph_models_convert(input=xysph_meshgrid, direction='xysph_to_px')
 
     fig2, (ax3, ax4) = pyplot.subplots(1, 2, subplot_kw={"projection": "3d"})
-    fig2.suptitle('Pixels from Az / Alt')
+    fig2.suptitle('Pixels from x,y Spherical')
     ax3.set_title('x Pixel')
-    ax3.plot_surface(azalt_meshgrid[:,:,0], azalt_meshgrid[:,:,1], px_predicted[:,:,0], cmap = cm.viridis)
-    ax3.scatter(this_camera.ref_df['az'], this_camera.ref_df['alt'], this_camera.ref_df['px_x'], s=50, c='purple')
+    ax3.plot_surface(xysph_meshgrid[:,:,0], xysph_meshgrid[:,:,1], px_predicted[:,:,0], cmap = cm.viridis)
+    ax3.scatter(this_camera.ref_df['xsph'], this_camera.ref_df['ysph'], this_camera.ref_df['px_x'], s=50, c='purple')
     ax4.set_title('y Pixel')
-    ax4.plot_surface(azalt_meshgrid[:,:,0], azalt_meshgrid[:,:,1], px_predicted[:,:,1], cmap=cm.inferno)
-    ax4.scatter(this_camera.ref_df['az'], this_camera.ref_df['alt'], this_camera.ref_df['px_y'], s=50, c='red')
+    ax4.plot_surface(xysph_meshgrid[:,:,0], xysph_meshgrid[:,:,1], px_predicted[:,:,1], cmap=cm.inferno)
+    ax4.scatter(this_camera.ref_df['xsph'], this_camera.ref_df['ysph'], this_camera.ref_df['px_y'], s=50, c='red')
 
     pyplot.show()
 
@@ -172,4 +175,51 @@ def png_text_reader(image_filename):
 
     png_text_dictionary = png_file_1.text
 
-    print(png_text_dictionary['Az / Alt Model'])
+    print(png_text_dictionary['some reference key'])
+
+
+def azalt_ref_from_celestial(camera, image, capture_moment, earth_latlng, center_ref, what_object, object_px, img_orientation, img_tilt):
+    image_dimensions = image.size
+    max_image_index = np.subtract(image_dimensions, 1)
+    img_center = np.divide(max_image_index, 2)
+    if center_ref == 'center':
+        center_ref = img_center
+    img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
+    cam_aspect_ratio = camera.cal_image_dimensions[0] / camera.cal_image_dimensions[1]
+    if img_aspect_ratio != cam_aspect_ratio:
+        print('error: image aspect ratio does not match camera aspect ratio, but it should')
+    else:
+        img_resize_factor = image_dimensions[0] / camera.cal_image_dimensions[0]
+
+    object_px_rel = [object_px[0] - center_ref[0], center_ref[1] - object_px[1]]
+
+    img_astropy_time = Time(capture_moment)
+    img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
+    img_astropy_frame = AltAz(obstime=img_astropy_time, location=img_astropy_location)
+    if what_object == 'sun':
+        object_altaz = get_sun(img_astropy_time).transform_to(img_astropy_frame)
+    object_azalt = [object_altaz.az.degree, object_altaz.alt.degree]
+
+    object_xysph_rel = camera.px_xysph_models_convert(input=np.divide(object_px_rel, img_resize_factor), direction='px_to_xysph')
+
+    # from diagram included in the notes:
+    xsph_rel_rad = object_xysph_rel[0] * math.pi/180
+    ysph_rel_rad = object_xysph_rel[1] * math.pi/180
+    x_direction = math.copysign(1, xsph_rel_rad)
+    y_direction = math.copysign(1, ysph_rel_rad)
+    xsph_rel_rad = abs(xsph_rel_rad)
+    ysph_rel_rad = abs(ysph_rel_rad)
+    obj_alt_rad = object_azalt[1] * math.pi/180
+    d1 = 1*math.cos(math.pi/2 - xsph_rel_rad)
+    r2 = 1*math.sin(math.pi/2 - xsph_rel_rad)
+    alt_seg = 1*math.sin(obj_alt_rad)
+    alt_ref_rad = math.asin(alt_seg / r2) - ysph_rel_rad
+    d2 = r2 * math.cos(alt_ref_rad + ysph_rel_rad)
+    az_rel_rad = math.pi/2 - math.atan(d2 / d1)
+
+    az_rel = az_rel_rad * 180/math.pi
+    alt_ref = alt_ref_rad  * 180/math.pi
+
+    azalt_ref = [object_azalt[0] - az_rel*x_direction, alt_ref]
+
+    return azalt_ref

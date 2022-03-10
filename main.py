@@ -58,10 +58,11 @@ def continue2():
     what_object = 'sun'
     center_ref = 'center'
     img_orientation = 'landscape'
+    img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind.
     entry4_str = entry4.get()
     celestial_object_px = [float(entry4_str.split(',')[0]), float(entry4_str.split(',')[1])]
 
-    current_camera.azalt_ref_from_celestial(current_image, image_capture_moment, img_latlng, center_ref, what_object, celestial_object_px, img_orientation)
+    actions.azalt_ref_from_celestial(current_camera, current_image, image_capture_moment, img_latlng, center_ref, what_object, celestial_object_px, img_orientation, img_tilt)
 
     awim_dictionary = current_camera.awim_metadata_generate(self, current_image, image_capture_moment, earth_latlng, center_ref, azalt_ref, img_orientation)
 
@@ -83,7 +84,6 @@ camera_menu = tkinter.Menu(menu_bar, tearoff=0)
 camera_menu.add_command(label='TODO Calibrate camera from calibration images', command=actions.do_nothing)
 camera_menu.add_command(label='Generate camera aim file from calibration CSV', command=actions.generate_camera_aim_object)
 camera_menu.add_command(label='Display camera aim object', command=actions.display_camera_aim_object)
-# camera_menu.add_command(label='Convert a single pixel to altaz', command=single_px_to_altaz)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
 image_menu.add_command(label='Load Image', command=load_image)
