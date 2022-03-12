@@ -226,3 +226,27 @@ def generate_image_aim_object():
 				azalt = self.azalt_model.predict(px_poly).reshape(full_shape)
 
 		return azalt
+
+def xyangs_to_polar(xyangs):
+
+	xang_rad = xyangs[0] * math.pi/180
+	yang_rad = xyangs[1] * math.pi/180
+	xyhyp_rad = math.pi/2 - math.asin(math.cos(xang_rad) * math.cos(yang_rad))
+
+	if xang_rad >= 0 and yang_rad == 0:
+		theta_rad = 0
+	elif xang_rad == 0 and yang_rad > 0:
+		theta_rad = math.pi/2
+	elif xang_rad < 0 and yang_rad == 0:
+		theta_rad = math.pi
+	elif xang_rad == 0 and yang_rad < 0:
+		theta_rad = 3*math.pi/2
+	elif yang_rad > 0:
+		theta_rad = math.pi/2 - math.asin(math.tan(math.pi/2-xyhyp_rad) * math.tan(xang_rad))
+	elif yang_rad < 0:
+		theta_rad = -1 * (math.pi/2 - math.asin(math.tan(math.pi/2-xyhyp_rad) * math.tan(xang_rad))) + 2*math.pi
+
+	xyhyp = xyhyp_rad * 180/math.pi
+	theta = theta_rad * 180/math.pi
+
+	return [xyhyp, theta]

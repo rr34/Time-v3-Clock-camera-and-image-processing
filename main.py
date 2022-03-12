@@ -3,7 +3,6 @@ import pickle
 from datetime import datetime, timedelta
 from pytz import timezone
 import PIL
-import functions
 import actions
 
 global current_camera
@@ -62,9 +61,9 @@ def continue2():
     entry4_str = entry4.get()
     celestial_object_px = [float(entry4_str.split(',')[0]), float(entry4_str.split(',')[1])]
 
-    actions.azalt_ref_from_celestial(current_camera, current_image, image_capture_moment, img_latlng, center_ref, what_object, celestial_object_px, img_orientation, img_tilt)
+    azalt_ref = actions.azalt_ref_from_celestial(current_camera, current_image, image_capture_moment, img_latlng, center_ref, what_object, celestial_object_px, img_orientation, img_tilt)
 
-    awim_dictionary = current_camera.awim_metadata_generate(self, current_image, image_capture_moment, earth_latlng, center_ref, azalt_ref, img_orientation)
+    awim_dictionary = current_camera.awim_metadata_generate(current_camera, current_image, image_capture_moment, earth_latlng, center_ref, azalt_ref, img_orientation)
 
 
 awim = tkinter.Tk()
