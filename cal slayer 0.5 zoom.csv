@@ -1,10 +1,9 @@
 ﻿xang_sect,yang_sect,xang_rel,yang_rel,x_rec,y_rec,type,misc,out1,out2,xang_total,yang_total,x_px,y_px,xang,yang
 ,,,,,,camera_name,Slayer 0.5 Zoom,,,,,,,,
-,,,,4000,3000,sensor_dimensions,,,,,,,,,
 ,,,,,,lens_name,Native,,,,,,,,
 ,,,,,,zoom_factor,,,,,,,,,
 ,,,,,,settings_notes,,,,,,,,,
-,,,,4000,2250,cal_image_dimensions,,,,,,,,,
+,,,,4000,2250,cam_image_dimensions,,,,,,,,,
 ,,,,,,pixel_map_type,3d_degree_poly_fit_abs_from_center,,,,,,,,
 ,,,,,,orientation,portrait,,,,,,,,
 ,,,,,,quadrant,LB,,,,,,,,

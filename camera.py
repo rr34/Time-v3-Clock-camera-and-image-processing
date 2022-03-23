@@ -1,3 +1,4 @@
+
 import math
 import numpy as np
 import pandas as pd
@@ -55,10 +56,8 @@ class CameraAim(object):
 		lens_name = cal_df[cal_df['type'] == 'lens_name']['misc'].iat[0]
 		zoom_factor = cal_df[cal_df['type'] == 'zoom_factor']['misc'].iat[0]
 		settings_notes = cal_df[cal_df['type'] == 'settings_notes']['misc'].iat[0]
-		sensor_dimensions = [int(cal_df[cal_df['type'] == 'sensor_dimensions']['x_rec'].iat[0]), int(cal_df[cal_df['type'] == 'sensor_dimensions']['y_rec'].iat[0])]
-		max_sensor_index = np.subtract(sensor_dimensions, 1)
-		cal_image_dimensions = [int(cal_df[cal_df['type'] == 'cal_image_dimensions']['x_rec'].iat[0]), int(cal_df[cal_df['type'] == 'cal_image_dimensions']['y_rec'].iat[0])]
-		max_image_index = np.subtract(cal_image_dimensions, 1)
+		cam_image_dimensions = [int(cal_df[cal_df['type'] == 'cam_image_dimensions']['x_rec'].iat[0]), int(cal_df[cal_df['type'] == 'cam_image_dimensions']['y_rec'].iat[0])]
+		max_image_index = np.subtract(cam_image_dimensions, 1)
 		pixel_map_type = cal_df[cal_df['type'] == 'pixel_map_type']['misc'].iat[0]
 		center_px = max_image_index / 2 # usually x.5, non-integer, bc even number of pixels means center is a boundary rather than a pixel
 		calibration_orientation = cal_df[cal_df['type'] == 'orientation']['misc'].iat[0]
@@ -68,9 +67,7 @@ class CameraAim(object):
 
 		if calibration_orientation == 'portrait':
 			center_px = center_px[::-1]
-			sensor_dimensions = sensor_dimensions[::-1]
-			max_sensor_index = max_sensor_index[::-1]
-			cal_image_dimensions = cal_image_dimensions[::-1]
+			cam_image_dimensions = cam_image_dimensions[::-1]
 			max_image_index = max_image_index[::-1]
 
 
@@ -275,9 +272,7 @@ class CameraAim(object):
 			ref_df['yang'] = ref_df['yang'] * -1
 		if calibration_orientation == 'portrait':
 			center_px = center_px[::-1]
-			sensor_dimensions = sensor_dimensions[::-1]
-			max_sensor_index = max_sensor_index[::-1]
-			cal_image_dimensions = cal_image_dimensions[::-1]
+			cam_image_dimensions = cam_image_dimensions[::-1]
 			max_image_index = max_image_index[::-1]
 			ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 			ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
@@ -303,9 +298,7 @@ class CameraAim(object):
 		self.lens_name = lens_name
 		self.zoom_factor = zoom_factor
 		self.settings_notes = settings_notes
-		self.sensor_dimensions = sensor_dimensions
-		self.max_sensor_index = max_sensor_index
-		self.cal_image_dimensions = cal_image_dimensions
+		self.cam_image_dimensions = cam_image_dimensions
 		self.max_image_index = max_image_index
 		self.center_px = center_px
 		self.ref_df = ref_df
@@ -336,71 +329,63 @@ class CameraAim(object):
 		print('Lens: ', self.lens_name)
 		print('Zoom: ', self.zoom_factor)
 		print('Settings Notes: ', self.settings_notes)
-		print('Sensor Dimensions: ', self.sensor_dimensions)
-		print('Image Dimensions: ', self.cal_image_dimensions)
+		print('Image Dimensions: ', self.cam_image_dimensions)
 		print('Pixel Corners LT, RT, LB, RB:\n', self.px_corners)
 		print('x,y Angle Corners LT, RT, LB, RB:\n', self.xyangs_corners)
 		print('Pixel Edges Top, Right, Bottom, Left:\n', self.px_edges)
 		print('x,y Angle Edges Top, Right, Bottom, Left:\n', self.xyangs_edges)
-		print('Pixels per degree horizontal: ', self.cal_image_dimensions[0] / (2*self.xyangs_edges[1,0]))
-		print('Pixels per degree vertical: ', self.cal_image_dimensions[1] / (2*self.xyangs_edges[0,1]))
+		print('Pixels per degree horizontal: ', self.cam_image_dimensions[0] / (2*self.xyangs_edges[1,0]))
+		print('Pixels per degree vertical: ', self.cam_image_dimensions[1] / (2*self.xyangs_edges[0,1]))
 
 	# generate awim data in form of a single dictionary for embedding in any image file
-	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation):
-		if img_orientation == 'portrait':
-			cam_sensor_dimensions = [self.sensor_dimensions[1], self.sensor_dimensions[0]]
-		image_dimensions = current_image.size
-		max_image_index = np.subtract(image_dimensions, 1)
-		img_center = np.divide(max_image_index, 2)
-		img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
-		cam_aspect_ratio = cam_sensor_dimensions[0] / cam_sensor_dimensions[1]
+	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation, img_tilt):
+		img_dimensions = current_image.size
+		if img_orientation == 'landscape':
+			cam_image_dimensions = self.cam_image_dimensions
+		elif img_orientation == 'portrait':
+			cam_image_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
+		img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
+		cam_aspect_ratio = cam_image_dimensions[0] / cam_image_dimensions[1]
 		if img_aspect_ratio != cam_aspect_ratio:
 			print('error: image aspect ratio does not match camera aspect ratio, but it should')
 		else:
-			img_resize_factor = image_dimensions[0] / cam_sensor_dimensions[0]
+			img_resize_factor = img_dimensions[0] / cam_image_dimensions[0]
+		max_img_index = np.subtract(img_dimensions, 1)
+		img_center = np.divide(max_img_index, 2)
 		if center_ref == 'center':
 			center_ref = img_center
 
 		if img_orientation == 'landscape':
 			xyangs_model_coefficients = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
 			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape
+		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape / swap x and y
 			xyangs_model_coefficients = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
 			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
 		xyangs_model_coefficients /= img_resize_factor
 		px_model_coefficients *= img_resize_factor
 
 		px_LT = [0-img_center[0], img_center[1]]
-		px_RT = [img_center[0], img_center[1]]
-		px_LB = [0-img_center[0], 0-img_center[1]]
-		px_RB = [img_center[0], 0-img_center[1]]
-		img_px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
-		img_xyangs_LT, img_xyangs_RT, img_xyangs_LB, img_xyangs_RB = self.px_xyangs_models_convert(input=np.divide(img_px_corners, img_resize_factor), direction='px_to_xyangs')
-		img_xyangs_corners = np.concatenate((img_xyangs_LT, img_xyangs_RT, img_xyangs_LB, img_xyangs_RB)).reshape(-1,2)
-		img_xyangs_corners[:,0] = (img_xyangs_corners[:,0] + azalt_ref[0]) % 360
-		img_xyangs_corners[:,1] = img_xyangs_corners[:,1] + azalt_ref[1]
 		px_top = [0, img_center[1]]
-		px_right = [img_center[0], 0]
-		px_bottom = [0, 0-img_center[1]]
+		px_RT = [img_center[0], img_center[1]]
 		px_left = [0-img_center[0], 0]
-		img_px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
-		img_xyangs_top, img_xyangs_right, img_xyangs_bottom, img_xyangs_left = self.px_xyangs_models_convert(input=np.divide(img_px_edges, img_resize_factor), direction='px_to_xyangs')
-		img_xyangs_edges = np.concatenate((img_xyangs_top, img_xyangs_right, img_xyangs_bottom, img_xyangs_left)).reshape(-1,2)
-		img_xyangs_edges[:,0] = (img_xyangs_edges[:,0] + azalt_ref[0]) % 360
-		img_xyangs_edges[:,1] = img_xyangs_edges[:,1] + azalt_ref[1]
+		px_center = [0, 0]
+		px_right = [img_center[0], 0]
+		px_LB = [0-img_center[0], 0-img_center[1]]
+		px_bottom = [0, 0-img_center[1]]
+		px_RB = [img_center[0], 0-img_center[1]]
+		img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
+		img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
 
 		earth_latlng_string = ', '.join(str(i) for i in earth_latlng)
-		image_dimensions_string = ', '.join(str(i) for i in image_dimensions)
+		img_dimensions_string = ', '.join(str(i) for i in img_dimensions)
 		center_ref_string = ', '.join(str(i) for i in center_ref)
 		azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
 		xyangs_model_coefficients_csv = xyangs_model_coefficients.to_csv()
 		px_model_coefficients_csv = px_model_coefficients.to_csv()
-		px_corners_string = ', '.join(str(i) for i in img_px_corners)
-		xyangs_corners_string = ', '.join(str(i) for i in img_xyangs_corners)
-		px_edges_string = ', '.join(str(i) for i in img_px_edges)
-		xyangs_edges_string = ', '.join(str(i) for i in img_xyangs_edges)
+		px_borders_string = ', '.join(str(i) for i in img_px_borders)
+		xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
 
-		awim_dictionary = {'Earth Lat / Long': earth_latlng_string, 'Date / Time, Gregorian NS / UTC': date_gregorian_ns_time_utc, 'Image Dimensions': image_dimensions_string, 'Center Reference Pixel': center_ref_string, 'Az / Alt Reference': azalt_ref_string, 'x,y Angle Model': xyangs_model_coefficients_csv, 'Pixel Corners': px_corners_string, 'x,y Angle Corners': xyangs_corners_string, 'Pixel Edges': px_edges_string, 'x,y Angle Edges': xyangs_edges_string, 'Pixel Model': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type}
+		awim_dictionary = {'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string, 'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string}
 
 		return awim_dictionary
 
