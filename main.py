@@ -1,6 +1,6 @@
 import tkinter
 import pickle
-from datetime import datetime, timedelta
+import datetime
 from pytz import timezone
 import PIL
 import actions, astroimage
@@ -30,11 +30,12 @@ def load_photo():
         info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
     else:
         info_str = 'no exif data'
+        rotate_degrees = 0
     output1_str.set(info_str)
 
     entry1_label_str.set('Enter lat,long OR leave blank to accept EXIF lat, long')
     entry2_label_str.set('Elevation in meters OR leave blank to accept EXIF elevation')
-    entry3_label_str.set('yyyy-mm-ddTHH:mm:ss OR leave blank to accept EXIF time')
+    entry3_label_str.set('Enter UTC Moment as: yyyy-mm-ddTHH:mm:ss OR leave blank to accept EXIF time')
 
 def continue1():
     if azalt_source_var.get() == 'Pixel x,y of sun':
@@ -55,7 +56,7 @@ def continue2():
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment
 
     if not exif_present:
-        image_capture_moment = datetime.datetime.fromisoformat(entry3.get(), tzinfo=datetime.timezone('utc'))
+        image_capture_moment = datetime.datetime.fromisoformat(entry3.get() + '+00:00')
 
     if not GPS_info_present:
         entry1_str = entry1.get()

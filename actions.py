@@ -84,9 +84,7 @@ def get_exif(current_image):
     exif_present = False
     GPS_info_present = False
 
-    rotate_degrees = None
-    exif_present = None
-    GPS_info_present = None
+    rotate_degrees = 0
     img_latlng = None
     img_elevation = None
     img_capture_moment = None
@@ -120,25 +118,25 @@ def get_exif(current_image):
         minute = int(exif_time.split(':')[1])
         second = int(exif_time.split(':')[2])
 
-        # pytz get the timezone offset on the date of the photo
+        # TODO make this an input rather than hard-code set here. Goal is to enter total offset from UTC and have it converted to UTC
+        # get the pytz timezone offset on the date of the photo, then include other time offset:
+        # camera time in exif compared to local time including DST on the date of the photo
         this_timezone_str = 'US/Eastern' # pytz can handle this Time v2 stuff. Corrects for DST but not well at the switch. Do manually near switch.
         this_timezone_pytz = timezone(this_timezone_str) # creates a pytz class to convert datetimes
         img_moment_pytz = this_timezone_pytz.localize(datetime.datetime(year, month, day, hour, minute, second))
-        img_timezone_offset_seconds = img_moment_pytz.utcoffset().total_seconds()
+        img_pytz_offset_seconds = img_moment_pytz.utcoffset().total_seconds()
 
-        # other time offset, camera time in exif compared to local time including DST on the date of the photo
-        # TODO make this an input rather than hard-code set here
         offset_direction = -1
         offset_hrs = 0
         offset_minutes = 0
         offset_seconds = 0
         img_other_offset_seconds = offset_direction * (offset_hrs*3600 + offset_minutes*60 + offset_seconds)
-        img_time_offset_seconds = img_timezone_offset_seconds + img_other_offset_seconds
+        img_total_time_offset_seconds = img_pytz_offset_seconds + img_other_offset_seconds
 
-        total_time_offset_astimezone = datetime.timezone(datetime.timedelta(seconds=img_time_offset_seconds))
+        img_total_time_offset_seconds_astimezone = datetime.timezone(datetime.timedelta(seconds=img_total_time_offset_seconds))
         time_offset_hrs = img_time_offset_seconds/3600
 
-        img_capture_moment = datetime.datetime(year, month, day, hour, minute, second, 0, total_time_offset_astimezone)
+        img_capture_moment = datetime.datetime(year, month, day, hour, minute, second, 0, img_total_time_offset_seconds_astimezone)
         img_capture_moment = img_capture_moment.astimezone(datetime.timezone.utc)
 
         if img_exif.get(34853): # if GPS info present. Returns None if not.
