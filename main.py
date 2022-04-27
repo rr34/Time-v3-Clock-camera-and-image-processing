@@ -5,8 +5,11 @@ from pytz import timezone
 import PIL
 import actions, astroimage
 
+# I know I'm not supposed to use globals. They are not referenced outside this file.
+# If I convert this app to object oriented, they will become self._____
 global current_camera, current_image
-global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment
+global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
+
 
 def load_camera():
     global current_camera
@@ -17,8 +20,8 @@ def load_camera():
 
     current_camera_str.set(str(current_camera.camera_name))
 
-def load_photo():
-    # load the image, display the exif data, prompt the user for appropriate input
+
+def load_image():
     global current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment
     image_filename = tkinter.filedialog.askopenfilename()
@@ -37,6 +40,7 @@ def load_photo():
     entry2_label_str.set('Elevation in meters OR leave blank to accept EXIF elevation')
     entry3_label_str.set('Enter UTC Moment as: yyyy-mm-ddTHH:mm:ss OR leave blank to accept EXIF time')
 
+
 def continue1():
     if azalt_source_var.get() == 'Pixel x,y of sun':
         entry4_label_str.set('Enter pixel x,y of sun')
@@ -51,9 +55,10 @@ def continue1():
         entry4_label_str.set('Az,Alt')
         entry5_label_str.set('NR')
 
+
 def continue2():
     global current_camera, current_image
-    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment
+    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
     if not exif_present:
         image_capture_moment = datetime.datetime.fromisoformat(entry3.get() + '+00:00')
@@ -82,14 +87,27 @@ def continue2():
         azalt_ref = actions.azalt_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
 
     awim_dictionary_in = current_camera.awim_metadata_generate(current_image, image_capture_moment, img_latlng, center_ref, azalt_ref, img_orientation, img_tilt)
-    actions.generate_png_with_awim(current_image, rotate_degrees, awim_dictionary_in)
+    
+    awim_dictionary_str = ''
+    for item in awim_dictionary_in:
+        awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
+    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file image awim data.txt for the rest')
+    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+        f.write(awim_dictionary_str)
 
-# CLOCKSIDE, test here ...
-def clockside_png_read():
+
+def continue3():
+    global current_camera, current_image
+    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
+
+    actions.generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary_in)
+
+
+def png_read():
 
     png_filename = tkinter.filedialog.askopenfilename()
     awim_dictionary = actions.png_text_reader(png_filename)
-    clock_image_data_obj = astroimage.ImageAstroData(awim_dictionary)
+    clock_image_data_obj = astroimage.ImageAWIMData(awim_dictionary)
 
 
 awim = tkinter.Tk()
@@ -101,31 +119,24 @@ menu_bar = tkinter.Menu(awim)
 
 file_menu = tkinter.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label='Load Camera', command=load_camera)
+file_menu.add_command(label='Load Image', command=load_image)
 file_menu.add_command(label='Save', command=actions.do_nothing)
 file_menu.add_separator()
 file_menu.add_command(label='Exit', command=awim.quit)
 
 camera_menu = tkinter.Menu(menu_bar, tearoff=0)
-camera_menu.add_command(label='Generate camera aim file from calibration CSV', command=actions.generate_camera_aim_object)
-camera_menu.add_command(label='Display camera aim object', command=actions.display_camera_aim_object)
+camera_menu.add_command(label='Generate camera aim file from calibration CSV', command=actions.generate_save_camera_AWIM)
+camera_menu.add_command(label='Display camera aim object', command=actions.display_camera_AWIM_object)
 camera_menu.add_command(label='TODO Calibrate camera from calibration images', command=actions.do_nothing)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
-image_menu.add_command(label='Load Photo', command=load_photo)
-image_menu.add_command(label='Load PNG with AWIM Data', command=clockside_png_read)
+image_menu.add_command(label='Load PNG with AWIM Data', command=png_read)
 image_menu.add_command(label='TODO Batch generate image astronomical data files', command=actions.do_nothing)
 
 menu_bar.add_cascade(label='File', menu=file_menu, underline=0)
 menu_bar.add_cascade(label='Camera', menu=camera_menu, underline=0)
 menu_bar.add_cascade(label='Image', menu=image_menu, underline=0)
 
-# Entries and outputs:
-# Rows 0 and 1 are current camera and current image.
-# Entries and outputs start on row 2
-# Column 0 is entry labels and button.
-# Column 1 is entries. 
-# Column 2 is output labels
-# Column 3 is outputs
 row_height = 10
 column_width = 40
 
@@ -191,9 +202,16 @@ entry5 = tkinter.Entry(awim)
 entry5_label.grid(row=9, column=0, ipadx=column_width)
 entry5.grid(row=9, column=1, ipadx=column_width)
 
-entry_button2 = tkinter.Button(awim, text='Generate PNG with Data', command=continue2)
+entry_button2 = tkinter.Button(awim, text='Show Data', command=continue2)
 entry_button2.grid(row=10, column=0, columnspan=2, ipadx=column_width)
 
+output2_str = tkinter.StringVar()
+output2_str.set('Output 2 label placeholder')
+output2_label = tkinter.Label(awim, textvariable=output2_str)
+output2_label.grid(row=11, column=1, ipady=row_height, ipadx=column_width)
+
+entry_button3 = tkinter.Button(awim, text='Generate PNG with Data', command=continue3)
+entry_button3.grid(row=12, column=0, columnspan=2, ipadx=column_width)
 
 awim.config(menu=menu_bar)
 

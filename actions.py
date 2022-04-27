@@ -15,17 +15,18 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import camera
 
+
 def do_nothing():
     filewin = tkinter.Toplevel(root)
     button = Button(filewin, text='Do nothing button')
     Button.pack()
 
-# process a calibration .csv file, save as a .awim, visualize the calibration pixel/x,y angle data together with resulting pixel/x,y angle values
-def generate_camera_aim_object():
 
-    # create a CameraAim object with calibration CSV file, then save using automatic name from calibration data
+def generate_save_camera_AWIM():
+
+    # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
     calibration_file = tkinter.filedialog.askopenfilename()
-    this_camera = camera.CameraAim(calibration_file)
+    this_camera = camera.CameraAWIMData(calibration_file)
 
     # save to a pickle .awim_camera_aim_pkl
     this_camera_filename = str(this_camera.camera_name) + ' - lens ' + str(this_camera.lens_name) + ' - zoom ' + str(this_camera.zoom_factor) + '.awim'
@@ -33,7 +34,8 @@ def generate_camera_aim_object():
     pickle.dump(this_camera, camera_aim_pickle, 5)
     camera_aim_pickle.close()
 
-def display_camera_aim_object():
+
+def display_camera_AWIM_object():
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
     this_camera_filename = tkinter.filedialog.askopenfilename()
     camera_aim_pickle = open(this_camera_filename, 'rb')
@@ -78,6 +80,7 @@ def display_camera_aim_object():
     ax4.scatter(this_camera.ref_df['xang'], this_camera.ref_df['yang'], this_camera.ref_df['y_px'], s=50, c='red')
 
     pyplot.show()
+
 
 def get_exif(current_image):
     from PIL.ExifTags import TAGS, GPSTAGS
@@ -178,18 +181,18 @@ def get_exif(current_image):
     return rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, img_capture_moment, time_offset_hrs
 
 
-def generate_png_with_awim(current_image, rotate_degrees, awim_dictionary):
+def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
 	# create the info object, add the awim data to the info object, save the png with the info object 
     png_data_container = PIL.PngImagePlugin.PngInfo()
 
     for key, value in awim_dictionary.items():
         png_data_container.add_text(key, value)
     
-    save_filename_string = os.path.splitext(current_image.filename)[0] + ' w awim.png'
+    save_filename_string = os.path.splitext(current_image.filename)[0] + ' - awim.png'
     current_image = current_image.rotate(angle=rotate_degrees, expand=True) # rotates CW
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
-# clockside
+
 def png_text_reader(image_filename):
     png_file_1 = PIL.Image.open(image_filename)
     png_text_dictionary = png_file_1.text
@@ -208,7 +211,7 @@ def azalt_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_
         center_ref = img_center
     img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
     cam_aspect_ratio = camera.cam_image_dimensions[0] / camera.cam_image_dimensions[1]
-    if img_aspect_ratio != cam_aspect_ratio:
+    if abs(img_aspect_ratio - cam_aspect_ratio) > .001:
         print('error: image aspect ratio does not match camera aspect ratio, but it should')
     else:
         img_resize_factor = image_dimensions[0] / camera.cam_image_dimensions[0]
@@ -225,9 +228,9 @@ def azalt_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_
         known_azalt = known_azalt_in
     object_xyangs_relcam = camera.px_xyangs_models_convert(input=np.divide(known_pt_px_rel, img_resize_factor), direction='px_to_xyangs')
 
-    # from diagram included in the notes:
+    # variables names are from diagram included in the notes:
     if object_xyangs_relcam[0] < -90 or object_xyangs_relcam[0] > 90:
-        print ('celestial object must be in front of camera, not super-far off to the side.')
+        print ('celestial object must be in front of camera, not super far off to the side.')
     xang_rel_rad = object_xyangs_relcam[0] * math.pi/180
     yang_rel_rad = object_xyangs_relcam[1] * math.pi/180
     x_direction = math.copysign(1, xang_rel_rad)
@@ -245,7 +248,7 @@ def azalt_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_
     az_rel = az_rel_rad * 180/math.pi
     alt_ref = alt_ref_rad  * 180/math.pi
 
-    # subtract az_rel because going "backwards" to the camera reference
+    # subtract az_rel because az_rel direction is opposite the camera reference
     azalt_ref = [known_azalt[0] - az_rel*x_direction, alt_ref]
 
     return azalt_ref

@@ -5,49 +5,9 @@ from PIL import Image, PngImagePlugin
 import pickle
 
 
-class CameraAim(object):
-	"""
-	Note: used the Astroplan Observer class as a template.
-
-	A container class for information about the properties of a particular
-	camera / lens / settings system, especially the direction of each pixel
-	or manageable fraction of the pixels relative to the a reference pixel.
-	CameraAim is specific to a camera with a specific lens attached and
-	set to specific settings
-
-	Note, pixel reference to numpy array reference: the pixels are referenced by the standard used by Photoshop etc,
-	i.e. (x, y), top-left to bottom-right:
-	e.g. the top-left pixel is (0, 0), top-right is (1919, 0), bottom-left is (0, 1079), bottom-right is (1919, 1079)
-	Numpy arrays refence [row, column], which visually is like [y, x].
-	Therefore, for an image that is 1920x1080 the array will be 1080 rows x 1920 columns.
-	Image (0, 0) = array [0, 0]
-	Image (0, 1919) = array [1919, 0]
-	TODO: make a visual version of reference pixel data entry to avoid errors. It is really a mind-bend!
-	"""
-
+class CameraAWIMData(object):
 	def __init__(self, calibration_file):
-		"""
-		Parameters.
-		----------
-		camera_name : the name of the camera together with some lens and settings notes for quick
-			identification as each 
-			
-		image_width : the width of the camera's sensor in pixels. This should be the maximum
-			resolution of the camera.
-		
-		image_height : the height of the camera's sensor in pixels. This should be the maximum
-			resolution of the camera. Landscape is the stadard so the height will normally be
-			less than the width.
-		
-		lens_name, zoom, settings_notes : (optional) specifying these is optional, but each is
-			critical to the image properties from a particular camera.
-			
-		aperture : (optional) the aperture should not affect the angles of the pixels, but is
-			here for completeness as desired.
-			
-		calibration_file : (optional) file containing the calibration reference pixels data.
-		"""
-		# most parameters (all actually?) are defined with a calibration CSV file
+		# parameters are defined with a calibration CSV file for convenient data entry
 		cal_df = pd.read_csv(calibration_file)
 
 		# calibration data includes most of requirements to initialize the object:
@@ -58,7 +18,7 @@ class CameraAim(object):
 		self.cam_image_dimensions = [int(cal_df[cal_df['type'] == 'cam_image_dimensions']['x_rec'].iat[0]), int(cal_df[cal_df['type'] == 'cam_image_dimensions']['y_rec'].iat[0])]
 		self.max_image_index = np.subtract(self.cam_image_dimensions, 1)
 		self.pixel_map_type = cal_df[cal_df['type'] == 'pixel_map_type']['misc'].iat[0]
-		self.center_px = self.max_image_index / 2 # usually x.5, non-integer, bc even number of pixels means center is a boundary rather than a pixel
+		self.center_px = self.max_image_index / 2 # usually x.5, non-integer, bc most images have an even number of pixels means center is a boundary rather than a pixel. Seems most programs accept float values for pixel reference now anyway.
 		calibration_orientation = cal_df[cal_df['type'] == 'orientation']['misc'].iat[0]
 		calibration_quadrant = cal_df[cal_df['type'] == 'quadrant']['misc'].iat[0]
 		self.calibration_distance_cm = float(cal_df[cal_df['type'] == 'distance']['misc'].iat[0])
@@ -102,7 +62,8 @@ class CameraAim(object):
 				align_h_degCCW = float(cal_df[cal_df['misc']=='rotation_error_top_degCCW'][['out1']].values[0])
 				average_rotation_error_degCCW = (align_v_degCCW + align_h_degCCW)/2
 				cal_df.loc[row[0], 'out1'] = average_rotation_error_degCCW
-				
+
+
 		# second for loop: each reference point represented by a "ref_point" row
 		# ref point case 1: record the center as a reference point bc defining as original xyangs = [0,0]
 		# ref point case 2: like crosshairs case 2, on xcm axis (vertical)
@@ -155,7 +116,7 @@ class CameraAim(object):
 					cal_df.loc[row[0], 'xang'] = xyangs[0]
 					cal_df.loc[row[0], 'yang'] = xyangs[1]
 
-		cal_df.to_csv('slay cal output.csv')
+		cal_df.to_csv(r'code output dump folder/cal output.csv')
 		ref_df_filter = pd.notnull(cal_df['x_px'])
 		ref_df = pd.DataFrame(cal_df[ref_df_filter][['x_px', 'y_px', 'xang', 'yang']])
 
@@ -182,7 +143,7 @@ class CameraAim(object):
 		poly1 = PolynomialFeatures(degree=3, include_bias=False)
 		poly2 = PolynomialFeatures(degree=3, include_bias=False)
 
-		ref_df.to_csv('slay ref df.csv')
+		ref_df.to_csv(r'code output dump folder/ref df.csv')
 
 		independent_poly_px = pd.DataFrame(data=poly1.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly1.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
 		xyangs_model = LinearRegression(fit_intercept=False)
@@ -213,19 +174,23 @@ class CameraAim(object):
 		xyangs_top, xyangs_right, xyangs_bottom, xyangs_left = self.px_xyangs_models_convert(input=self.px_edges, direction='px_to_xyangs')
 		self.xyangs_edges = np.concatenate((xyangs_top, xyangs_right, xyangs_bottom, xyangs_left)).reshape(-1,2)
 
-
 	def represent_camera(self):
-		print('\nCamera Name: ', self.camera_name)
-		print('Lens: ', self.lens_name)
-		print('Zoom: ', self.zoom_factor)
-		print('Settings Notes: ', self.settings_notes)
-		print('Image Dimensions: ', self.cam_image_dimensions)
-		print('Pixel Corners LT, RT, LB, RB:\n', self.px_corners)
-		print('x,y Angle Corners LT, RT, LB, RB:\n', self.xyangs_corners)
-		print('Pixel Edges Top, Right, Bottom, Left:\n', self.px_edges)
-		print('x,y Angle Edges Top, Right, Bottom, Left:\n', self.xyangs_edges)
-		print('Pixels per degree horizontal: ', self.cam_image_dimensions[0] / (2*self.xyangs_edges[1,0]))
-		print('Pixels per degree vertical: ', self.cam_image_dimensions[1] / (2*self.xyangs_edges[0,1]))
+		camera_str = ''
+		camera_str += '\nCamera Name: ' + self.camera_name
+		camera_str += '\nLens: '+self.lens_name
+		camera_str += '\nZoom: '+self.zoom_factor
+		camera_str += '\nSettings Notes: '+self.settings_notes
+		camera_str += '\nImage Dimensions: %i, %i' % (self.cam_image_dimensions[0], self.cam_image_dimensions[1])
+		camera_str += '\n\nPixel Corners LT, RT, LB, RB:\n' + ', '.join(str(x) for x in self.px_corners)
+		camera_str += '\nx,y Angle Corners LT, RT, LB, RB:\n' + ', '.join(str(x) for x in self.xyangs_corners)
+		camera_str += '\n\nPixel Edges Top, Right, Bottom, Left:\n' + ', '.join(str(x) for x in self.px_edges)
+		camera_str += '\nx,y Angle Edges Top, Right, Bottom, Left:\n' + ', '.join(str(x) for x in self.xyangs_edges)
+		camera_str += '\n\nDegrees per hundred pixels horizontal, avg full image: %.2f' % (100 * (2*self.xyangs_edges[1,0]) / self.cam_image_dimensions[0])
+		camera_str += '\nDegrees per hundred pixels vertical, avg full image: %.2f' % (100 * (2*self.xyangs_edges[0,1]) / self.cam_image_dimensions[1])
+		
+		print(camera_str)
+		with open(r'code output dump folder/camera awim data.txt', 'w') as f:
+			f.write(camera_str)
 
 	# generate awim data in form of a single dictionary for embedding in any image file
 	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation, img_tilt):
@@ -234,7 +199,7 @@ class CameraAim(object):
 			self.cam_image_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
 		img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
 		cam_aspect_ratio = self.cam_image_dimensions[0] / self.cam_image_dimensions[1]
-		if img_aspect_ratio != cam_aspect_ratio:
+		if abs(img_aspect_ratio - cam_aspect_ratio) > 0.001:
 			print('error: image aspect ratio does not match camera aspect ratio, but it should')
 		else:
 			img_resize_factor = img_dimensions[0] / self.cam_image_dimensions[0]
@@ -264,6 +229,12 @@ class CameraAim(object):
 		img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
 		img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
 
+		pxs_LRUD = np.array([[-1,0],[1,0],[0,-1],[0,1]])
+		img_xyangs_LRUD = self.px_xyangs_models_convert(input=np.divide(pxs_LRUD, img_resize_factor), direction='px_to_xyangs')
+		x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
+		y_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[2,1]-img_xyangs_LRUD[3,1]) / abs(pxs_LRUD[2,1]-pxs_LRUD[3,1])
+		px_size_center = [x_pxsize_degperhundredpx, y_pxsize_degperhundredpx]
+
 		earth_latlng_string = ', '.join(str(i) for i in earth_latlng)
 		img_dimensions_string = ', '.join(str(i) for i in img_dimensions)
 		center_ref_string = ', '.join(str(i) for i in center_ref)
@@ -272,8 +243,9 @@ class CameraAim(object):
 		px_model_coefficients_csv = px_model_coefficients.to_csv()
 		px_borders_string = ', '.join(str(i) for i in img_px_borders)
 		xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
+		px_size_center_str = ', '.join(str(i) for i in px_size_center)
 
-		awim_dictionary = {'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string, 'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string}
+		awim_dictionary = {'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string, 'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string, 'Degrees per Hundred Pixels at Center: ': px_size_center_str}
 
 		return awim_dictionary
 
@@ -297,10 +269,9 @@ class CameraAim(object):
 
 		return output
 
-# functions below here
-# theta is CCW from the positive x axis. ar is cm from center
+# theta is CCW from the positive x axis. r is cm from center
 def _xycm_to_polar(xycm):
-	ar = math.sqrt(xycm[0]**2 + xycm[1]**2)
+	r = math.sqrt(xycm[0]**2 + xycm[1]**2)
 
 	if xycm[0] == 0 and xycm[1] == 0:
 		theta_rad = 0
@@ -319,7 +290,7 @@ def _xycm_to_polar(xycm):
 
 	theta = theta_rad * 180/math.pi
 
-	return  [ar, theta]
+	return  [r, theta]
 
 # cool matrix math from StackOverflow:
 def _intersect_two_lines(line_1_1, line_1_2, line_2_1, line_2_2):
@@ -338,7 +309,8 @@ def _intersect_two_lines(line_1_1, line_1_2, line_2_1, line_2_2):
 			return 'error, something went wrong, dont know what, look here'
 	return intersect
 
-# calculate the miss angle as relative xang,yang
+
+# calculate the miss angle as xang,yang
 def _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
 	target_x_radius_deg = abs(math.atan(x_small_cm[0] / self.calibration_distance_cm)) * 180/math.pi
 	target_y_radius_deg = abs(math.atan(y_small_cm[1] / self.calibration_distance_cm)) * 180/math.pi
@@ -354,15 +326,13 @@ def _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_smal
 	target_pos_xycm_relaim = [target_pos_xcm_rel, target_pos_ycm_rel]
 	return target_pos_xycm_relaim
 
-# from two edge pixel coordinates of known-angular-size grid alignment point, angular distance of the alignment point from grid target, and the target position in the image, calculate the angular rotation error of the entire grid,
-# CCW grid rotation in photo is positive.
+
 def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px):
-	# find error rotation angle using vertical grid align target
 	if align_orientation == 'horizontal':
-		xy_index = 1 # align with the y pixel coordinate
+		xy_index = 1 # align with the y pixel coordinate for the horizontal axis
 		xycm_index = 0 # use the x_cm for distance from target
 	elif align_orientation == 'vertical':
-		xy_index = 0 # align with the x pixel coordinate
+		xy_index = 0 # align with the x pixel coordinate for the vertical axis
 		xycm_index = 1 # use the y_cm for distance from target
 	else:
 		print('must specify align_orientation')
@@ -374,8 +344,8 @@ def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px
 
 	return grid_rotation_error_degreesCCW
 
-# simply standardize coordinate type:
-# single coordinate is a list. more than one is a 2-dim Numpy array of two columns
+
+# Apparently I stopped using this.
 def _coord_standard(obj):
 	some_data = False
 	number_of_rows = 0
