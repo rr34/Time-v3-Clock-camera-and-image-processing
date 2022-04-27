@@ -1,10 +1,13 @@
-The AstroWideImageMapper (AWIM) project aims to enable users to label "wide-angle" images of any format with with pixel-by-pixel directional astronomical coordinate data, i.e. directional azimuth and altitude.
+# AstroWideImageMapper
+Digitally label wide-angle images of any format with with directional azimuth and altitude, to include the "shape" of the image so the angular direction of each pixel is known.
+
+## What Already Exists
 
 In a world of seemingly-infinite technology, some notes to avoid “re-inventing the wheel” and to enable maximum future flexibility:
-1.	JPEG, PNG, and RAW are sufficient to cover every type of human-viewable 2-D image one can imagine, so let’s stick with them. JPEG covers an extreme range of resolutions with sufficient compression for reasonable file sizes. PNG includes transparency at the expense of larger file size. RAW covers uncompressed high-detail ignoring file size.
+1.	JPEG, PNG, and RAW are sufficient to cover every type of human-viewable 2-D image one can imagine (at least 99% of practical applications), so let’s stick with what works already. JPEG covers an extreme range of resolutions with sufficient compression for reasonable file sizes. PNG includes transparency at the expense of larger file size. RAW covers uncompressed high-detail ignoring file size.
 2.	See list of related / similar software at:
 
-https://timev3technology.com/astrowideimagemapper-and-related-similar-software/
+(https://timev3technology.com/astrowideimagemapper-and-related-similar-software/)
 
 3.	Users should be able to calibrate their own camera with readily-available equipment. The goal is to demystify the idea of angular direction of photographs.
 4.	Location (on Earth) and time data are already covered extensively by EXIF, both within the GPS section and outside of it.
