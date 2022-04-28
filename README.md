@@ -48,7 +48,6 @@ Following is the AWIM workflow from calibrating a camera through tagging an imag
 
 ### Calibrate a Camera
 Select from the menu:
-
 ![Alt text](readme-images/tutorial-01.jpg)
 
 Navigate to the test/ directory included:\
