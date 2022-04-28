@@ -47,10 +47,10 @@ The data should be text. While there may be some small computer efficiency advan
 Following is the AWIM workflow from calibrating a camera through tagging an image.
 
 ### Calibrate a Camera
-Select from the menu:\
+Select from the menu:<br />
 !(/readme-images/tutorial-01.jpg)
 
-Navigate to the test/ directory included:\
+Navigate to the test/ directory included:<br />
 !(readme-images/tutorial-02.jpg)
 
 Apparently nothing will happen, but there should be a new file in the code directory with the extension `.awim`. This file is a pickle of the ImageAWIMData object to be used to tag images in a later step.
@@ -58,30 +58,30 @@ Apparently nothing will happen, but there should be a new file in the code direc
 Also, in the `code output dump/` directory should be two files, `cal output.csv` and `ref df.csv`. `cal output.csv` is the original calibration `.csv` file **plus** the program's calculation filled in step-by-step, like a math scratchpad. The `ref df.csv` file is a `.csv` of the pandas dataframe of the data points used to make the best fit models for the `CameraAWIMData` object. These outputs make debugging a calibration easier.
 
 ### Visualize the Camera Data
-You can visualize the pickled `CameraAWIMData` object file by the selecting the menu item then navigating to the `.awim` file:\
+You can visualize the pickled `CameraAWIMData` object file by the selecting the menu item then navigating to the `.awim` file:<br />
 !(readme-images/tutorial-03.jpg)
 
-You should see two plots:\
+You should see two plots:<br />
 !(readme-images/tutorial-04.jpg)
 
 Also, there should be a new file `code output dump/camera awim data.txt` that contains overall data about the camera/lens calibrated. This file would be overwritten in a future calibration, but the user can move and rename it for reference as detailed camera data.
 
 ### Use the Camera Data to Tag an Image
-Select `Load camera` and select the `.awim` file:\
+Select `Load camera` and select the `.awim` file:<br />
 !(readme-images/tutorial-05.jpg)
 
-Select `Load image` and select one of the PNG files in the `test files/` directory.\
+Select `Load image` and select one of the PNG files in the `test files/` directory.<br />
 !(readme-images/tutorial-06.jpg)
 
 The camera and image will be displayed in the program and user is prompted to enter some more data.
 
-Please open the `test files/photoshoot data template.xlsx` as it contains information to be copy-pasted into AWIM. Copy-paste the lat,long, use 287 for the elevation, then copy-paste the moment string into AWIM:\
+Please open the `test files/photoshoot data template.xlsx` as it contains information to be copy-pasted into AWIM. Copy-paste the lat,long, use 287 for the elevation, then copy-paste the moment string into AWIM:<br />
 !(readme-images/tutorial-07.jpg)
 
-Should look like this after you select `Pixel x,y on horizon, with known azimuth to pixel` from the drop-down menu:\
+Should look like this after you select `Pixel x,y on horizon, with known azimuth to pixel` from the drop-down menu:<br />
 !(readme-images/tutorial-08.jpg)
 
-Click `Continue`, enter more data from the spreadsheet, then click `Show Data`, and you will see a computer-generated Center AzAlt for the image:\
+Click `Continue`, enter more data from the spreadsheet, then click `Show Data`, and you will see a computer-generated Center AzAlt for the image:<br />
 !(readme-images/tutorial-09.jpg)
 
 When you click `Generate PNG with Data`, a new PNG file will appear in the `test files/` directory that ends in ` - awim.png`. It is a PNG with AWIM data tagged.
