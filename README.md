@@ -53,40 +53,40 @@ Select from the menu:
 Navigate to the test/ directory included:
 !(readme-images/tutorial-02.png)
 
-Apparently nothing will happen, but there should be a new file in the code directory with the extension '.awim'. This file is a pickle of the ImageAWIMData object to be used to tag images in a later step.
+Apparently nothing will happen, but there should be a new file in the code directory with the extension `.awim`. This file is a pickle of the ImageAWIMData object to be used to tag images in a later step.
 
-Also, in the 'code output dump/' directory should be two files, 'cal output.csv' and 'ref df.csv'. 'cal output.csv' is the original calibration '.csv' file **plus** the program's calculation filled in step-by-step, like a math scratchpad. The 'ref df.csv' file is a '.csv' of the pandas dataframe of the data points used to make the best fit models for the 'CameraAWIMData' object. These outputs make debugging a calibration easier.
+Also, in the `code output dump/` directory should be two files, `cal output.csv` and `ref df.csv`. `cal output.csv` is the original calibration `.csv` file **plus** the program's calculation filled in step-by-step, like a math scratchpad. The `ref df.csv` file is a `.csv` of the pandas dataframe of the data points used to make the best fit models for the `CameraAWIMData` object. These outputs make debugging a calibration easier.
 
 ### Visualize the Camera Data
-You can visualize the pickled 'CameraAWIMData' object file by the selecting the menu item then navigating to the '.awim' file:
+You can visualize the pickled `CameraAWIMData` object file by the selecting the menu item then navigating to the `.awim` file:
 !(readme-images/tutorial-03.png)
 
 You should see two plots:
 !(readme-images/tutorial-04.png)
 
-Also, there should be a new file 'code output dump/camera awim data.txt' that contains overall data about the camera/lens calibrated. This file would be overwritten in a future calibration, but the user can move and rename it for reference as detailed camera data.
+Also, there should be a new file `code output dump/camera awim data.txt` that contains overall data about the camera/lens calibrated. This file would be overwritten in a future calibration, but the user can move and rename it for reference as detailed camera data.
 
 ### Use the Camera Data to Tag an Image
-Select 'Load camera' and select the '.awim' file:
+Select `Load camera` and select the `.awim` file:
 !(readme-images/tutorial-05.png)
 
-Select 'Load image' and select one of the PNG files in the 'test files/' directory.
+Select `Load image` and select one of the PNG files in the `test files/` directory.
 ![](readme-images/tutorial-06.png)
 
 The camera and image will be displayed in the program and user is prompted to enter some more data.
 
-Please open the 'test files/photoshoot data template.xlsx' as it contains information to be copy-pasted into AWIM. Copy-paste the lat,long, use 287 for the elevation, then copy-paste the moment string into AWIM:
+Please open the `test files/photoshoot data template.xlsx` as it contains information to be copy-pasted into AWIM. Copy-paste the lat,long, use 287 for the elevation, then copy-paste the moment string into AWIM:
 !(readme-images/tutorial-07.png)
 
-Should look like this after you select 'Pixel x,y on horizon, with known azimuth to pixel' from the drop-down menu:
+Should look like this after you select `Pixel x,y on horizon, with known azimuth to pixel` from the drop-down menu:
 !(readme-images/tutorial-08.png)
 
-Click 'Continue', enter more data from the spreadsheet, then click 'Show Data', and you will see a computer-generated Center AzAlt for the image:
+Click `Continue`, enter more data from the spreadsheet, then click `Show Data`, and you will see a computer-generated Center AzAlt for the image:
 !(readme-images/tutorial-09.png)
 
-When you click "Generate PNG with Data', a new PNG file will appear in the 'test files/' directory that ends in ' - awim.png'. It is a PNG with AWIM data tagged.
+When you click `Generate PNG with Data`, a new PNG file will appear in the `test files/` directory that ends in ` - awim.png`. It is a PNG with AWIM data tagged.
 
-Also, there should be a new file 'code output dump/image awim data.txt' that contains the text of the AWIM tag. It currently includes location, capture moment, and image dimensions, which I will remove (TODO) when I update the program to transfer over all EXIF data. Also, I intend (TODO) to have this file generated with a matching filename ID alongside tagged images for users to access the data quickly.
+Also, there should be a new file `code output dump/image awim data.txt` that contains the text of the AWIM tag. It currently includes location, capture moment, and image dimensions, which I will remove (TODO) when I update the program to transfer over all EXIF data. Also, I intend (TODO) to have this file generated with a matching filename ID alongside tagged images for users to access the data quickly.
 
 The resulting tagged PNG has all the information required to know which direction **each pixel** was pointed relative to Earth! The information is contained in just a small amount of almost-human-readable text!
 
@@ -109,7 +109,7 @@ The AWIM project aims to jump-start this process.
 	3. Image files to be tagged. Could be separate from the original photo files, only requiring that filename include the same unique ID present on the original photo filenames to relate the two and enable use of EXIF data and transfer same.
 	4. The camera object AWIM file generated by this software that corresponds to the camera / lens system the photos were taken with.
 	5. A satellite image of the photoshoot location oriented north that includes all the points of reference to be used to determine the azimuth of the photos.
-- **Automate use of satellite image to determine azimuth orientation of images:** I have found the best way to determine azimuth for any photo is to use a satellite image of the photoshoot location that is oriented true north (Google maps not rotated for example) and use a photo editor (Photoshop for example) to give the angle of a line drawn between the point where I took the photo and the point of any object clearly visible anywhere in the photo. This option is already called 'Pixel x,y on horizon, with known azimuth to pixel' but I user has to use Photoshop manually to determine the azimuth to the known pixel in the image to be tagged.
+- **Automate use of satellite image to determine azimuth orientation of images:** I have found the best way to determine azimuth for any photo is to use a satellite image of the photoshoot location that is oriented true north (Google maps not rotated for example) and use a photo editor (Photoshop for example) to give the angle of a line drawn between the point where I took the photo and the point of any object clearly visible anywhere in the photo. This option is already called `Pixel x,y on horizon, with known azimuth to pixel` but I user has to use Photoshop manually to determine the azimuth to the known pixel in the image to be tagged.
 - **Reverse how altitude is determined when using a known pixel in the image for AzAlt:** This is a simple matter of defining the altitude from the manual user input rather than from the users guess of where the horizon was in the image. I believe this should be done because digital angle finders are really good and better than the user trying to determine where the horizon was in the photo, especially since the horizon could be significantly not-level from where the user took the photo.
 
 - Update camera.represent_camera with single pixel border array and pixels per degree
