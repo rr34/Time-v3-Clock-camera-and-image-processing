@@ -2,7 +2,6 @@ from io import StringIO
 import math
 import numpy as np
 import pandas as pd
-from PIL import Image, PngImagePlugin
 import datetime
 
 

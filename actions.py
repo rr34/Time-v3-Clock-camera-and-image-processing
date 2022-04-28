@@ -4,12 +4,10 @@ import PIL
 import os
 import numpy as np
 import math
-from matplotlib import pyplot
+from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
-from matplotlib import cm
 import datetime
 from pytz import timezone
-import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun

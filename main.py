@@ -45,12 +45,9 @@ def continue1():
     if azalt_source_var.get() == 'Pixel x,y of sun':
         entry4_label_str.set('Enter pixel x,y of sun')
         entry5_label_str.set('NR')
-    elif azalt_source_var.get() == 'Any pixel x,y on horizon':
-        entry4_label_str.set('Enter any pixel x,y on horizon')
-        entry5_label_str.set('NR')
-    elif azalt_source_var.get() == 'Pixel x,y on horizon, known azimuth':
-        entry4_label_str.set('Pixel x, y on horizon')
-        entry5_label_str.set('Azimuth')
+    elif azalt_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
+        entry4_label_str.set('Pixel x,y on horizon')
+        entry5_label_str.set('Reference Azimuth')
     elif azalt_source_var.get() == 'Manual Az,Alt':
         entry4_label_str.set('Az,Alt')
         entry5_label_str.set('NR')
@@ -75,7 +72,7 @@ def continue2():
     if azalt_source_var.get() == 'Manual Az,Alt':
         azalt_str = entry4.get()
         azalt_ref = [float(azalt_str.split(',')[0]), float(azalt_str.split(',')[1])]
-    elif azalt_source_var.get() == 'Pixel x,y on horizon, known azimuth':
+    elif azalt_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
         px_coord_str = entry4.get()
         azalt_horizon = [float(entry5.get()), 0]
         known_pt_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
@@ -91,7 +88,7 @@ def continue2():
     awim_dictionary_str = ''
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
-    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file image awim data.txt for the rest')
+    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file code output dump/image awim data.txt for the rest')
     with open(r'code output dump folder/image awim data.txt', 'w') as f:
         f.write(awim_dictionary_str)
 
@@ -125,13 +122,13 @@ file_menu.add_separator()
 file_menu.add_command(label='Exit', command=awim.quit)
 
 camera_menu = tkinter.Menu(menu_bar, tearoff=0)
-camera_menu.add_command(label='Generate camera aim file from calibration CSV', command=actions.generate_save_camera_AWIM)
-camera_menu.add_command(label='Display camera aim object', command=actions.display_camera_AWIM_object)
+camera_menu.add_command(label='Generate camera AWIM file from calibration CSV', command=actions.generate_save_camera_AWIM)
+camera_menu.add_command(label='Display camera AWIM object file', command=actions.display_camera_AWIM_object)
 camera_menu.add_command(label='TODO Calibrate camera from calibration images', command=actions.do_nothing)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
 image_menu.add_command(label='Load PNG with AWIM Data', command=png_read)
-image_menu.add_command(label='TODO Batch generate image astronomical data files', command=actions.do_nothing)
+image_menu.add_command(label='TODO Batch generate AWIM-tagged images from directory', command=actions.do_nothing)
 
 menu_bar.add_cascade(label='File', menu=file_menu, underline=0)
 menu_bar.add_cascade(label='Camera', menu=camera_menu, underline=0)
@@ -182,7 +179,7 @@ entry3.grid(row=5, column=1, ipadx=column_width)
 
 azalt_source_var = tkinter.StringVar(awim)
 azalt_source_var.set('Pixel x,y of sun')
-azalt_source_menu = tkinter.OptionMenu(awim, azalt_source_var, 'Pixel x,y of sun', 'Any pixel x,y on horizon', 'Pixel x,y on horizon, known azimuth', 'Manual Az,Alt')
+azalt_source_menu = tkinter.OptionMenu(awim, azalt_source_var, 'Pixel x,y of sun', 'Pixel x,y on horizon, with known azimuth to pixel', 'Manual Az,Alt')
 azalt_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
 continue_button = tkinter.Button(awim, text='Continue', command=continue1)
