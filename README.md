@@ -48,10 +48,10 @@ Following is the AWIM workflow from calibrating a camera through tagging an imag
 
 ### Calibrate a Camera
 Select from the menu:
-![Generate AWIM file from calibration csv](readme-images/tutorial-01)
+!(readme-images/tutorial-01.png)
 
 Navigate to the test/ directory included:
-!(readme-images/tutorial-02)
+!(readme-images/tutorial-02.png)
 
 Apparently nothing will happen, but there should be a new file in the code directory with the extension '.awim'. This file is a pickle of the ImageAWIMData object to be used to tag images in a later step.
 
@@ -59,30 +59,30 @@ Also, in the 'code output dump/' directory should be two files, 'cal output.csv'
 
 ### Visualize the Camera Data
 You can visualize the pickled 'CameraAWIMData' object file by the selecting the menu item then navigating to the '.awim' file:
-!(readme-images/tutorial-03)
+!(readme-images/tutorial-03.png)
 
 You should see two plots:
-!(readme-images/tutorial-04)
+!(readme-images/tutorial-04.png)
 
 Also, there should be a new file 'code output dump/camera awim data.txt' that contains overall data about the camera/lens calibrated. This file would be overwritten in a future calibration, but the user can move and rename it for reference as detailed camera data.
 
 ### Use the Camera Data to Tag an Image
 Select 'Load camera' and select the '.awim' file:
-!(readme-images/tutorial-05)
+!(readme-images/tutorial-05.png)
 
 Select 'Load image' and select one of the PNG files in the 'test files/' directory.
-![](readme-images/tutorial-06)
+![](readme-images/tutorial-06.png)
 
 The camera and image will be displayed in the program and user is prompted to enter some more data.
 
 Please open the 'test files/photoshoot data template.xlsx' as it contains information to be copy-pasted into AWIM. Copy-paste the lat,long, use 287 for the elevation, then copy-paste the moment string into AWIM:
-!(readme-images/tutorial-07)
+!(readme-images/tutorial-07.png)
 
 Should look like this after you select 'Pixel x,y on horizon, with known azimuth to pixel' from the drop-down menu:
-!(readme-images/tutorial-08)
+!(readme-images/tutorial-08.png)
 
 Click 'Continue', enter more data from the spreadsheet, then click 'Show Data', and you will see a computer-generated Center AzAlt for the image:
-!(readme-images/tutorial-09)
+!(readme-images/tutorial-09.png)
 
 When you click "Generate PNG with Data', a new PNG file will appear in the 'test files/' directory that ends in ' - awim.png'. It is a PNG with AWIM data tagged.
 
