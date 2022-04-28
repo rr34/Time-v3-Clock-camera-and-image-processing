@@ -48,7 +48,7 @@ Following is the AWIM workflow from calibrating a camera through tagging an imag
 
 ### Calibrate a Camera
 Select from the menu:
-!(readme-images/tutorial-01)
+![Generate AWIM file from calibration csv](readme-images/tutorial-01)
 
 Navigate to the test/ directory included:
 !(readme-images/tutorial-02)
@@ -71,7 +71,7 @@ Select 'Load camera' and select the '.awim' file:
 !(readme-images/tutorial-05)
 
 Select 'Load image' and select one of the PNG files in the 'test files/' directory.
-!(readme-images/tutorial-06)
+![](readme-images/tutorial-06)
 
 The camera and image will be displayed in the program and user is prompted to enter some more data.
 
