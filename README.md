@@ -1,7 +1,7 @@
 # AstroWideImageMapper
 Digitally label wide-angle images of any format with with directional azimuth and altitude, to include the "shape" of the image so the angular direction of each pixel is known.
 
-## The AWIM Tag
+## The AWIM Image Tag
 `Center Pixel: 1919.5, 1080.0`  
 `Center AzAlt: 234.42980770937194, 12.860440495735055`  
 `Pixel Map Type: 3d_degree_poly_fit_abs_from_center`  
