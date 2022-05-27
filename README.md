@@ -1,4 +1,4 @@
-# AstroWideImageMapper
+# AstroWideImageMapper (AWIM)
 Digitally label wide-angle images of any format with with directional azimuth and altitude, to include the "shape" of the image so the angular direction of each pixel is known.
 
 ## The AWIM Tag
