@@ -245,7 +245,7 @@ class CameraAWIMData(object):
 		xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
 		px_size_center_str = ', '.join(str(i) for i in px_size_center)
 
-		awim_dictionary = {'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string, 'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string, 'Degrees per Hundred Pixels at Center: ': px_size_center_str}
+		awim_dictionary = {'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string, 'Degrees per Hundred Pixels at Center: ': px_size_center_str, 'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string}
 
 		return awim_dictionary
 
@@ -291,23 +291,6 @@ def _xycm_to_polar(xycm):
 	theta = theta_rad * 180/math.pi
 
 	return  [r, theta]
-
-# cool matrix math from StackOverflow:
-def _intersect_two_lines(line_1_1, line_1_2, line_2_1, line_2_2):
-	right_rel = np.subtract(line_1_2,line_1_1)
-	bottom_rel = np.subtract(line_2_2,line_2_1)
-	LR_scalar = np.cross(np.subtract(line_2_1,line_1_1), bottom_rel) / np.cross(right_rel, bottom_rel)
-	TB_scalar = np.cross(np.subtract(line_1_1,line_2_1), right_rel) / np.cross(bottom_rel, right_rel)
-	if np.cross(right_rel, bottom_rel) == 0 and np.cross(np.subtract(line_2_1,line_1_1), right_rel) == 0:
-		return 'error, collinear lines given'
-	if np.cross(right_rel, bottom_rel) == 0 and np.cross(np.subtract(line_2_1,line_1_1), right_rel) != 0:
-		return 'error, parallel non-intersecting lines given'
-	if np.cross(right_rel, bottom_rel) != 0 and LR_scalar >= 0 and LR_scalar <= 1 and TB_scalar >= 0 and TB_scalar <= 1:
-		intersect = np.add(line_1_1, LR_scalar*right_rel)
-		intersect2 = np.add(line_2_1, TB_scalar*bottom_rel) # would be the exact same as the other calculation
-		if all(intersect) != all(intersect2):
-			return 'error, something went wrong, dont know what, look here'
-	return intersect
 
 
 # calculate the miss angle as xang,yang
@@ -395,3 +378,21 @@ def _coord_standard(obj):
 			print('some other condition?')
 	
 	return some_data, obj
+
+
+# cool matrix math from StackOverflow:
+def _intersect_two_lines(line_1_1, line_1_2, line_2_1, line_2_2):
+	right_rel = np.subtract(line_1_2,line_1_1)
+	bottom_rel = np.subtract(line_2_2,line_2_1)
+	LR_scalar = np.cross(np.subtract(line_2_1,line_1_1), bottom_rel) / np.cross(right_rel, bottom_rel)
+	TB_scalar = np.cross(np.subtract(line_1_1,line_2_1), right_rel) / np.cross(bottom_rel, right_rel)
+	if np.cross(right_rel, bottom_rel) == 0 and np.cross(np.subtract(line_2_1,line_1_1), right_rel) == 0:
+		return 'error, collinear lines given'
+	if np.cross(right_rel, bottom_rel) == 0 and np.cross(np.subtract(line_2_1,line_1_1), right_rel) != 0:
+		return 'error, parallel non-intersecting lines given'
+	if np.cross(right_rel, bottom_rel) != 0 and LR_scalar >= 0 and LR_scalar <= 1 and TB_scalar >= 0 and TB_scalar <= 1:
+		intersect = np.add(line_1_1, LR_scalar*right_rel)
+		intersect2 = np.add(line_2_1, TB_scalar*bottom_rel) # would be the exact same as the other calculation
+		if all(intersect) != all(intersect2):
+			return 'error, something went wrong, dont know what, look here'
+	return intersect

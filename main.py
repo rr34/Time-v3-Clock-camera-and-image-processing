@@ -88,7 +88,7 @@ def continue2():
     awim_dictionary_str = ''
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
-    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file code output dump/image awim data.txt for the rest')
+    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file code output dump/image awim data.txt for full AWIM tag')
     with open(r'code output dump folder/image awim data.txt', 'w') as f:
         f.write(awim_dictionary_str)
 
