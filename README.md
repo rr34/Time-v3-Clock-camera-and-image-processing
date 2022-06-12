@@ -142,6 +142,12 @@ It would be ideal to have cameras record information from their sensors and auto
 
 The AWIM project aims to jump-start this process.
 
+## Artifae is the "Directional Altitude"
+Artifae is the Arabic word for altitude (using Roman letters). There should be a distinct word to specify the **directional altitude** as opposed to the **distance above** altitude or elevation. Having a separate word is especially helpful in a situation like the AstroWideImageMapper project where there is already a tag for the "distance above" altitude. The two would be confused without specifying which is which. I decided to use an Arabic word because azimuth is an Arabic word and azimuth and artifae are related concepts.
+
+## ArtAz
+Together, azimuth and artifae are AzArt. Astropy and most astronomers use the term "AltAz" to mean azimuth and artifae together. I prefer to put azimuth first because it's usually the first way we think of orienting ourselves.
+
 ## TODO
 - **Batch generate AWIM-tagged images:** I have been using the software and recording required information to determine Az,Alt in a spreadsheet then manually transferring the spreadsheet data image-by-image using the GUI. The menu item "Batch generate AWIM files" would be the primary option I would use and does not require a GUI at all. "Batch generate AWIM files" would work best by requiring the user to collecting the following files in a single directory:
 	1. Spreadsheet of standard data recorded during a photoshoot. See example in test files. Spreadsheet includes a unique identifier for each photo to be processed (modern cameras already name their files sequentially therefore with a convenient unique ID). This standardized spreadsheet would effectively replace the GUI.
@@ -153,3 +159,15 @@ The AWIM project aims to jump-start this process.
 - **Reverse altitude source to manual when using a known pixel in the image for AzAlt:** This is a simple matter of defining the altitude from the manual user input rather than from the user's guess of where the horizon was in the image. I believe this should be done because digital angle finders are really good and better than the user trying to determine where the horizon was in the photo, especially since the horizon could be significantly not-level from where the user took the photo.
 - Update `camera.represent_camera` to output a single pixel border array and pixels per degree instead of degrees per hundred pixels
 - Add **Border AzAlt** to the tag. The whole purpose of AWIM is absolute direction. The absolute direction should be as practical for human use as possible.
+- **ArtAz** and artifae update name.
+- separate out **basic functions**
++ exif to pickle
++ systematically find best UTC time source and tag it 1. GPS time without leap seconds 2. time plus UTC Offset tag 3. original time plus manual offset 4. manual entry 5. manual time entry plus pytz offset
+- what is an unused exif tag number to use fot AWIMInfo? How are individual GPS values stored under 34853 (= hex 8825)
+- what ID is my camera using for UTC Offset?
+- format conversions
++ arw > jpg: use the jpg exif data
++ arw > png: need exiv or similar to get the tag from the arw file.
++ anything > png: if the exif has rotation data, need to rotate the image and set the rotation tag to 1
++ jpg > jpg: if exif won't let me use an unused ID, then put it under user comments ID 37510
+- Note: the LightRoom / (PS also?) lens aberration database could be used to convert linear approximations to actual camera models.

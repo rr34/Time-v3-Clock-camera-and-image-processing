@@ -3,7 +3,7 @@ import pickle
 import datetime
 from pytz import timezone
 import PIL
-import actions, astroimage
+import actions, astroimage, basic_functions
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
@@ -23,12 +23,13 @@ def load_camera():
 
 def load_image():
     global current_image
-    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment
+    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, tz_default
     image_filename = tkinter.filedialog.askopenfilename()
     current_image = PIL.Image.open(image_filename)
     current_image_str.set(image_filename)
+    tz_default = timezone('US/Eastern')
 
-    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_exif(current_image)
+    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.process_exif(current_image, tz_default)
     if exif_present:
         info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
     else:

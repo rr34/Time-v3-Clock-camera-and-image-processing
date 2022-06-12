@@ -11,7 +11,7 @@ from pytz import timezone
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-import camera
+import camera, basic_functions
 
 
 def do_nothing():
@@ -80,10 +80,11 @@ def display_camera_AWIM_object():
     pyplot.show()
 
 
-def get_exif(current_image):
-    from PIL.ExifTags import TAGS, GPSTAGS
-    exif_present = False
-    GPS_info_present = False
+# uses existing exif data to the max extent possible to get UTC time and image rotation and convert codes to readable
+def process_exif(current_image, tz_default):
+    exif_present = basic_functions.exif_to_pickle(current_image)
+
+    basic_functions.UTC_from_exif(current_image, tz_default)
 
     rotate_degrees = 0
     img_latlng = None
@@ -91,15 +92,8 @@ def get_exif(current_image):
     img_capture_moment = None
     time_offset_hrs = None
 
-    img_exif = current_image._getexif()
 
-    if img_exif:
-        exif_present = True
-        img_exif_readable = {}
-        for key in img_exif.keys():
-            decode = TAGS.get(key,key)
-            img_exif_readable[decode] = img_exif[key]
-
+    if 0:
         # check rotation.
         if not math.isnan(img_exif_readable['Orientation']):
             if img_exif_readable['Orientation'] == 1:
@@ -110,14 +104,6 @@ def get_exif(current_image):
                 rotate_degrees = 90
             elif img_exif_readable['Orientation'] == 8:
                 rotate_degrees = 270
-
-        exif_date, exif_time = (img_exif_readable['DateTimeOriginal']).split(' ')[0], (img_exif_readable['DateTimeOriginal']).split(' ')[1]
-        year = int(exif_date.split(':')[0])
-        month = int(exif_date.split(':')[1])
-        day = int(exif_date.split(':')[2])
-        hour = int(exif_time.split(':')[0])
-        minute = int(exif_time.split(':')[1])
-        second = int(exif_time.split(':')[2])
 
         # TODO make this an input rather than hard-code set here. Goal is to enter total offset from UTC and have it converted to UTC
         # get the pytz timezone offset on the date of the photo, then include other time offset:
