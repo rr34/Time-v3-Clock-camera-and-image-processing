@@ -29,7 +29,7 @@ def load_image():
     current_image_str.set(image_filename)
     tz_default = timezone('US/Eastern')
 
-    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.process_exif(current_image, tz_default)
+    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_moment_and_location(current_image, tz_default)
     if exif_present:
         info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
     else:

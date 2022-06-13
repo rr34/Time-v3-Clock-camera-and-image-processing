@@ -161,10 +161,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - Add **Border AzAlt** to the tag. The whole purpose of AWIM is absolute direction. The absolute direction should be as practical for human use as possible.
 - **ArtAz** and artifae update name.
 - separate out **basic functions**
-+ exif to pickle
-+ systematically find best UTC time source and tag it 1. GPS time without leap seconds 2. time plus UTC Offset tag 3. original time plus manual offset 4. manual entry 5. manual time entry plus pytz offset
 - what is an unused exif tag number to use fot AWIMInfo? How are individual GPS values stored under 34853 (= hex 8825)
-- what ID is my camera using for UTC Offset?
 - format conversions
 + arw > jpg: use the jpg exif data
 + arw > png: need exiv or similar to get the tag from the arw file.
