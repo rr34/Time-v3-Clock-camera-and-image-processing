@@ -2,12 +2,11 @@ import tkinter
 import pickle
 import datetime
 from pytz import timezone
-import PIL
-import actions, astroimage, basic_functions
+import actions, astroimage
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
-global current_camera, current_image
+global current_camera
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
@@ -22,14 +21,37 @@ def load_camera():
 
 
 def load_image():
-    global current_image
+    global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, tz_default
-    image_filename = tkinter.filedialog.askopenfilename()
-    current_image = PIL.Image.open(image_filename)
-    current_image_str.set(image_filename)
+    image_path = tkinter.filedialog.askopenfilename()
+    current_image_str.set(image_path)
     tz_default = timezone('US/Eastern')
 
-    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_moment_and_location(current_image, tz_default)
+    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, 'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, 'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, 'CaptureMoment': None, 'CaptureMomentSource': None, 'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, 'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, 'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterHorizontalUnit': 'Degrees per pixel', 'PixelSizeCenterVertical: ': None, 'PixelSizeCenterVerticalUnit': 'Degrees per pixel'}
+
+    exif_present = actions.exif_to_pickle(image_path)
+    if exif_present:
+        location, locationAltitude = actions.exif_GPSlatlng_formatted(image_path)
+        UTC_datetime_str, UTC_source = actions.UTC_from_exif(image_path, tz_default)
+    else:
+        location = locationAltitude = UTC_datetime_str = False
+
+    if location:
+        AWIMtag_dictionary['Location'] = ', '.join(str(i) for i in location)
+        AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
+        AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
+    if locationAltitude:
+        AWIMtag_dictionary['LocationAltitude'] = '%f' % locationAltitude
+        AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
+        AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
+    if UTC_datetime_str:
+        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
+        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
+
+    print('pause here to check')
+
+
+    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_exif_location_moment(current_image, tz_default)
     if exif_present:
         info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
     else:
