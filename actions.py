@@ -12,7 +12,7 @@ import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-import camera
+import camera, basic_functions
 
 
 def generate_save_camera_AWIM():
@@ -74,112 +74,6 @@ def display_camera_AWIM_object():
 
     pyplot.show()
 
-
-def exif_to_pickle(image_path):
-    current_image = PIL.Image.open(image_path)
-    img_exif = current_image._getexif()
-
-    if img_exif:
-        img_exif_readable = {}
-        for key in img_exif.keys():
-            decode = TAGS.get(key,key)
-            if key != 34853:
-                img_exif_readable[decode] = img_exif[key]
-            else:
-                GPS_dict_readable = {}
-                for GPSkey in img_exif[34853].keys():
-                    GPSdecode = GPSTAGS.get(GPSkey,GPSkey)
-                    GPS_dict_readable[GPSdecode] = img_exif[34853][GPSkey]
-                img_exif_readable[decode] = GPS_dict_readable
-
-        exifs = [img_exif, img_exif_readable]
-
-        with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'wb') as image_exif_pickle:
-            pickle.dump(exifs, image_exif_pickle, 5)
-
-        return True
-    else:
-        return False
-
-
-def exif_GPSlatlng_formatted(image_path):
-    GPS_latlng = False
-    GPS_alt = False
-    with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'rb') as image_exif_pickle:
-        exif_readable = pickle.load(image_exif_pickle)[1]
-
-    if exif_readable.get('GPSInfo'):
-        GPS_location_present = True
-        if exif_readable['GPSInfo']['GPSLatitudeRef'] == 'N':
-            lat_sign = 1
-        elif exif_readable['GPSInfo']['GPSLatitudeRef'] == 'S':
-            lat_sign = -1
-        else:
-            GPS_location_present = False
-
-        if exif_readable['GPSInfo']['GPSLongitudeRef'] == 'E':
-            lng_sign = 1
-        elif exif_readable['GPSInfo']['GPSLongitudeRef'] == 'W':
-            lng_sign = -1
-        else:
-            GPS_location_present = False
-
-        if GPS_location_present:
-            img_lat = lat_sign*float(exif_readable['GPSInfo']['GPSLatitude'][0] + exif_readable['GPSInfo']['GPSLatitude'][1]/60 + exif_readable['GPSInfo']['GPSLatitude'][2]/3600)
-            img_lng = lng_sign*float(exif_readable['GPSInfo']['GPSLongitude'][0] + exif_readable['GPSInfo']['GPSLongitude'][1]/60 + exif_readable['GPSInfo']['GPSLongitude'][2]/3600)
-            GPS_latlng = (img_lat, img_lng)
-
-        GPSAltitudeRef = exif_readable['GPSInfo']['GPSAltitudeRef'].decode()
-        if GPSAltitudeRef == '\x00':
-            GPS_alt_sign = 1
-        else:
-            print('Elevation is something unusual, probably less than zero like in Death Valley or something. Look here.')
-            GPS_alt_sign = -1
-        GPS_alt = GPS_alt_sign * float(exif_readable['GPSInfo']['GPSAltitude'])
-
-    return GPS_latlng, GPS_alt
-
-    
-def UTC_from_exif(image_path, tz_default):
-    exif_UTC = False
-    UTC_source = False
-    UTC_datetime_str = False
-    exif_datetime_format = "%Y:%m:%d %H:%M:%S"
-    with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'rb') as image_exif_pickle:
-        exif_readable = pickle.load(image_exif_pickle)[1]
-
-    # 1. use the GPS time tag if present and ignore the leap seconds
-    if exif_readable.get('GPSInfo') and exif_readable['GPSInfo'].get('GPSDateStamp') and exif_readable['GPSInfo'].get('GPSTimeStamp'):
-        GPS_datestamp = exif_readable['GPSInfo']['GPSDateStamp']
-        GPS_timestamp = exif_readable['GPSInfo']['GPSTimeStamp']
-        GPSyear = int(GPS_datestamp.split(':')[0])
-        GPSmonth = int(GPS_datestamp.split(':')[1])
-        GPSday = int(GPS_datestamp.split(':')[2])
-        GPShour = int(GPS_timestamp[0])
-        GPSminute = int(GPS_timestamp[1])
-        GPSsecond = int(GPS_timestamp[2])
-        exif_UTC = datetime.datetime(year = GPSyear, month = GPSmonth, day = GPSday, hour = GPShour, minute = GPSminute, second = GPSsecond)
-        UTC_source = 'exif GPSDateStamp and exif GPSTimeStamp'
-    
-    # 2. use the datetimeoriginal with either UTCOffset tag or default timezone
-    elif exif_readable.get('DateTimeOriginal'):
-        exif_datetime = exif_readable['DateTimeOriginal']
-        exif_datetime_object_naive = datetime.datetime.strptime(exif_datetime, exif_datetime_format)
-
-        if  exif_readable.get('OffsetTimeOriginal'):
-            exif_UTC_offset_minutes = 60 * int(exif_readable['OffsetTimeOriginal'].split(':')[0]) + int(exif_readable['OffsetTimeOriginal'].split(':')[1])
-            UTC_offset_timedelta = datetime.timedelta(minutes = exif_UTC_offset_minutes)
-            exif_UTC = exif_datetime_object_naive - UTC_offset_timedelta
-            UTC_source = 'exif DateTimeOriginal and exif OffsetTimeOriginal'
-        else:
-            exif_datetime_object_localized = tz_default.localize(exif_datetime_object_naive)
-            exif_UTC = exif_datetime_object_localized.astimezone(pytz.utc)
-            UTC_source = 'exif DateTimeOriginal adjusted with user-entered timezone'
-
-    if exif_UTC:
-        UTC_datetime_str = exif_UTC.strftime(exif_datetime_format)
-
-    return UTC_datetime_str, UTC_source
 
 def do_nothing():
     pass
@@ -260,7 +154,14 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
 
 def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source_path, tz_default):
 
-    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, 'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, 'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, 'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, 'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, 'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, 'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterHorizontalUnit': 'Degrees per pixel', 'PixelSizeCenterVertical: ': None, 'PixelSizeCenterVerticalUnit': 'Degrees per pixel'}
+    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
+                            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
+                            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
+                            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
+                            'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, \
+                            'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, \
+                            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
+                            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
 
     exif_present = exif_to_pickle(metadata_source_path)
     if exif_present:
@@ -285,4 +186,28 @@ def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source
     print('pause here to check')
 
     # take user input for missing information
-    # 
+    # generate the directional tag information
+    # format the directional information and fill in the dictionary
+
+    max_img_index = np.subtract(img_dimensions, 1)
+    img_center = np.divide(max_img_index, 2)
+    if center_ref == 'center':
+        center_ref = img_center
+
+    px_LT = [0-img_center[0], img_center[1]]
+    px_top = [0, img_center[1]]
+    px_RT = [img_center[0], img_center[1]]
+    px_left = [0-img_center[0], 0]
+    px_center = [0, 0]
+    px_right = [img_center[0], 0]
+    px_LB = [0-img_center[0], 0-img_center[1]]
+    px_bottom = [0, 0-img_center[1]]
+    px_RB = [img_center[0], 0-img_center[1]]
+    img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
+    img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
+
+    pxs_LRUD = np.array([[-1,0],[1,0],[0,-1],[0,1]])
+    img_xyangs_LRUD = self.px_xyangs_models_convert(input=np.divide(pxs_LRUD, img_resize_factor), direction='px_to_xyangs')
+    x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
+    y_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[2,1]-img_xyangs_LRUD[3,1]) / abs(pxs_LRUD[2,1]-pxs_LRUD[3,1])
+    px_size_center = [x_pxsize_degperhundredpx, y_pxsize_degperhundredpx]

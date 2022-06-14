@@ -193,20 +193,17 @@ class CameraAWIMData(object):
 			f.write(camera_str)
 
 	# generate awim data in form of a single dictionary for embedding in any image file
-	def awim_metadata_generate(self, current_image, date_gregorian_ns_time_utc, earth_latlng, center_ref, azalt_ref, img_orientation, img_tilt):
-		img_dimensions = current_image.size
+	def awim_metadata_generate(self, source_image, img_orientation, img_tilt):
+		img_dimensions = source_image.size
 		if img_orientation == 'portrait':
-			self.cam_image_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
+			cam_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
 		img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
-		cam_aspect_ratio = self.cam_image_dimensions[0] / self.cam_image_dimensions[1]
+		cam_aspect_ratio = cam_dimensions[0] / cam_dimensions[1]
+
 		if abs(img_aspect_ratio - cam_aspect_ratio) > 0.001:
-			print('error: image aspect ratio does not match camera aspect ratio, but it should')
+			print('error: image aspect ratio does not match camera aspect ratio, but it should. Was the image cropped? Not supported yet.')
 		else:
-			img_resize_factor = img_dimensions[0] / self.cam_image_dimensions[0]
-		max_img_index = np.subtract(img_dimensions, 1)
-		img_center = np.divide(max_img_index, 2)
-		if center_ref == 'center':
-			center_ref = img_center
+			img_resize_factor = img_dimensions[0] / cam_dimensions[0]
 
 		if img_orientation == 'landscape':
 			xyangs_model_coefficients = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
@@ -217,37 +214,16 @@ class CameraAWIMData(object):
 		xyangs_model_coefficients /= img_resize_factor
 		px_model_coefficients *= img_resize_factor
 
-		px_LT = [0-img_center[0], img_center[1]]
-		px_top = [0, img_center[1]]
-		px_RT = [img_center[0], img_center[1]]
-		px_left = [0-img_center[0], 0]
-		px_center = [0, 0]
-		px_right = [img_center[0], 0]
-		px_LB = [0-img_center[0], 0-img_center[1]]
-		px_bottom = [0, 0-img_center[1]]
-		px_RB = [img_center[0], 0-img_center[1]]
-		img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
-		img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
-
-		pxs_LRUD = np.array([[-1,0],[1,0],[0,-1],[0,1]])
-		img_xyangs_LRUD = self.px_xyangs_models_convert(input=np.divide(pxs_LRUD, img_resize_factor), direction='px_to_xyangs')
-		x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
-		y_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[2,1]-img_xyangs_LRUD[3,1]) / abs(pxs_LRUD[2,1]-pxs_LRUD[3,1])
-		px_size_center = [x_pxsize_degperhundredpx, y_pxsize_degperhundredpx]
-
-		earth_latlng_string = ', '.join(str(i) for i in earth_latlng)
-		img_dimensions_string = ', '.join(str(i) for i in img_dimensions)
 		center_ref_string = ', '.join(str(i) for i in center_ref)
 		azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
-		xyangs_model_coefficients_csv = xyangs_model_coefficients.to_csv()
-		px_model_coefficients_csv = px_model_coefficients.to_csv()
 		px_borders_string = ', '.join(str(i) for i in img_px_borders)
 		xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
 		px_size_center_str = ', '.join(str(i) for i in px_size_center)
 
-		awim_dictionary = {'Center Pixel': center_ref_string, 'Center AzAlt': azalt_ref_string, 'Pixel Models': px_model_coefficients_csv, 'Pixel Map Type': self.pixel_map_type, 'x,y Angle Models': xyangs_model_coefficients_csv, 'Pixel Borders': px_borders_string, 'x,y Angle Borders': xyangs_borders_string, 'Degrees per Hundred Pixels at Center: ': px_size_center_str, 'Location': earth_latlng_string, 'Capture Moment': date_gregorian_ns_time_utc.isoformat(timespec='seconds'), 'Dimensions': img_dimensions_string}
+		xyangs_model_coefficients_csv = xyangs_model_coefficients.to_csv()
+		px_model_coefficients_csv = px_model_coefficients.to_csv()
 
-		return awim_dictionary
+		return xyangs_model_coefficients_csv, px_model_coefficients_csv
 
 
 	def px_xyangs_models_convert(self, input, direction):
