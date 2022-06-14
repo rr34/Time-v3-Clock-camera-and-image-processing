@@ -252,3 +252,14 @@ def xyangs_to_polar(xyangs):
 	return [xyhyp, theta]
 
 
+        # check rotation.
+        if not math.isnan(img_exif_readable['Orientation']):
+            if img_exif_readable['Orientation'] == 1:
+                rotate_degrees = 0
+            elif img_exif_readable['Orientation'] == 3:
+                rotate_degrees = 180
+            elif img_exif_readable['Orientation'] == 6:
+                rotate_degrees = 90
+            elif img_exif_readable['Orientation'] == 8:
+                rotate_degrees = 270
+

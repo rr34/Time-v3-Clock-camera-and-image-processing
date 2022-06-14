@@ -158,11 +158,14 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - **Automate use of satellite image to determine azimuth orientation of images:** I have found the best way to determine azimuth for any photo is to use a satellite image of the photoshoot location that is oriented true north (Google maps not rotated for example) and use a photo editor (Photoshop for example) to give the angle of a line drawn between the point where I took the photo and the point of any object clearly visible anywhere in the photo. This option is already called `Pixel x,y on horizon, with known azimuth to pixel` but I user has to use Photoshop manually to determine the azimuth to the known pixel in the image to be tagged.
 - **Reverse altitude source to manual when using a known pixel in the image for AzAlt:** This is a simple matter of defining the altitude from the manual user input rather than from the user's guess of where the horizon was in the image. I believe this should be done because digital angle finders are really good and better than the user trying to determine where the horizon was in the photo, especially since the horizon could be significantly not-level from where the user took the photo.
 - Update `camera.represent_camera` to output a single pixel border array and pixels per degree instead of degrees per hundred pixels
-- Add **Border AzAlt** to the tag. The whole purpose of AWIM is absolute direction. The absolute direction should be as practical for human use as possible.
-- **ArtAz** and artifae update name.
+- Add **Border Azimuth Artifae** to the tag. The whole purpose of AWIM is absolute direction. The absolute direction should be as practical for human use as possible.
 
 - eliminate tkinter interface from the tagging process: so generate the AWIM tag in main and populate it gradually with basic_functions
-- separate out **basic functions**
++ separate out **basic functions** with **project flow**, need to know:
+- current camera
+- current image / image base filename
+- 
+
 - what is an unused exif tag number to use fot AWIMInfo? How are individual GPS values stored under 34853 (= hex 8825)
 - format conversions
 + arw > jpg: use the jpg exif data
@@ -170,3 +173,4 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 + anything > png: if the exif has rotation data, need to rotate the image and set the rotation tag to 1
 + jpg > jpg: if exif won't let me use an unused ID, then put it under user comments ID 37510
 - Note: the LightRoom / (PS also?) lens aberration database could be used to convert linear approximations to actual camera models.
+- **ArtAz** and artifae update name.

@@ -20,38 +20,17 @@ def load_camera():
     current_camera_str.set(str(current_camera.camera_name))
 
 
-def load_image():
+def process_image():
     global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, tz_default
     image_path = tkinter.filedialog.askopenfilename()
     current_image_str.set(image_path)
     tz_default = timezone('US/Eastern')
 
-    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, 'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, 'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, 'CaptureMoment': None, 'CaptureMomentSource': None, 'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, 'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, 'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterHorizontalUnit': 'Degrees per pixel', 'PixelSizeCenterVertical: ': None, 'PixelSizeCenterVerticalUnit': 'Degrees per pixel'}
-
-    exif_present = actions.exif_to_pickle(image_path)
-    if exif_present:
-        location, locationAltitude = actions.exif_GPSlatlng_formatted(image_path)
-        UTC_datetime_str, UTC_source = actions.UTC_from_exif(image_path, tz_default)
-    else:
-        location = locationAltitude = UTC_datetime_str = False
-
-    if location:
-        AWIMtag_dictionary['Location'] = ', '.join(str(i) for i in location)
-        AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
-        AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
-    if locationAltitude:
-        AWIMtag_dictionary['LocationAltitude'] = '%f' % locationAltitude
-        AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-        AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
-    if UTC_datetime_str:
-        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
-        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
-
-    print('pause here to check')
-
+    actions.generate_image_with_AWIM_tag(camera_path=None, image_source_path=None, metadata_source_path=image_path, tz_default=timezone('US/Eastern'))
 
     rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_exif_location_moment(current_image, tz_default)
+
     if exif_present:
         info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
     else:
@@ -65,14 +44,14 @@ def load_image():
 
 
 def continue1():
-    if azalt_source_var.get() == 'Pixel x,y of sun':
+    if azart_source_var.get() == 'Pixel x,y of sun':
         entry4_label_str.set('Enter pixel x,y of sun')
         entry5_label_str.set('NR')
-    elif azalt_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
+    elif azart_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
         entry4_label_str.set('Pixel x,y on horizon')
         entry5_label_str.set('Reference Azimuth')
-    elif azalt_source_var.get() == 'Manual Az,Alt':
-        entry4_label_str.set('Az,Alt')
+    elif azart_source_var.get() == 'Manual Az,art':
+        entry4_label_str.set('Az,art')
         entry5_label_str.set('NR')
 
 
@@ -92,26 +71,26 @@ def continue2():
     center_ref = 'center'
     img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    if azalt_source_var.get() == 'Manual Az,Alt':
-        azalt_str = entry4.get()
-        azalt_ref = [float(azalt_str.split(',')[0]), float(azalt_str.split(',')[1])]
-    elif azalt_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
+    if azart_source_var.get() == 'Manual Az,Art':
+        azart_str = entry4.get()
+        azart_ref = [float(azart_str.split(',')[0]), float(azart_str.split(',')[1])]
+    elif azart_source_var.get() == 'Pixel x,y on horizon, with known azimuth to pixel':
         px_coord_str = entry4.get()
-        azalt_horizon = [float(entry5.get()), 0]
+        azart_horizon = [float(entry5.get()), 0]
         known_pt_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
-        azalt_ref = actions.azalt_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, azalt_horizon, known_pt_px, img_orientation, img_tilt)
-    elif azalt_source_var.get() == 'Pixel x,y of sun':
+        azart_ref = actions.azart_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, azart_horizon, known_pt_px, img_orientation, img_tilt)
+    elif azart_source_var.get() == 'Pixel x,y of sun':
         known_pt_px = 'sun'
         px_coord_str = entry4.get()
         celestial_object_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
-        azalt_ref = actions.azalt_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
+        azart_ref = actions.azart_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
 
-    awim_dictionary_in = current_camera.awim_metadata_generate(current_image, image_capture_moment, img_latlng, center_ref, azalt_ref, img_orientation, img_tilt)
+    awim_dictionary_in = current_camera.awim_metadata_generate(current_image, image_capture_moment, img_latlng, center_ref, azart_ref, img_orientation, img_tilt)
     
     awim_dictionary_str = ''
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
-    output2_str.set('Center AzAlt: ' + str(awim_dictionary_in['Center AzAlt']) + '\nsee file code output dump/image awim data.txt for full AWIM tag')
+    output2_str.set('Center AzArt: ' + str(awim_dictionary_in['Center AzArt']) + '\nsee file code output dump/image awim data.txt for full AWIM tag')
     with open(r'code output dump folder/image awim data.txt', 'w') as f:
         f.write(awim_dictionary_str)
 
@@ -130,19 +109,19 @@ def png_read():
     clock_image_data_obj = astroimage.ImageAWIMData(awim_dictionary)
 
 
-awim = tkinter.Tk()
+AWIMtkapp = tkinter.Tk()
 
-awim.title('Astronomical Wide Image Mapper by Time v3 Technology')
-awim.geometry('1200x800')
+AWIMtkapp.title('Astronomical Wide Image Mapper by Time v3 Technology')
+AWIMtkapp.geometry('1200x800')
 
-menu_bar = tkinter.Menu(awim)
+menu_bar = tkinter.Menu(AWIMtkapp)
 
 file_menu = tkinter.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label='Load Camera', command=load_camera)
-file_menu.add_command(label='Load Image', command=load_image)
+file_menu.add_command(label='Load Image', command=process_image)
 file_menu.add_command(label='Save', command=actions.do_nothing)
 file_menu.add_separator()
-file_menu.add_command(label='Exit', command=awim.quit)
+file_menu.add_command(label='Exit', command=AWIMtkapp.quit)
 
 camera_menu = tkinter.Menu(menu_bar, tearoff=0)
 camera_menu.add_command(label='Generate camera AWIM file from calibration CSV', command=actions.generate_save_camera_AWIM)
@@ -160,79 +139,79 @@ menu_bar.add_cascade(label='Image', menu=image_menu, underline=0)
 row_height = 10
 column_width = 40
 
-current_camera_label = tkinter.Label(awim, text='Current camera: ')
+current_camera_label = tkinter.Label(AWIMtkapp, text='Current camera: ')
 current_camera_str = tkinter.StringVar()
 current_camera_str.set('None selected yet.')
-current_camera_identify = tkinter.Label(awim, textvariable=current_camera_str)
+current_camera_identify = tkinter.Label(AWIMtkapp, textvariable=current_camera_str)
 current_camera_label.grid(row=0, column=0, ipady=row_height, ipadx=column_width)
 current_camera_identify.grid(row=0, column=1, ipady=row_height, ipadx=column_width)
 
-current_image_label = tkinter.Label(awim, text='Current image: ')
+current_image_label = tkinter.Label(AWIMtkapp, text='Current image: ')
 current_image_str = tkinter.StringVar()
 current_image_str.set('None selected yet.')
-current_image_identify = tkinter.Label(awim, textvariable=current_image_str)
+current_image_identify = tkinter.Label(AWIMtkapp, textvariable=current_image_str)
 current_image_label.grid(row=1, column=0, ipady=row_height, ipadx=column_width)
 current_image_identify.grid(row=1, column=1, ipady=row_height, ipadx=column_width)
 
 output1_str = tkinter.StringVar()
 output1_str.set('Output 1 label placeholder')
-output1_label = tkinter.Label(awim, textvariable=output1_str)
+output1_label = tkinter.Label(AWIMtkapp, textvariable=output1_str)
 output1_label.grid(row=2, column=1, ipady=row_height, ipadx=column_width)
 
 entry1_label_str = tkinter.StringVar()
 entry1_label_str.set('Entry 1 text placeholder')
-entry1_label = tkinter.Label(awim, textvariable=entry1_label_str)
-entry1 = tkinter.Entry(awim)
+entry1_label = tkinter.Label(AWIMtkapp, textvariable=entry1_label_str)
+entry1 = tkinter.Entry(AWIMtkapp)
 entry1_label.grid(row=3, column=0, ipadx=column_width)
 entry1.grid(row=3, column=1, ipadx=column_width)
 
 entry2_label_str = tkinter.StringVar()
 entry2_label_str.set('Entry 2 text placeholder')
-entry2_label = tkinter.Label(awim, textvariable=entry2_label_str)
-entry2 = tkinter.Entry(awim)
+entry2_label = tkinter.Label(AWIMtkapp, textvariable=entry2_label_str)
+entry2 = tkinter.Entry(AWIMtkapp)
 entry2_label.grid(row=4, column=0, ipadx=column_width)
 entry2.grid(row=4, column=1, ipadx=column_width)
 
 entry3_label_str = tkinter.StringVar()
 entry3_label_str.set('Entry 2 text placeholder')
-entry3_label = tkinter.Label(awim, textvariable=entry3_label_str)
-entry3 = tkinter.Entry(awim)
+entry3_label = tkinter.Label(AWIMtkapp, textvariable=entry3_label_str)
+entry3 = tkinter.Entry(AWIMtkapp)
 entry3_label.grid(row=5, column=0, ipadx=column_width)
 entry3.grid(row=5, column=1, ipadx=column_width)
 
-azalt_source_var = tkinter.StringVar(awim)
-azalt_source_var.set('Pixel x,y of sun')
-azalt_source_menu = tkinter.OptionMenu(awim, azalt_source_var, 'Pixel x,y of sun', 'Pixel x,y on horizon, with known azimuth to pixel', 'Manual Az,Alt')
-azalt_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
+azart_source_var = tkinter.StringVar(AWIMtkapp)
+azart_source_var.set('Pixel x,y of sun')
+azart_source_menu = tkinter.OptionMenu(AWIMtkapp, azart_source_var, 'Pixel x,y of sun', 'Pixel x,y on horizon, with known azimuth to pixel', 'Manual Az,Art')
+azart_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
-continue_button = tkinter.Button(awim, text='Continue', command=continue1)
+continue_button = tkinter.Button(AWIMtkapp, text='Continue', command=continue1)
 continue_button.grid(row=7, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
 entry4_label_str = tkinter.StringVar()
 entry4_label_str.set('Entry 4 text placeholder')
-entry4_label = tkinter.Label(awim, textvariable=entry4_label_str)
-entry4 = tkinter.Entry(awim)
+entry4_label = tkinter.Label(AWIMtkapp, textvariable=entry4_label_str)
+entry4 = tkinter.Entry(AWIMtkapp)
 entry4_label.grid(row=8, column=0, ipadx=column_width)
 entry4.grid(row=8, column=1, ipadx=column_width)
 
 entry5_label_str = tkinter.StringVar()
 entry5_label_str.set('Entry 5 text placeholder')
-entry5_label = tkinter.Label(awim, textvariable=entry5_label_str)
-entry5 = tkinter.Entry(awim)
+entry5_label = tkinter.Label(AWIMtkapp, textvariable=entry5_label_str)
+entry5 = tkinter.Entry(AWIMtkapp)
 entry5_label.grid(row=9, column=0, ipadx=column_width)
 entry5.grid(row=9, column=1, ipadx=column_width)
 
-entry_button2 = tkinter.Button(awim, text='Show Data', command=continue2)
+entry_button2 = tkinter.Button(AWIMtkapp, text='Show Data', command=continue2)
 entry_button2.grid(row=10, column=0, columnspan=2, ipadx=column_width)
 
 output2_str = tkinter.StringVar()
 output2_str.set('Output 2 label placeholder')
-output2_label = tkinter.Label(awim, textvariable=output2_str)
+output2_label = tkinter.Label(AWIMtkapp, textvariable=output2_str)
 output2_label.grid(row=11, column=1, ipady=row_height, ipadx=column_width)
 
-entry_button3 = tkinter.Button(awim, text='Generate PNG with Data', command=continue3)
+entry_button3 = tkinter.Button(AWIMtkapp, text='Generate PNG with Data', command=continue3)
 entry_button3.grid(row=12, column=0, columnspan=2, ipadx=column_width)
 
-awim.config(menu=menu_bar)
+AWIMtkapp.config(menu=menu_bar)
 
-awim.mainloop()
+AWIMtkapp.mainloop()
