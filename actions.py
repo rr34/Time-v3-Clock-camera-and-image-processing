@@ -159,7 +159,7 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
                             'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
                             'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
                             'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, \
-                            'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, \
+                            'AngleModels': None, 'PixelModels': None, 'PixelBorders': None, 'AngleBorders': None, \
                             'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
                             'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
 
@@ -188,8 +188,15 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
     # generate the directional tag information
     # format the directional information and fill in the dictionary
 
-    pixel_map_type, xyangs_model_csv, px_model_csv = current_camera.generate_xyang_pixel_models\
+    pixel_map_type, xyangs_model_df, px_model_df = current_camera.generate_xyang_pixel_models\
                                                                         (src_img_path, img_orientation, img_tilt)
+
+    AWIMtag_dictionary['PixelMapType'] = pixel_map_type
+    AWIMtag_dictionary['AngleModels'] = xyangs_model_df.to_csv(index_label='features')
+    AWIMtag_dictionary['PixelModels'] = px_model_df.to_csv(index_label='features')
+    
+    # xyangs_model_csv = xyangs_model_df.to_csv()
+    # px_model_csv = px_model_df.to_csv()
 
     img_center_px = basic_functions.do_center_ref(src_img_path, center_ref)
 

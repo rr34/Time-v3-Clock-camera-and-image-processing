@@ -217,10 +217,7 @@ class CameraAWIMData(object):
 		xyangs_model_df /= img_resize_factor
 		px_model_df *= img_resize_factor
 
-		xyangs_model_csv = xyangs_model_df.to_csv()
-		px_model_csv = px_model_df.to_csv()
-
-		return self.pixel_map_type, xyangs_model_csv, px_model_csv
+		return self.pixel_map_type, xyangs_model_df, px_model_df
 
 
 	def px_xyangs_models_convert(self, input, direction):
