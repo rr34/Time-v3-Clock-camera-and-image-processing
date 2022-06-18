@@ -1,5 +1,6 @@
 import pickle
 import os
+import numpy as np
 import PIL
 from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
@@ -111,3 +112,15 @@ def UTC_from_exif(image_path, tz_default):
         UTC_datetime_str = exif_UTC.strftime(exif_datetime_format)
 
     return UTC_datetime_str, UTC_source
+
+def do_center_ref(image_source_path, center_ref):
+    source_image = PIL.Image.open(image_source_path)
+
+    img_dimensions = source_image.size
+
+    max_img_index = np.subtract(img_dimensions, 1)
+    img_center = np.divide(max_img_index, 2).tolist()
+    if center_ref == 'center':
+        center_ref = img_center
+
+    return img_center

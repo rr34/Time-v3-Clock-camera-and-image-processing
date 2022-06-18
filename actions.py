@@ -152,7 +152,7 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
 
-def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source_path, tz_default):
+def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default, center_ref, current_camera, img_orientation, img_tilt):
 
     AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
                             'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
@@ -163,10 +163,10 @@ def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source
                             'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
                             'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
 
-    exif_present = exif_to_pickle(metadata_source_path)
+    exif_present = basic_functions.exif_to_pickle(metadata_source_path)
     if exif_present:
-        location, locationAltitude = exif_GPSlatlng_formatted(metadata_source_path)
-        UTC_datetime_str, UTC_source = UTC_from_exif(metadata_source_path, tz_default)
+        location, locationAltitude = basic_functions.exif_GPSlatlng_formatted(metadata_source_path)
+        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(metadata_source_path, tz_default)
     else:
         location = locationAltitude = UTC_datetime_str = False
 
@@ -183,16 +183,17 @@ def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source
         AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
         AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
 
-    print('pause here to check')
 
     # take user input for missing information
     # generate the directional tag information
     # format the directional information and fill in the dictionary
 
-    max_img_index = np.subtract(img_dimensions, 1)
-    img_center = np.divide(max_img_index, 2)
-    if center_ref == 'center':
-        center_ref = img_center
+    pixel_map_type, xyangs_model_csv, px_model_csv = current_camera.generate_xyang_pixel_models\
+                                                                        (src_img_path, img_orientation, img_tilt)
+
+    img_center_px = basic_functions.do_center_ref(src_img_path, center_ref)
+
+    print('pause here to check')
 
     px_LT = [0-img_center[0], img_center[1]]
     px_top = [0, img_center[1]]
@@ -211,3 +212,9 @@ def generate_image_with_AWIM_tag(camera_path, image_source_path, metadata_source
     x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
     y_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[2,1]-img_xyangs_LRUD[3,1]) / abs(pxs_LRUD[2,1]-pxs_LRUD[3,1])
     px_size_center = [x_pxsize_degperhundredpx, y_pxsize_degperhundredpx]
+
+    center_ref_string = ', '.join(str(i) for i in center_ref)
+    azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
+    px_borders_string = ', '.join(str(i) for i in img_px_borders)
+    xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
+    px_size_center_str = ', '.join(str(i) for i in px_size_center)

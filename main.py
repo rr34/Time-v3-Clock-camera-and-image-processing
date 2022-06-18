@@ -23,25 +23,20 @@ def load_camera():
 def process_image():
     global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, tz_default
-    image_path = tkinter.filedialog.askopenfilename()
-    current_image_str.set(image_path)
+    camera_path = None
+    src_img_path = tkinter.filedialog.askopenfilename()
+    metadata_source_path = src_img_path
+    current_image_str.set(src_img_path)
+
+    # hard coded. TODO make user-input
     tz_default = timezone('US/Eastern')
+    center_ref = 'center'
+    img_orientation = 'landscape'
+    img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    actions.generate_image_with_AWIM_tag(camera_path=None, image_source_path=None, metadata_source_path=image_path, tz_default=timezone('US/Eastern'))
 
-    rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, time_offset_hrs = actions.get_exif_location_moment(current_image, tz_default)
-
-    if exif_present:
-        info_str = 'EXIF Data\nLat / Long: [%.4f, %.4f]\nElevation: %.1f meters\nCapture Moment: %s\nTime offset: %.2f' % (img_latlng[0], img_latlng[1], img_elevation, image_capture_moment.isoformat(timespec='seconds'), time_offset_hrs)
-    else:
-        info_str = 'no exif data'
-        rotate_degrees = 0
-    output1_str.set(info_str)
-
-    entry1_label_str.set('Enter lat,long OR leave blank to accept EXIF lat, long')
-    entry2_label_str.set('Elevation in meters OR leave blank to accept EXIF elevation')
-    entry3_label_str.set('Enter UTC Moment as: yyyy-mm-ddTHH:mm:ss OR leave blank to accept EXIF time')
-
+    actions.generate_image_with_AWIM_tag(src_img_path, metadata_source_path, \
+                                        tz_default, center_ref, current_camera, img_orientation, img_tilt)
 
 def continue1():
     if azart_source_var.get() == 'Pixel x,y of sun':
@@ -85,7 +80,7 @@ def continue2():
         celestial_object_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
         azart_ref = actions.azart_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
 
-    awim_dictionary_in = current_camera.awim_metadata_generate(current_image, image_capture_moment, img_latlng, center_ref, azart_ref, img_orientation, img_tilt)
+    awim_dictionary_in = current_camera.generate_xyang_pixel_models(current_image, image_capture_moment, img_latlng, center_ref, azart_ref, img_orientation, img_tilt)
     
     awim_dictionary_str = ''
     for item in awim_dictionary_in:

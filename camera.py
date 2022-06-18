@@ -193,9 +193,12 @@ class CameraAWIMData(object):
 			f.write(camera_str)
 
 	# generate awim data in form of a single dictionary for embedding in any image file
-	def awim_metadata_generate(self, source_image, img_orientation, img_tilt):
+	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
+		source_image = Image.open(src_img_path)
 		img_dimensions = source_image.size
-		if img_orientation == 'portrait':
+		if img_orientation == 'landscape':
+			cam_dimensions = [self.cam_image_dimensions[0], self.cam_image_dimensions[1]]
+		elif img_orientation == 'portrait':
 			cam_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
 		img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
 		cam_aspect_ratio = cam_dimensions[0] / cam_dimensions[1]
@@ -206,24 +209,18 @@ class CameraAWIMData(object):
 			img_resize_factor = img_dimensions[0] / cam_dimensions[0]
 
 		if img_orientation == 'landscape':
-			xyangs_model_coefficients = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+			xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
+			px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
 		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape / swap x and y
-			xyangs_model_coefficients = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-			px_model_coefficients = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-		xyangs_model_coefficients /= img_resize_factor
-		px_model_coefficients *= img_resize_factor
+			xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
+			px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+		xyangs_model_df /= img_resize_factor
+		px_model_df *= img_resize_factor
 
-		center_ref_string = ', '.join(str(i) for i in center_ref)
-		azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
-		px_borders_string = ', '.join(str(i) for i in img_px_borders)
-		xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
-		px_size_center_str = ', '.join(str(i) for i in px_size_center)
+		xyangs_model_csv = xyangs_model_df.to_csv()
+		px_model_csv = px_model_df.to_csv()
 
-		xyangs_model_coefficients_csv = xyangs_model_coefficients.to_csv()
-		px_model_coefficients_csv = px_model_coefficients.to_csv()
-
-		return xyangs_model_coefficients_csv, px_model_coefficients_csv
+		return self.pixel_map_type, xyangs_model_csv, px_model_csv
 
 
 	def px_xyangs_models_convert(self, input, direction):
