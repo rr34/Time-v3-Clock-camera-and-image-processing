@@ -152,16 +152,17 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
 
-def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default, center_ref, current_camera, img_orientation, img_tilt):
+def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default, center_px, \
+        current_camera, img_orientation, img_tilt, LocationAGL_default):
 
     AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
-                            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
-                            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
-                            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
-                            'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, \
-                            'AngleModels': None, 'PixelModels': None, 'PixelBorders': None, 'AngleBorders': None, \
-                            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
-                            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
+            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
+            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
+            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
+            'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, \
+            'AngleModels': None, 'PixelModels': None, 'PixelBorders': None, 'AngleBorders': None, \
+            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
+            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
 
     exif_present = basic_functions.exif_to_pickle(metadata_source_path)
     if exif_present:
@@ -171,11 +172,11 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
         location = locationAltitude = UTC_datetime_str = False
 
     if location:
-        AWIMtag_dictionary['Location'] = ', '.join(str(i) for i in location)
+        AWIMtag_dictionary['Location'] = location
         AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
         AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
     if locationAltitude:
-        AWIMtag_dictionary['LocationAltitude'] = '%f' % locationAltitude
+        AWIMtag_dictionary['LocationAltitude'] = locationAltitude
         AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
         AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
     if UTC_datetime_str:
@@ -183,6 +184,16 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
         AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
         AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
 
+    LocationAGL = basic_functions.get_locationAGL()
+
+    if LocationAGL:
+        AWIMtag_dictionary['LocationAGL'] = LocationAGL
+        AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
+        AWIMtag_dictionary['LocationAGLSource'] = 'Some other source, user height, floor of building, etc.'
+    else:
+        AWIMtag_dictionary['LocationAGL'] = LocationAGL_default
+        AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
+        AWIMtag_dictionary['LocationAGLSource'] = 'Defaulted to average human height worldwide.'
 
     # take user input for missing information
     # generate the directional tag information
@@ -192,13 +203,15 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
                                                                         (src_img_path, img_orientation, img_tilt)
 
     AWIMtag_dictionary['PixelMapType'] = pixel_map_type
-    AWIMtag_dictionary['AngleModels'] = xyangs_model_df.to_csv(index_label='features')
-    AWIMtag_dictionary['PixelModels'] = px_model_df.to_csv(index_label='features')
+    AWIMtag_dictionary['AngleModels'] = xyangs_model_df
+    AWIMtag_dictionary['PixelModels'] = px_model_df
     
-    # xyangs_model_csv = xyangs_model_df.to_csv()
-    # px_model_csv = px_model_df.to_csv()
+    center_px = basic_functions.do_center_px(src_img_path, center_px)
 
-    img_center_px = basic_functions.do_center_ref(src_img_path, center_ref)
+    AWIMtag_dictionary['CenterPixel'] = center_px
+    AWIMtag_dictionary['CenterPixelRef'] = 'Standard image reference: top-left is (0,0)'
+
+    AWIMtag_dictionary_string = basic_functions.stringify_tag(AWIMtag_dictionary)
 
     print('pause here to check')
 

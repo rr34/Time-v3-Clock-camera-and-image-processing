@@ -5,6 +5,7 @@ import PIL
 from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
 import pytz
+import pandas as pd
 
 
 def exif_to_pickle(image_path):
@@ -113,14 +114,38 @@ def UTC_from_exif(image_path, tz_default):
 
     return UTC_datetime_str, UTC_source
 
-def do_center_ref(image_source_path, center_ref):
+def do_center_px(image_source_path, center_px):
     source_image = PIL.Image.open(image_source_path)
 
     img_dimensions = source_image.size
 
     max_img_index = np.subtract(img_dimensions, 1)
     img_center = np.divide(max_img_index, 2).tolist()
-    if center_ref == 'center':
-        center_ref = img_center
+    if center_px == 'center':
+        center_px = img_center
 
-    return img_center
+    return center_px
+
+def get_locationAGL():
+    if 0:
+        pass # attempt to get user input here, also unit and specify source
+    else:
+        LocationAGL = False
+    
+    return LocationAGL
+
+def stringify_tag(AWIMtag_dictionary):
+    AWIMtag_dictionary_ofstrings = {}
+    for key, value in AWIMtag_dictionary.items():
+        if isinstance(value, (list, tuple)):
+            AWIMtag_dictionary_ofstrings[key] = ', '.join(str(i) for i in value)
+        elif isinstance(value, (int, float)):
+            AWIMtag_dictionary_ofstrings[key] = str(value)
+        elif isinstance(value, pd.DataFrame):
+            AWIMtag_dictionary_ofstrings[key] = value.to_csv(index_label='features')
+        else:
+            AWIMtag_dictionary_ofstrings[key] = value
+
+    AWIMtag_dictionary_string = str(AWIMtag_dictionary_ofstrings)
+
+    return AWIMtag_dictionary_string

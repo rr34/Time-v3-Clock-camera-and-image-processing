@@ -30,13 +30,13 @@ def process_image():
 
     # hard coded. TODO make user-input
     tz_default = timezone('US/Eastern')
-    center_ref = 'center'
+    center_px = 'center'
     img_orientation = 'landscape'
     img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
+    LocationAGL_default = 1.7
 
-
-    actions.generate_image_with_AWIM_tag(src_img_path, metadata_source_path, \
-                                        tz_default, center_ref, current_camera, img_orientation, img_tilt)
+    actions.generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default, \
+            center_px, current_camera, img_orientation, img_tilt, LocationAGL_default)
 
 def continue1():
     if azart_source_var.get() == 'Pixel x,y of sun':
