@@ -89,7 +89,7 @@ def png_text_reader(image_filename):
     return png_text_dictionary
 
 
-def azalt_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_ref, known_azalt_in, known_pt_px, img_orientation, img_tilt):
+def azart_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_ref, known_azalt_in, known_pt_px, img_orientation, img_tilt):
     image_dimensions = image.size
     max_image_index = np.subtract(image_dimensions, 1)
     img_center = np.divide(max_image_index, 2)
@@ -210,6 +210,8 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
 
     AWIMtag_dictionary['CenterPixel'] = center_px
     AWIMtag_dictionary['CenterPixelRef'] = 'Standard image reference: top-left is (0,0)'
+
+
 
     AWIMtag_dictionary_string = basic_functions.stringify_tag(AWIMtag_dictionary)
 

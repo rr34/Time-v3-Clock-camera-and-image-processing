@@ -1,5 +1,5 @@
 import pickle
-import os
+import os, io, ast, re
 import numpy as np
 import PIL
 from PIL.ExifTags import TAGS, GPSTAGS
@@ -149,3 +149,26 @@ def stringify_tag(AWIMtag_dictionary):
     AWIMtag_dictionary_string = str(AWIMtag_dictionary_ofstrings)
 
     return AWIMtag_dictionary_string
+
+
+def de_stringify_tag(AWIMtag_dictionary_string):
+    AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
+    AWIMtag_dictionary = {}
+    for key, value in AWIMtag_dictionary_ofstrings.items():
+        if value is None:
+            AWIMtag_dictionary[key] = None
+        elif (key == 'PixelModels') or (key == 'AngleModels'):
+            AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
+        elif key == 'CaptureMoment':
+            AWIMtag_dictionary[key] = value
+        elif (',' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a list
+            AWIMtag_dictionary[key] = [float(list_value) for list_value in value.split(',')]
+        elif (',' not in value) and ('.' not in value) and not (re.search('[a-zA-Z]', value)): # evaluate as an int
+            AWIMtag_dictionary[key] = int(value)
+        elif (',' not in value) and ('.' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a float
+            AWIMtag_dictionary[key] = float(value)
+        else:
+            AWIMtag_dictionary[key] = value
+
+
+    return AWIMtag_dictionary
