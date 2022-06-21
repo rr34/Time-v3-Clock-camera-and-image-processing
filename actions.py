@@ -212,7 +212,6 @@ def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default,
     AWIMtag_dictionary['CenterPixelRef'] = 'Standard image reference: top-left is (0,0)'
 
 
-
     AWIMtag_dictionary_string = basic_functions.stringify_tag(AWIMtag_dictionary)
 
     print('pause here to check')
