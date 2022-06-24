@@ -1,11 +1,28 @@
 import pickle
 import os, io, ast, re
+import math
 import numpy as np
 import PIL
 from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
 import pytz
 import pandas as pd
+import astropy.units as u
+from astropy.time import Time
+from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
+
+
+def AWIMtag_generate_empty_dictionary():
+    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
+            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
+            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
+            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
+            'PixelMapType': None, 'RefPixel': None, 'RefPixelCoordType': None, 'RefPixelAzimuthArtifae': None, \
+            'RefPixelAzimuthArtifaeSource': None, 'AngleModels': None, 'PixelModels': None, 'PixelBorders': None, 'AngleBorders': None, \
+            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
+            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
+
+    return AWIMtag_dictionary
 
 
 def format_datetime(input_datetime_UTC, direction):
@@ -26,8 +43,8 @@ def format_datetime(input_datetime_UTC, direction):
     return output
 
 
-def exif_to_pickle(image_path):
-    current_image = PIL.Image.open(image_path)
+def get_exif(metadata_source_path):
+    current_image = PIL.Image.open(metadata_source_path)
     img_exif = current_image._getexif()
 
     if img_exif:
@@ -43,21 +60,17 @@ def exif_to_pickle(image_path):
                     GPS_dict_readable[GPSdecode] = img_exif[34853][GPSkey]
                 img_exif_readable[decode] = GPS_dict_readable
 
-        exifs = [img_exif, img_exif_readable]
+        with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
+            pickle.dump(img_exif, exif_pickle, 5)
 
-        with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'wb') as image_exif_pickle:
-            pickle.dump(exifs, image_exif_pickle, 5)
-
-        return True
+        return img_exif_readable
     else:
         return False
 
 
-def exif_GPSlatlng_formatted(image_path):
+def exif_GPSlatlng_formatted(exif_readable):
     GPS_latlng = False
     GPS_alt = False
-    with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'rb') as image_exif_pickle:
-        exif_readable = pickle.load(image_exif_pickle)[1]
 
     if exif_readable.get('GPSInfo'):
         GPS_location_present = True
@@ -91,13 +104,11 @@ def exif_GPSlatlng_formatted(image_path):
     return GPS_latlng, GPS_alt
 
     
-def UTC_from_exif(image_path, tz_default):
+def UTC_from_exif(exif_readable, tz_default):
     exif_UTC = False
     UTC_source = False
     UTC_datetime_str = False
     exif_datetime_format = "%Y:%m:%d %H:%M:%S"
-    with open((os.path.splitext(image_path)[0] + '.exifpickle'), 'rb') as image_exif_pickle:
-        exif_readable = pickle.load(image_exif_pickle)[1]
 
     # 1. use the GPS time tag if present and ignore the leap seconds
     if exif_readable.get('GPSInfo') and exif_readable['GPSInfo'].get('GPSDateStamp') and exif_readable['GPSInfo'].get('GPSTimeStamp'):
@@ -133,25 +144,27 @@ def UTC_from_exif(image_path, tz_default):
     return UTC_datetime_str, UTC_source
 
 
-def do_center_px(image_source_path, center_px):
+def do_ref_px(image_source_path, ref_px):
     source_image = PIL.Image.open(image_source_path)
 
     img_dimensions = source_image.size
 
     max_img_index = np.subtract(img_dimensions, 1)
     img_center = np.divide(max_img_index, 2).tolist()
-    if center_px == 'center':
-        center_px = img_center
+    if ref_px == 'center':
+        ref_px = img_center
 
-    return center_px
+    return ref_px
 
-def get_locationAGL():
+
+def get_locationAGL(exif_readable):
     if 0:
         pass # attempt to get user input here, also unit and specify source
     else:
         LocationAGL = False
     
     return LocationAGL
+
 
 def stringify_tag(AWIMtag_dictionary):
     AWIMtag_dictionary_ofstrings = {}
@@ -194,9 +207,74 @@ def de_stringify_tag(AWIMtag_dictionary_string):
 
 
 # BELOW HERE IS UN-FINISHED
+def AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, pxs):
+    if isinstance(pxs, (list, tuple)): # models require numpy arrays
+        pxs = np.asarray(pxs)
 
-# get the px of an azart in requested coord type (default is Kivy)
-# calculation is 3 parts via azart to 1. xy_angs to 2. px to 3. KVpx
+    input_shape = pxs.shape
+    angs_direction = np.where(pxs < 0, -1, 1) # models are positive values only. Save sign. Same sign for xyangs
+
+    pxs = np.abs(pxs).reshape(-1,2)
+
+    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
+        pxs_poly = np.zeros((pxs.shape[0], 9))
+        pxs_poly[:,0] = pxs[:,0]
+        pxs_poly[:,1] = pxs[:,1]
+        pxs_poly[:,2] = np.square(pxs[:,0])
+        pxs_poly[:,3] = np.multiply(pxs[:,0], pxs[:,1])
+        pxs_poly[:,4] = np.square(pxs[:,1])
+        pxs_poly[:,5] = np.power(pxs[:,0], 3)
+        pxs_poly[:,6] = np.multiply(np.square(pxs[:,0]), pxs[:,1])
+        pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
+        pxs_poly[:,8] = np.power(pxs[:,1], 3)
+
+    xang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['xang_predict']].values[0]
+    yang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['yang_predict']].values[0]
+
+    xyangs = np.zeros(pxs.shape)
+    xyangs[:,0] = np.dot(pxs_poly, xang_predict_coeff)
+    xyangs[:,1] = np.dot(pxs_poly, yang_predict_coeff)
+
+    xyangs_pretty = np.multiply(xyangs.reshape(input_shape), angs_direction)
+
+    return xyangs_pretty
+
+
+def AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
+
+    # prepare to convert xyangs to azarts. Already have angs_direction from above. abs of xangs only, keep negative yangs
+    input_shape = xyangs.shape
+    angs_direction = np.where(xyangs < 0, -1, 1)
+    xyangs = xyangs.reshape(-1,2)
+    angs_direction = angs_direction.reshape(-1,2)
+    xyangs[:,0] = np.abs(xyangs[:,0])
+    xyangs *= math.pi/180
+    if isinstance(ref_azart_override, (list, tuple, np.ndarray)):
+        ref_azart_rad = np.multiply(ref_azart_override, math.pi/180)
+    else:
+        ref_azart_rad = np.multiply(AWIMtag_dictionary['RefPixelAzimuthArtifae'], math.pi/180)
+
+    # see photoshop diagram of sphere, circles, and triangles for variable names
+    xang_compliment = np.subtract(math.pi/2, xyangs[:,0]) # always (+) because xang < 90
+    d1 = 1*np.cos(xang_compliment) # always (+)
+    r2 = 1*np.sin(xang_compliment) # always (+)
+    ang_totalsmallcircle = np.add(ref_azart_rad[1], xyangs[:,1]) # -180 to 180
+    d2_ = np.multiply(np.cos(ang_totalsmallcircle), r2) # (-) for ang_totalsmallcircle > 90 or < -90, meaning px behind observer
+    art_seg_ = np.multiply(np.sin(ang_totalsmallcircle), r2) # (-) for (-) ang_totalsmallcircle
+    arts = np.arcsin(art_seg_) # (-) for (-) art_seg_
+    az_rel = np.subtract(math.pi/2, np.arctan(np.divide(d2_, d1))) # d2 (-) for px behind observer and therefore az_rel > 90 because will subtract (-) atan
+    az_rel = np.multiply(az_rel, angs_direction[:,0])
+    azs = np.mod(np.add(ref_azart_rad[0], az_rel), 2*math.pi)
+
+    azarts = np.zeros(xyangs.shape)
+    azarts[:,0] = np.multiply(azs, 180/math.pi)
+    azarts[:,1] = np.multiply(arts, 180/math.pi)
+
+    azarts = azarts.reshape(input_shape)
+
+    return azarts
+
+
 def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     if isinstance(azarts, list):
         azarts = np.asarray(azarts)
@@ -204,12 +282,12 @@ def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     input_shape = azarts.shape
     azarts = azarts.reshape(-1,2)
 
-    center_azart = AWIMtag_dictionary['CenterAzArt']
+    ref_px_azart = AWIMtag_dictionary['RefPixelAzimuthArtifae']
 
     # find az_rels, convert to -180 < x <= 180, then abs value + direction matrix
     # also need az_rel compliment angle + store which are behind camera
     # then to radians
-    simple_subtract = np.subtract(azarts[:,0], center_azart[0])
+    simple_subtract = np.subtract(azarts[:,0], ref_px_azart[0])
     big_angle_correction = np.where(simple_subtract > 0, -360, 360)
     az_rel = np.where(np.abs(simple_subtract) <= 180, simple_subtract, np.add(simple_subtract, big_angle_correction))
     az_rel_direction = np.where(az_rel < 0, -1, 1)
@@ -218,7 +296,7 @@ def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     # Note: cannot allow az_rel_compliment (and therefore d2) to be negative because must simple_ang_totalsmallcircle be (-) if art_seg_ is (-), which is good.
     az_rel_compliment = np.where(az_rel_abs <= 90, np.subtract(90, az_rel_abs), np.subtract(az_rel_abs, 90)) # 0 to 90 angle from line perpendicular to az
     az_rel_compliment_rad = np.multiply(az_rel_compliment, math.pi/180) # (+) only, 0 to 90
-    center_azart_rad = np.multiply(center_azart, math.pi/180)
+    ref_px_azart_rad = np.multiply(ref_px_azart, math.pi/180)
 
     # artifae direction matrix, then artifaes to radians, keep sign just convert to radian
     art_direction = np.where(azarts[:,1] < 0, -1, 1)
@@ -232,12 +310,12 @@ def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     r2 = np.sqrt(np.square(d2), np.square(art_seg_))
     xang_abs = np.subtract(math.pi/2, np.arccos(d1)) # TODO? what if xang is actually > 90? would be unusual, difficult to combine with large yang
     xang = np.multiply(xang_abs, az_rel_direction)
-    pt1_art_ = np.multiply(r2, np.sin(center_azart_rad[1])) # (-) for (-) cam_arts, which is good
+    pt1_art_ = np.multiply(r2, np.sin(ref_px_azart_rad[1])) # (-) for (-) cam_arts, which is good
     lower_half = np.where(art_seg_ < pt1_art_, True, False) # true if px is below middle of photo
     ang_smallcircle_fromhorizon = np.arctan(np.divide(art_seg_, d2)) # -90 to 90, (-) for (-) art_seg_, bc d2 always (+)
     # for yang, if in front, simple, but behind observer, the angle from must be subtracted from 180 or -180 because different angle meaning see photoshop diagram
     ang_totalsmallcircle = np.where(np.logical_not(az_rel_behind_observer), ang_smallcircle_fromhorizon, np.subtract(np.multiply(art_direction, math.pi), ang_smallcircle_fromhorizon))
-    yang = np.subtract(ang_totalsmallcircle, center_azart_rad[1]) # simply subtract because |ang_totalsmallcircle| < 180 AND |center_azart[1]| < 90 AND if |ang_totalsmallcircle| > 90, then they are same sign
+    yang = np.subtract(ang_totalsmallcircle, ref_px_azart_rad[1]) # simply subtract because |ang_totalsmallcircle| < 180 AND |center_azart[1]| < 90 AND if |ang_totalsmallcircle| > 90, then they are same sign
 
     xy_angs = np.zeros(input_shape)
     xy_angs[:,0] = np.multiply(xang, 180/math.pi)
@@ -246,7 +324,6 @@ def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     return xy_angs
 
 
-# Part 2: xy_angs to pxs
 def AWIMmath_xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
 
     input_shape = xy_angs.shape
@@ -277,75 +354,16 @@ def AWIMmath_xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
     return pxs
 
 
-# Part 3. pxs to coord_type
-def px_coord_format(coord_type):
-    if coord_type == 'KVpx':
+def px_coord_convert(input_pxs, input_type, output_type):
+    if ('top-left' in input_type) and ('center' in output_type):
         pxs[:,0] = pxs[:,0] + self.center_KVpx[0]
         pxs[:,1] = pxs[:,1] + self.center_KVpx[1]
 
 
-def AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, pxs):
-    if isinstance(pxs, (list, tuple)): # models require numpy arrays
-        pxs = np.asarray(pxs)
-
-    input_shape = pxs.shape
-    angs_direction = np.where(pxs < 0, -1, 1) # models are positive values only. Save sign. Same sign for xyangs
-
-    pxs = np.abs(pxs).reshape(-1,2)
-
-    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
-        pxs_poly = np.zeros((pxs.shape[0], 9))
-        pxs_poly[:,0] = pxs[:,0]
-        pxs_poly[:,1] = pxs[:,1]
-        pxs_poly[:,2] = np.square(pxs[:,0])
-        pxs_poly[:,3] = np.multiply(pxs[:,0], pxs[:,1])
-        pxs_poly[:,4] = np.square(pxs[:,1])
-        pxs_poly[:,5] = np.power(pxs[:,0], 3)
-        pxs_poly[:,6] = np.multiply(np.square(pxs[:,0]), pxs[:,1])
-        pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
-        pxs_poly[:,8] = np.power(pxs[:,1], 3)
-
-    xyangs = np.zeros(pxs.shape)
-    xyangs[:,0] = np.dot(pxs_poly, self.xang_predict_coeff)
-    xyangs[:,1] = np.dot(pxs_poly, self.yang_predict_coeff)
-
-    xyangs_pretty = np.multiply(xyangs.reshape(input_shape), angs_direction)
-
-    return xyangs_pretty, angs_direction
-
-
-def AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xy_angs):
-
-    # prepare to convert xyangs to azarts. Already have angs_direction from above. abs of xangs only, keep negative yangs
-    angs_direction = angs_direction.reshape(-1,2)
-    xyangs = xyangs_pretty.reshape(-1,2)
-    xyangs[:,0] = np.abs(xyangs[:,0])
-    xyangs = np.multiply(xyangs, math.pi/180)
-    center_azart_rad = np.multiply(self.center_azart, math.pi/180)
-
-    # see photoshop diagram of sphere, circles, and triangles for variable names
-    xang_compliment = np.subtract(math.pi/2, xyangs[:,0]) # always (+) because xang < 90
-    d1 = 1*np.cos(xang_compliment) # always (+)
-    r2 = 1*np.sin(xang_compliment) # always (+)
-    ang_totalsmallcircle = np.add(center_azart_rad[1], xyangs[:,1]) # -180 to 180
-    d2_ = np.multiply(np.cos(ang_totalsmallcircle), r2) # (-) for ang_totalsmallcircle > 90 or < -90, meaning px behind observer
-    art_seg_ = np.multiply(np.sin(ang_totalsmallcircle), r2) # (-) for (-) ang_totalsmallcircle
-    arts = np.arcsin(art_seg_) # (-) for (-) art_seg_
-    az_rel = np.subtract(math.pi/2, np.arctan(np.divide(d2_, d1))) # d2 (-) for px behind observer and therefore az_rel > 90 because will subtract (-) atan
-    az_rel = np.multiply(az_rel, angs_direction[:,0])
-    azs = np.mod(np.add(center_azart_rad[0], az_rel), 2*math.pi)
-
-    azarts = np.zeros(xyangs.shape)
-    azarts[:,0] = np.multiply(azs, 180/math.pi)
-    azarts[:,1] = np.multiply(arts, 180/math.pi)
-
-    azarts = azarts.reshape(input_shape)
-
-    return azarts
-
-
 # TODO
-def get_celestial_azart(celestial_object):
+def get_celestial_azart(AWIMtag_dictionary, celestial_object):
+    capture_moment = format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from string')
+    earth_latlng = AWIMtag_dictionary['Location']
     img_astropy_time = Time(capture_moment)
     img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
     img_astropy_frame = AltAz(obstime=img_astropy_time, location=img_astropy_location)
@@ -353,48 +371,14 @@ def get_celestial_azart(celestial_object):
         object_altaz = get_sun(img_astropy_time).transform_to(img_astropy_frame)
         known_azart = [object_altaz.az.degree, object_altaz.alt.degree]
 
+    return known_azart
 
-# TODO this is copied from AWIM, not sure I should use it...
-def px_azart_from_known_px_azart(AWIMtag_dictionary):
-    image_dimensions = image.size
-    max_image_index = np.subtract(image_dimensions, 1)
-    img_center = np.divide(max_image_index, 2)
-    if center_ref == 'center':
-        center_ref = img_center
-    img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
-    cam_aspect_ratio = camera.cam_image_dimensions[0] / camera.cam_image_dimensions[1]
-    if abs(img_aspect_ratio - cam_aspect_ratio) > .001:
-        print('error: image aspect ratio does not match camera aspect ratio, but it should')
-    else:
-        img_resize_factor = image_dimensions[0] / camera.cam_image_dimensions[0]
 
-    known_pt_px_rel = [known_pt_px[0] - center_ref[0], center_ref[1] - known_pt_px[1]]
+def AWIMmath_ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart):
+    xy_ang = AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, known_px)
 
-    if isinstance(known_azart_in, (list, np.ndarray)):
-        known_azart = known_azart_in
-    object_xyangs_relcam = camera.px_xyangs_models_convert(input=np.divide(known_pt_px_rel, img_resize_factor), direction='px_to_xyangs')
+    xy_ang *= -1
 
-    # variables names are from diagram included in the notes:
-    if object_xyangs_relcam[0] < -90 or object_xyangs_relcam[0] > 90:
-        print ('celestial object must be in front of camera, not super far off to the side.')
-    xang_rel_rad = object_xyangs_relcam[0] * math.pi/180
-    yang_rel_rad = object_xyangs_relcam[1] * math.pi/180
-    x_direction = math.copysign(1, xang_rel_rad)
-    y_direction = math.copysign(1, yang_rel_rad)
-    xang_rel_rad = abs(xang_rel_rad)
-    yang_rel_rad = abs(yang_rel_rad)
-    obj_alt_rad = known_azart[1] * math.pi/180
-    d1 = 1*math.cos(math.pi/2 - xang_rel_rad)
-    r2 = 1*math.sin(math.pi/2 - xang_rel_rad)
-    alt_seg = 1*math.sin(obj_alt_rad)
-    alt_ref_rad = math.asin(alt_seg / r2) - y_direction*yang_rel_rad
-    d2 = r2 * math.cos(alt_ref_rad + yang_rel_rad)
-    az_rel_rad = math.pi/2 - math.atan(d2 / d1)
+    ref_px_azart = AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xy_ang, ref_azart_override=known_px_azart)
 
-    az_rel = az_rel_rad * 180/math.pi
-    alt_ref = alt_ref_rad  * 180/math.pi
-
-    # subtract az_rel because az_rel direction is opposite the camera reference
-    azart_ref = [known_azart[0] - az_rel*x_direction, alt_ref]
-
-    return azart_ref
+    return ref_px_azart

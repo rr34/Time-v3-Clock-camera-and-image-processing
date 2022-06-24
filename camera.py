@@ -174,6 +174,7 @@ class CameraAWIMData(object):
 		xyangs_top, xyangs_right, xyangs_bottom, xyangs_left = self.px_xyangs_models_convert(input=self.px_edges, direction='px_to_xyangs')
 		self.xyangs_edges = np.concatenate((xyangs_top, xyangs_right, xyangs_bottom, xyangs_left)).reshape(-1,2)
 
+
 	def represent_camera(self):
 		camera_str = ''
 		camera_str += '\nCamera Name: ' + self.camera_name
@@ -191,6 +192,7 @@ class CameraAWIMData(object):
 		print(camera_str)
 		with open(r'code output dump folder/camera awim data.txt', 'w') as f:
 			f.write(camera_str)
+
 
 	# generate awim data in form of a single dictionary for embedding in any image file
 	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):

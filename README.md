@@ -177,6 +177,6 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - **ArtAz** and artifae update name.
 
 # 21 June to do
-- store camera info as a dictionary rather than as an object.
+- store camera info as a dictionary rather than as an object. Use the exif from the cal images rather than the user calibration file.
 - make functions use camera dictionary info similar to image dictionary info
 - continue to separate and clean functions
