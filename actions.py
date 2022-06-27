@@ -157,7 +157,7 @@ def AWIM_generate_tag(src_img_path, metadata_source_path, tz_default, ref_px, \
 
     if ref_azart == 'from known px':
         if isinstance(known_px_azart, str):
-            ref_azart_source = 'from celestial object' + known_px_azart
+            ref_azart_source = 'from celestial object in photo: ' + known_px_azart
             known_px_azart = basic_functions.get_celestial_azart(AWIMtag_dictionary, known_px_azart)
 
         ref_azart = basic_functions.AWIMmath_ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
