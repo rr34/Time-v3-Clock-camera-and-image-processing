@@ -101,13 +101,13 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
 
-def AWIM_generate_tag(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
-        elevation_at_Location, tz, ref_px, ref_azart, known_px, known_px_azart, img_orientation, img_tilt):
+def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+        elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt):
 
     exif_readable = basic_functions.get_exif(metadata_source_path)
 
     if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
-        pass
+        pass # allows user to specify location without being overridden by the exif GPS
     elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
         if exif_readable.get('GPSInfo'):
             Location, LocationAltitude = basic_functions.get_exif_GPS(exif_readable)
@@ -129,44 +129,35 @@ def AWIM_generate_tag(source_image_path, metadata_source_path, camera_AWIM, AWIM
         print('Error')
     
     if AWIMtag_dictionary['LocationAGLSource'] == 'get from altitude minus terrain elevation':
-        AWIMtag_dictionary['LocationAGL'] = basic_functions.get_locationAGL(exif_readable, elevation_at_Location)
-        AWIMtag_dictionary['LocationAGLSource'] = 'Subtracted terrain elevation from altitude.'
+        LocationAGL = basic_functions.get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location)
+        if LocationAGL:
+            AWIMtag_dictionary['LocationAGL'] = LocationAGL
+            AWIMtag_dictionary['LocationAGLSource'] = 'Subtracted terrain elevation from altitude.'
+        else:
+            AWIMtag_dictionary['LocationAGLSource'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
-    if LocationAGL:
-        AWIMtag_dictionary['LocationAGL'] = LocationAGL
-        AWIMtag_dictionary['LocationAGLSource'] = 'Some other source, user height, floor of building, etc.'
-    else:
-        AWIMtag_dictionary['LocationAGL'] = LocationAGL_default
-        AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
-        AWIMtag_dictionary['LocationAGLSource'] = LocationAGLSource
+    if AWIMtag_dictionary['CaptureMomentSource'] == 'get from exif':
+        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(exif_readable, tz)
+        if UTC_datetime_str:
+            AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
+            AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
+        else:
+            AWIMtag_dictionary['CaptureMomentSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
 
-
-
-        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(exif_readable, timezone)
-
-    if UTC_datetime_str:
-        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
-        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
-
-
-    # take user input for missing information
-    # generate the directional tag information
-    # format the directional information and fill in the dictionary
-
-    pixel_map_type, xyangs_model_df, px_model_df = current_camera.generate_xyang_pixel_models\
+    pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
                                                     (source_image_path, img_orientation, img_tilt)
 
     AWIMtag_dictionary['PixelMapType'] = pixel_map_type
     AWIMtag_dictionary['AngleModels'] = xyangs_model_df
     AWIMtag_dictionary['PixelModels'] = px_model_df
     
-    ref_px = basic_functions.do_ref_px(source_image_path, ref_px)
+    ref_px = basic_functions.do_ref_px(source_image_path, AWIMtag_dictionary['RefPixel'])
 
     AWIMtag_dictionary['RefPixel'] = ref_px
 
-    if ref_azart == 'from known px':
+    if AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] == 'from known px':
         if isinstance(known_px_azart, str):
-            ref_azart_source = 'from celestial object in photo: ' + known_px_azart
+            ref_azart_source = 'From celestial object in photo: ' + known_px_azart
             known_px_azart = basic_functions.get_celestial_azart(AWIMtag_dictionary, known_px_azart)
 
         ref_azart = basic_functions.AWIMmath_ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)

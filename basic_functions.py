@@ -14,30 +14,31 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moo
 
 def AWIMtag_generate_empty_dictionary(defaults=False):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Location'] = [40.298648, -83.055772]
+    AWIMtag_dictionary['Location'] = None
     AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
-    AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
-    AWIMtag_dictionary['LocationAltitude'] = 265
+    AWIMtag_dictionary['LocationSource'] = None
+    AWIMtag_dictionary['LocationAltitude'] = None
     AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-    AWIMtag_dictionary['LocationAltitudeSource'] = 'get from exif GPS'
-    AWIMtag_dictionary['LocationAGL'] = 1.7
+    AWIMtag_dictionary['LocationAltitudeSource'] = None
+    AWIMtag_dictionary['LocationAGL'] = None
     AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
-    AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
+    AWIMtag_dictionary['LocationAGLSource'] = None
     AWIMtag_dictionary['CaptureMoment'] = None
     AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
-    AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
-    AWIMtag_dictionary['PixelMapType'] = 'get from camera AWIM'
-    AWIMtag_dictionary['RefPixel'] = 'center, get from image'
+    AWIMtag_dictionary['CaptureMomentSource'] = None
+    AWIMtag_dictionary['PixelMapType'] = None
+    AWIMtag_dictionary['RefPixel'] = None
     AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
     AWIMtag_dictionary['RefPixelAzimuthArtifae'] = None
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = None
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees'
     AWIMtag_dictionary['AngleModels'] = None
     AWIMtag_dictionary['PixelModels'] = None
     AWIMtag_dictionary['PixelBorders'] = None
     AWIMtag_dictionary['AngleBorders'] = None
     AWIMtag_dictionary['AzimuthArtifaeBorders'] = None
     AWIMtag_dictionary['RADecBorders'] = None
-    AWIMtag_dictionary['RADecUnit'] = None
+    AWIMtag_dictionary['RADecUnit'] = 'J2000'
     AWIMtag_dictionary['PixelSizeCenterHorizontal'] = None
     AWIMtag_dictionary['PixelSizeCenterVertical'] = None
     AWIMtag_dictionary['PixelSizeUnit'] = 'Degrees per pixel'
@@ -168,13 +169,13 @@ def do_ref_px(image_source_path, ref_px):
 
     max_img_index = np.subtract(img_dimensions, 1)
     img_center = np.divide(max_img_index, 2).tolist()
-    if ref_px == 'center':
+    if ref_px == 'center, get from image':
         ref_px = img_center
 
     return ref_px
 
 
-def get_locationAGL(exif_readable, elevation_at_Location):
+def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location):
     if 0:
         pass # subtract the elevation_at_Location from LocationAltitude
     else:

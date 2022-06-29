@@ -2,7 +2,7 @@ import tkinter
 import pickle
 import datetime
 from pytz import timezone
-import actions, astroimage
+import actions, astroimage, basic_functions
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
@@ -26,21 +26,30 @@ def process_image():
 
     source_image_path = tkinter.filedialog.askopenfilename()
     metadata_source_path = source_image_path
-    current_image_str.set(src_img_path)
+    current_image_str.set(source_image_path)
     camera_AWIM = current_camera
 
     AWIMtag_dictionary = basic_functions.AWIMtag_generate_empty_dictionary(defaults=True)
 
+    AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
+    AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
+    AWIMtag_dictionary['LocationAltitude'] = 266.7
+    AWIMtag_dictionary['LocationAltitudeSource'] = 'get from exif GPS'
+    AWIMtag_dictionary['LocationAGL'] = 1.7
+    AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
+    AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
+    AWIMtag_dictionary['PixelMapType'] = 'get from camera AWIM'
+    AWIMtag_dictionary['RefPixel'] = 'center, get from image'
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = 'from known px'
     elevation_at_Location = False
     tz = timezone('US/Eastern')
-    ref_azart = 'from known px'
     known_px = [1000,750]
     known_px_azart = 'venus'
     img_orientation = 'landscape'
     img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    actions.AWIM_generate_tag(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
-            elevation_at_Location, tz, ref_px, ref_azart, known_px, known_px_azart, img_orientation, img_tilt)
+    actions.AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+            elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
 
 def continue1():
     if azart_source_var.get() == 'Pixel x,y of sun':
