@@ -101,59 +101,68 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
 
-def AWIM_generate_tag(src_img_path, metadata_source_path, tz_default, ref_px, \
-        current_camera, img_orientation, img_tilt, LocationAGL_default, \
-        ref_azart, known_px, known_px_azart):
-
-    AWIMtag_dictionary = basic_functions.AWIMtag_generate_empty_dictionary()
+def AWIM_generate_tag(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+        elevation_at_Location, tz, ref_px, ref_azart, known_px, known_px_azart, img_orientation, img_tilt):
 
     exif_readable = basic_functions.get_exif(metadata_source_path)
 
-    if exif_readable:
-        location, locationAltitude = basic_functions.exif_GPSlatlng_formatted(exif_readable)
-        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(exif_readable, tz_default)
+    if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
+        pass
+    elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
+        if exif_readable.get('GPSInfo'):
+            Location, LocationAltitude = basic_functions.get_exif_GPS(exif_readable)
+            if Location:
+                AWIMtag_dictionary['Location'] = Location
+                AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
+            else:
+                AWIMtag_dictionary['LocationSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+                
+            if LocationAltitude:
+                AWIMtag_dictionary['LocationAltitude'] = LocationAltitude
+                AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
+            else:
+                AWIMtag_dictionary['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+        else:
+            AWIMtag_dictionary['LocationSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+            AWIMtag_dictionary['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
     else:
-        location = locationAltitude = UTC_datetime_str = False
-
-    if location:
-        AWIMtag_dictionary['Location'] = location
-        AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
-        AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
-    if locationAltitude:
-        AWIMtag_dictionary['LocationAltitude'] = locationAltitude
-        AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-        AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
-    if UTC_datetime_str:
-        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
-        AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
-        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
-
-    LocationAGL = basic_functions.get_locationAGL(exif_readable)
+        print('Error')
+    
+    if AWIMtag_dictionary['LocationAGLSource'] == 'get from altitude minus terrain elevation':
+        AWIMtag_dictionary['LocationAGL'] = basic_functions.get_locationAGL(exif_readable, elevation_at_Location)
+        AWIMtag_dictionary['LocationAGLSource'] = 'Subtracted terrain elevation from altitude.'
 
     if LocationAGL:
         AWIMtag_dictionary['LocationAGL'] = LocationAGL
-        AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
         AWIMtag_dictionary['LocationAGLSource'] = 'Some other source, user height, floor of building, etc.'
     else:
         AWIMtag_dictionary['LocationAGL'] = LocationAGL_default
         AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
-        AWIMtag_dictionary['LocationAGLSource'] = 'Defaulted to average human height worldwide.'
+        AWIMtag_dictionary['LocationAGLSource'] = LocationAGLSource
+
+
+
+        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(exif_readable, timezone)
+
+    if UTC_datetime_str:
+        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
+        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
+
 
     # take user input for missing information
     # generate the directional tag information
     # format the directional information and fill in the dictionary
 
     pixel_map_type, xyangs_model_df, px_model_df = current_camera.generate_xyang_pixel_models\
-                                                    (src_img_path, img_orientation, img_tilt)
+                                                    (source_image_path, img_orientation, img_tilt)
 
     AWIMtag_dictionary['PixelMapType'] = pixel_map_type
     AWIMtag_dictionary['AngleModels'] = xyangs_model_df
     AWIMtag_dictionary['PixelModels'] = px_model_df
     
-    ref_px = basic_functions.do_ref_px(src_img_path, ref_px)
+    ref_px = basic_functions.do_ref_px(source_image_path, ref_px)
 
     AWIMtag_dictionary['RefPixel'] = ref_px
-    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
 
     if ref_azart == 'from known px':
         if isinstance(known_px_azart, str):

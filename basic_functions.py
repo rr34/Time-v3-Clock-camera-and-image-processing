@@ -12,15 +12,39 @@ from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon, get_body, solar_system_ephemeris
 
 
-def AWIMtag_generate_empty_dictionary():
-    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
-            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
-            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
-            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
-            'PixelMapType': None, 'RefPixel': None, 'RefPixelCoordType': None, 'RefPixelAzimuthArtifae': None, \
-            'RefPixelAzimuthArtifaeSource': None, 'AngleModels': None, 'PixelModels': None, 'PixelBorders': None, 'AngleBorders': None, \
-            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
-            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
+def AWIMtag_generate_empty_dictionary(defaults=False):
+    AWIMtag_dictionary = {}
+    AWIMtag_dictionary['Location'] = [40.298648, -83.055772]
+    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
+    AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
+    AWIMtag_dictionary['LocationAltitude'] = 265
+    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
+    AWIMtag_dictionary['LocationAltitudeSource'] = 'get from exif GPS'
+    AWIMtag_dictionary['LocationAGL'] = 1.7
+    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
+    AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
+    AWIMtag_dictionary['CaptureMoment'] = None
+    AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
+    AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
+    AWIMtag_dictionary['PixelMapType'] = 'get from camera AWIM'
+    AWIMtag_dictionary['RefPixel'] = 'center, get from image'
+    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
+    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = None
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = None
+    AWIMtag_dictionary['AngleModels'] = None
+    AWIMtag_dictionary['PixelModels'] = None
+    AWIMtag_dictionary['PixelBorders'] = None
+    AWIMtag_dictionary['AngleBorders'] = None
+    AWIMtag_dictionary['AzimuthArtifaeBorders'] = None
+    AWIMtag_dictionary['RADecBorders'] = None
+    AWIMtag_dictionary['RADecUnit'] = None
+    AWIMtag_dictionary['PixelSizeCenterHorizontal'] = None
+    AWIMtag_dictionary['PixelSizeCenterVertical'] = None
+    AWIMtag_dictionary['PixelSizeUnit'] = 'Degrees per pixel'
+
+    if not defaults:
+        for key in AWIMtag_dictionary:
+            AWIMtag_dictionary[key] = None
 
     return AWIMtag_dictionary
 
@@ -44,6 +68,7 @@ def format_datetime(input_datetime_UTC, direction):
 
 
 def get_exif(metadata_source_path):
+    metadata_src_type = os.path.splitext(metadata_source_path)[-1]
     current_image = PIL.Image.open(metadata_source_path)
     img_exif = current_image._getexif()
 
@@ -68,31 +93,23 @@ def get_exif(metadata_source_path):
         return False
 
 
-def exif_GPSlatlng_formatted(exif_readable):
-    GPS_latlng = False
-    GPS_alt = False
+def get_exif_GPS(exif_readable):
+    lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
-    if exif_readable.get('GPSInfo'):
-        GPS_location_present = True
-        if exif_readable['GPSInfo']['GPSLatitudeRef'] == 'N':
-            lat_sign = 1
-        elif exif_readable['GPSInfo']['GPSLatitudeRef'] == 'S':
-            lat_sign = -1
-        else:
-            GPS_location_present = False
+    if exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'N':
+        lat_sign = 1
+    elif exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'S':
+        lat_sign = -1
+    if exif_readable['GPSInfo'].get('GPSLongitudeRef') == 'E':
+        lng_sign = 1
+    elif exif_readable['GPSInfo'].get('GPSLongitudeRef') == 'W':
+        lng_sign = -1
+    if lat_sign and lng_sign and exif_readable['GPSInfo'].get('GPSLatitude') and exif_readable['GPSInfo'].get('GPSLongitude'):
+        img_lat = lat_sign * float(exif_readable['GPSInfo']['GPSLatitude'][0] + exif_readable['GPSInfo']['GPSLatitude'][1]/60 + exif_readable['GPSInfo']['GPSLatitude'][2]/3600)
+        img_lng = lng_sign * float(exif_readable['GPSInfo']['GPSLongitude'][0] + exif_readable['GPSInfo']['GPSLongitude'][1]/60 + exif_readable['GPSInfo']['GPSLongitude'][2]/3600)
+        GPS_latlng = [img_lat, img_lng]
 
-        if exif_readable['GPSInfo']['GPSLongitudeRef'] == 'E':
-            lng_sign = 1
-        elif exif_readable['GPSInfo']['GPSLongitudeRef'] == 'W':
-            lng_sign = -1
-        else:
-            GPS_location_present = False
-
-        if GPS_location_present:
-            img_lat = lat_sign*float(exif_readable['GPSInfo']['GPSLatitude'][0] + exif_readable['GPSInfo']['GPSLatitude'][1]/60 + exif_readable['GPSInfo']['GPSLatitude'][2]/3600)
-            img_lng = lng_sign*float(exif_readable['GPSInfo']['GPSLongitude'][0] + exif_readable['GPSInfo']['GPSLongitude'][1]/60 + exif_readable['GPSInfo']['GPSLongitude'][2]/3600)
-            GPS_latlng = (img_lat, img_lng)
-
+    if exif_readable['GPSInfo'].get('GPSAltitudeRef') and exif_readable['GPSInfo'].get('GPSAltitude'):
         GPSAltitudeRef = exif_readable['GPSInfo']['GPSAltitudeRef'].decode()
         if GPSAltitudeRef == '\x00':
             GPS_alt_sign = 1
@@ -157,9 +174,9 @@ def do_ref_px(image_source_path, ref_px):
     return ref_px
 
 
-def get_locationAGL(exif_readable):
+def get_locationAGL(exif_readable, elevation_at_Location):
     if 0:
-        pass # attempt to get user input here, also unit and specify source
+        pass # subtract the elevation_at_Location from LocationAltitude
     else:
         LocationAGL = False
     
@@ -378,7 +395,7 @@ def get_celestial_azart(AWIMtag_dictionary, celestial_object):
     
     object_AltAz = object_SkyCoords.transform_to(img_astropy_AltAzframe)
 
-    known_azart = [object_altaz.az.degree, object_altaz.alt.degree]
+    known_azart = [object_AltAz.az.degree, object_AltAz.alt.degree]
 
     return known_azart
 
