@@ -165,7 +165,13 @@ def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_
     AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.tolist()
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ref_azart_source
 
+    img_borders_azarts = awimlib.pxs_to_azarts(AWIMtag_dictionary, img_px_borders)
+    AWIMtag_dictionary['AzimuthArtifaeBorders'] = img_borders_azarts.tolist()
 
+    img_borders_RADecs = astropytools.AzArts_to_RADecs(AWIMtag_dictionary, img_borders_azarts)
+    AWIMtag_dictionary['RADecBorders'] = img_borders_RADecs.tolist()
+
+    ch, cv, ah, av = awimlib.get_pixel_sizes(source_image_path, AWIMtag_dictionary)
 
     img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders.reshape(-1,2), img_resize_factor), direction='px_to_xyangs')
 

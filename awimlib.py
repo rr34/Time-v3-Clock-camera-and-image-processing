@@ -12,7 +12,7 @@ import pandas as pd
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
     AWIMtag_dictionary['Location'] = None
-    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
+    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude to 6 decimal places, ~11cm'
     AWIMtag_dictionary['LocationSource'] = None
     AWIMtag_dictionary['LocationAltitude'] = None
     AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
@@ -35,9 +35,11 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['AngleBorders'] = None
     AWIMtag_dictionary['AzimuthArtifaeBorders'] = None
     AWIMtag_dictionary['RADecBorders'] = None
-    AWIMtag_dictionary['RADecUnit'] = 'J2000 Epoch'
+    AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch'
     AWIMtag_dictionary['PixelSizeCenterHorizontal'] = None
     AWIMtag_dictionary['PixelSizeCenterVertical'] = None
+    AWIMtag_dictionary['PixelSizeAverageHorizontal'] = None
+    AWIMtag_dictionary['PixelSizeAverageVertical'] = None
     AWIMtag_dictionary['PixelSizeUnit'] = 'Degrees per pixel'
 
     if not default_units:
@@ -159,8 +161,8 @@ def UTC_from_exif(exif_readable, tz_default):
     return UTC_datetime_str, UTC_source
 
 
-def get_ref_px_and_borders(image_source_path, ref_px):
-    source_image = PIL.Image.open(image_source_path)
+def get_ref_px_and_borders(source_image_path, ref_px):
+    source_image = PIL.Image.open(source_image_path)
     img_dimensions = source_image.size
     max_img_index = np.subtract(img_dimensions, 1)
 
@@ -168,10 +170,10 @@ def get_ref_px_and_borders(image_source_path, ref_px):
         img_center = np.divide(max_img_index, 2).tolist()
         ref_px = img_center
 
-        left = 0-img_center[0]
+        left = -img_center[0]
         right = img_center[0]
         top = img_center[1]
-        bottom = 0-img_center[1]
+        bottom = -img_center[1]
     
     img_px_borders = np.array([[left,top,0,top,right,top], [left,0,0,0,right,0], [left,bottom,0,bottom,right,bottom]])
 
@@ -389,3 +391,19 @@ def ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart):
     ref_px_azart = xyangs_to_azarts(AWIMtag_dictionary, xy_ang, ref_azart_override=known_px_azart)
 
     return ref_px_azart
+
+
+def pxs_to_azarts(AWIMtag_dictionary, pxs):
+    xy_angs = pxs_to_xyangs(AWIMtag_dictionary, pxs)
+
+    azarts = xyangs_to_azarts(AWIMtag_dictionary, xy_angs)
+
+    return azarts
+
+
+def get_pixel_sizes(source_image_path, AWIMtag_dictionary):
+    small_px = 10
+    little_cross_LRUD = np.array([-small_px,0,small_px,0,0,small_px,0,-small_px]).reshape(-1,2)
+    little_cross_angs = pxs_to_xyangs(AWIMtag_dictionary, little_cross_LRUD)
+
+    px_size_center_horizontal = abs(little_cross_LRUD[])
