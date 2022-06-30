@@ -2,7 +2,7 @@ import tkinter
 import pickle
 import datetime
 from pytz import timezone
-import actions, astroimage, basic_functions
+import actions, astroimage, awimlib
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
@@ -29,8 +29,9 @@ def process_image():
     current_image_str.set(source_image_path)
     camera_AWIM = current_camera
 
-    AWIMtag_dictionary = basic_functions.AWIMtag_generate_empty_dictionary(defaults=True)
+    AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
+    # user inputs etc.
     AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
     AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
     AWIMtag_dictionary['LocationAltitude'] = 266.7

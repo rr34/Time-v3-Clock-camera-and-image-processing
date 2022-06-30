@@ -161,7 +161,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - Update `camera.represent_camera` to output a single pixel border array and pixels per degree instead of degrees per hundred pixels
 - Add **Border Azimuth Artifae** to the tag. The whole purpose of AWIM is absolute direction. The absolute direction should be as practical for human use as possible.
 
-- eliminate tkinter interface from the tagging process: so generate the AWIM tag in main and populate it gradually with basic_functions
+- eliminate tkinter interface from the tagging process: so generate the AWIM tag in main and populate it gradually with awimlib
 - separate out **basic functions** with **project flow**, need to know:
 - current camera
 - current image / image base filename

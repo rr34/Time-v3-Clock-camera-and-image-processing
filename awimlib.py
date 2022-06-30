@@ -7,12 +7,9 @@ from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
 import pytz
 import pandas as pd
-import astropy.units as u
-from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon, get_body, solar_system_ephemeris
 
 
-def AWIMtag_generate_empty_dictionary(defaults=False):
+def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
     AWIMtag_dictionary['Location'] = None
     AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
@@ -38,12 +35,12 @@ def AWIMtag_generate_empty_dictionary(defaults=False):
     AWIMtag_dictionary['AngleBorders'] = None
     AWIMtag_dictionary['AzimuthArtifaeBorders'] = None
     AWIMtag_dictionary['RADecBorders'] = None
-    AWIMtag_dictionary['RADecUnit'] = 'J2000'
+    AWIMtag_dictionary['RADecUnit'] = 'J2000 Epoch'
     AWIMtag_dictionary['PixelSizeCenterHorizontal'] = None
     AWIMtag_dictionary['PixelSizeCenterVertical'] = None
     AWIMtag_dictionary['PixelSizeUnit'] = 'Degrees per pixel'
 
-    if not defaults:
+    if not default_units:
         for key in AWIMtag_dictionary:
             AWIMtag_dictionary[key] = None
 
@@ -162,17 +159,23 @@ def UTC_from_exif(exif_readable, tz_default):
     return UTC_datetime_str, UTC_source
 
 
-def do_ref_px(image_source_path, ref_px):
+def get_ref_px_and_borders(image_source_path, ref_px):
     source_image = PIL.Image.open(image_source_path)
-
     img_dimensions = source_image.size
-
     max_img_index = np.subtract(img_dimensions, 1)
-    img_center = np.divide(max_img_index, 2).tolist()
+
     if ref_px == 'center, get from image':
+        img_center = np.divide(max_img_index, 2).tolist()
         ref_px = img_center
 
-    return ref_px
+        left = 0-img_center[0]
+        right = img_center[0]
+        top = img_center[1]
+        bottom = 0-img_center[1]
+    
+    img_px_borders = np.array([[left,top,0,top,right,top], [left,0,0,0,right,0], [left,bottom,0,bottom,right,bottom]])
+
+    return ref_px, img_px_borders
 
 
 def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location):
@@ -224,8 +227,8 @@ def de_stringify_tag(AWIMtag_dictionary_string):
     return AWIMtag_dictionary
 
 
-# BELOW HERE IS UN-FINISHED
-def AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, pxs):
+# BELOW HERE IS UNFINISHED
+def pxs_to_xyangs(AWIMtag_dictionary, pxs):
     if isinstance(pxs, (list, tuple)): # models require numpy arrays
         pxs = np.asarray(pxs)
 
@@ -258,7 +261,7 @@ def AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, pxs):
     return xyangs_pretty
 
 
-def AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
+def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
 
     # prepare to convert xyangs to azarts. Already have angs_direction from above. abs of xangs only, keep negative yangs
     input_shape = xyangs.shape
@@ -293,7 +296,7 @@ def AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=Fal
     return azarts
 
 
-def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
+def azarts_to_xyangs(AWIMtag_dictionary, azarts):
     if isinstance(azarts, list):
         azarts = np.asarray(azarts)
 
@@ -342,7 +345,7 @@ def AWIMmath_azarts_to_xyangs(AWIMtag_dictionary, azarts):
     return xy_angs
 
 
-def AWIMmath_xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
+def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
 
     input_shape = xy_angs.shape
 
@@ -378,34 +381,11 @@ def px_coord_convert(input_pxs, input_type, output_type):
         pxs[:,1] = pxs[:,1] + self.center_KVpx[1]
 
 
-# TODO
-def get_celestial_azart(AWIMtag_dictionary, celestial_object):
-    capture_moment = format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from string')
-    earth_latlng = AWIMtag_dictionary['Location']
-
-    # Astropy starts here
-    img_astropy_time = Time(capture_moment)
-    img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
-    img_astropy_AltAzframe = AltAz(obstime=img_astropy_time, location=img_astropy_location)
-    if celestial_object == 'sun':
-        object_SkyCoords = get_sun(img_astropy_time)
-    elif celestial_object == 'moon':
-        object_SkyCoords = get_moon(img_astropy_time)
-    elif celestial_object in ['mercury', 'venus', 'mars', 'jupiter', 'saturn', 'uranus', 'neptune']:
-        object_SkyCoords = get_body(celestial_object, img_astropy_time)
-    
-    object_AltAz = object_SkyCoords.transform_to(img_astropy_AltAzframe)
-
-    known_azart = [object_AltAz.az.degree, object_AltAz.alt.degree]
-
-    return known_azart
-
-
-def AWIMmath_ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart):
-    xy_ang = AWIMmath_pxs_to_xyangs(AWIMtag_dictionary, known_px)
+def ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart):
+    xy_ang = pxs_to_xyangs(AWIMtag_dictionary, known_px)
 
     xy_ang *= -1
 
-    ref_px_azart = AWIMmath_xyangs_to_azarts(AWIMtag_dictionary, xy_ang, ref_azart_override=known_px_azart)
+    ref_px_azart = xyangs_to_azarts(AWIMtag_dictionary, xy_ang, ref_azart_override=known_px_azart)
 
     return ref_px_azart

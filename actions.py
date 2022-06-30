@@ -12,7 +12,7 @@ import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-import camera, basic_functions
+import camera, awimlib, astropytools
 
 
 def generate_save_camera_AWIM():
@@ -104,13 +104,13 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
 def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
         elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt):
 
-    exif_readable = basic_functions.get_exif(metadata_source_path)
+    exif_readable = awimlib.get_exif(metadata_source_path)
 
     if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
         pass # allows user to specify location without being overridden by the exif GPS
     elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
         if exif_readable.get('GPSInfo'):
-            Location, LocationAltitude = basic_functions.get_exif_GPS(exif_readable)
+            Location, LocationAltitude = awimlib.get_exif_GPS(exif_readable)
             if Location:
                 AWIMtag_dictionary['Location'] = Location
                 AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
@@ -129,7 +129,7 @@ def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_
         print('Error')
     
     if AWIMtag_dictionary['LocationAGLSource'] == 'get from altitude minus terrain elevation':
-        LocationAGL = basic_functions.get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location)
+        LocationAGL = awimlib.get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location)
         if LocationAGL:
             AWIMtag_dictionary['LocationAGL'] = LocationAGL
             AWIMtag_dictionary['LocationAGLSource'] = 'Subtracted terrain elevation from altitude.'
@@ -137,7 +137,7 @@ def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_
             AWIMtag_dictionary['LocationAGLSource'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
     if AWIMtag_dictionary['CaptureMomentSource'] == 'get from exif':
-        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(exif_readable, tz)
+        UTC_datetime_str, UTC_source = awimlib.UTC_from_exif(exif_readable, tz)
         if UTC_datetime_str:
             AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
             AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
@@ -151,36 +151,26 @@ def AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_
     AWIMtag_dictionary['AngleModels'] = xyangs_model_df
     AWIMtag_dictionary['PixelModels'] = px_model_df
     
-    ref_px = basic_functions.do_ref_px(source_image_path, AWIMtag_dictionary['RefPixel'])
+    ref_px, img_px_borders = awimlib.get_ref_px_and_borders(source_image_path, AWIMtag_dictionary['RefPixel'])
 
     AWIMtag_dictionary['RefPixel'] = ref_px
 
     if AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] == 'from known px':
         if isinstance(known_px_azart, str):
             ref_azart_source = 'From celestial object in photo: ' + known_px_azart
-            known_px_azart = basic_functions.get_celestial_azart(AWIMtag_dictionary, known_px_azart)
+            known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
 
-        ref_azart = basic_functions.AWIMmath_ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
+        ref_azart = awimlib.ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
 
     AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.tolist()
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ref_azart_source
 
-    AWIMtag_dictionary_string = basic_functions.stringify_tag(AWIMtag_dictionary)
 
+
+    img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders.reshape(-1,2), img_resize_factor), direction='px_to_xyangs')
+
+    AWIMtag_dictionary_string = awimlib.stringify_tag(AWIMtag_dictionary)
     print('pause here to check')
-
-    px_LT = [0-img_center[0], img_center[1]]
-    px_top = [0, img_center[1]]
-    px_RT = [img_center[0], img_center[1]]
-    px_left = [0-img_center[0], 0]
-    px_center = [0, 0]
-    px_right = [img_center[0], 0]
-    px_LB = [0-img_center[0], 0-img_center[1]]
-    px_bottom = [0, 0-img_center[1]]
-    px_RB = [img_center[0], 0-img_center[1]]
-    img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
-    img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
-
     pxs_LRUD = np.array([[-1,0],[1,0],[0,-1],[0,1]])
     img_xyangs_LRUD = self.px_xyangs_models_convert(input=np.divide(pxs_LRUD, img_resize_factor), direction='px_to_xyangs')
     x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
