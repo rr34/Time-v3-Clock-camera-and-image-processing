@@ -5,6 +5,7 @@ from PIL import Image, PngImagePlugin
 import pickle
 
 
+# TODOnext convert this object into dictionary information from exif to match the image AWIM tag.
 class CameraAWIMData(object):
 	def __init__(self, calibration_file):
 		# parameters are defined with a calibration CSV file for convenient data entry

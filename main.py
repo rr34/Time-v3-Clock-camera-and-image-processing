@@ -13,25 +13,24 @@ global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_captur
 def load_camera():
     global current_camera
     camera_filename = tkinter.filedialog.askopenfilename()
-    camera_aim_pickle = open(camera_filename, 'rb')
-    current_camera = pickle.load(camera_aim_pickle)
-    camera_aim_pickle.close()
+
+    with open(camera_filename, 'rb') as f:
+        current_camera = pickle.load(f)
 
     current_camera_str.set(str(current_camera.camera_name))
 
 
+# good AWIM action function
 def process_image():
-    global current_camera, current_image
-    global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, tz_default
-
-    source_image_path = tkinter.filedialog.askopenfilename()
-    metadata_source_path = source_image_path
-    current_image_str.set(source_image_path)
-    camera_AWIM = current_camera
+    global current_camera
 
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
     # user inputs etc.
+    source_image_path = tkinter.filedialog.askopenfilename()
+    metadata_source_path = source_image_path
+    current_image_str.set(source_image_path)
+    camera_AWIM = current_camera
     AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
     AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
     AWIMtag_dictionary['LocationAltitude'] = 266.7
@@ -49,8 +48,14 @@ def process_image():
     img_orientation = 'landscape'
     img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    actions.AWIM_generate_tag_from_exif(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+    AWIMtag_dictionary, AWIMtag_dictionary_string = awimlib.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
             elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
+
+    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+        f.write(AWIMtag_dictionary_string)
+
+    print('pause here to check')
+
 
 def continue1():
     if azart_source_var.get() == 'Pixel x,y of sun':
