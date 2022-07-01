@@ -12,7 +12,7 @@ import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-import camera, basic_functions
+import camera, awimlib, astropytools
 
 
 def generate_save_camera_AWIM():
@@ -89,57 +89,6 @@ def png_text_reader(image_filename):
     return png_text_dictionary
 
 
-def azalt_ref_from_known_px(camera, image, capture_moment, earth_latlng, center_ref, known_azalt_in, known_pt_px, img_orientation, img_tilt):
-    image_dimensions = image.size
-    max_image_index = np.subtract(image_dimensions, 1)
-    img_center = np.divide(max_image_index, 2)
-    if center_ref == 'center':
-        center_ref = img_center
-    img_aspect_ratio = image_dimensions[0] / image_dimensions[1]
-    cam_aspect_ratio = camera.cam_image_dimensions[0] / camera.cam_image_dimensions[1]
-    if abs(img_aspect_ratio - cam_aspect_ratio) > .001:
-        print('error: image aspect ratio does not match camera aspect ratio, but it should')
-    else:
-        img_resize_factor = image_dimensions[0] / camera.cam_image_dimensions[0]
-
-    known_pt_px_rel = [known_pt_px[0] - center_ref[0], center_ref[1] - known_pt_px[1]]
-
-    img_astropy_time = Time(capture_moment)
-    img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)
-    img_astropy_frame = AltAz(obstime=img_astropy_time, location=img_astropy_location)
-    if known_azalt_in == 'sun':
-        object_altaz = get_sun(img_astropy_time).transform_to(img_astropy_frame)
-        known_azalt = [object_altaz.az.degree, object_altaz.alt.degree]
-    elif isinstance(known_azalt_in, (list, np.ndarray)):
-        known_azalt = known_azalt_in
-    object_xyangs_relcam = camera.px_xyangs_models_convert(input=np.divide(known_pt_px_rel, img_resize_factor), direction='px_to_xyangs')
-
-    # variables names are from diagram included in the notes:
-    if object_xyangs_relcam[0] < -90 or object_xyangs_relcam[0] > 90:
-        print ('celestial object must be in front of camera, not super far off to the side.')
-    xang_rel_rad = object_xyangs_relcam[0] * math.pi/180
-    yang_rel_rad = object_xyangs_relcam[1] * math.pi/180
-    x_direction = math.copysign(1, xang_rel_rad)
-    y_direction = math.copysign(1, yang_rel_rad)
-    xang_rel_rad = abs(xang_rel_rad)
-    yang_rel_rad = abs(yang_rel_rad)
-    obj_alt_rad = known_azalt[1] * math.pi/180
-    d1 = 1*math.cos(math.pi/2 - xang_rel_rad)
-    r2 = 1*math.sin(math.pi/2 - xang_rel_rad)
-    alt_seg = 1*math.sin(obj_alt_rad)
-    alt_ref_rad = math.asin(alt_seg / r2) - y_direction*yang_rel_rad
-    d2 = r2 * math.cos(alt_ref_rad + yang_rel_rad)
-    az_rel_rad = math.pi/2 - math.atan(d2 / d1)
-
-    az_rel = az_rel_rad * 180/math.pi
-    alt_ref = alt_ref_rad  * 180/math.pi
-
-    # subtract az_rel because az_rel direction is opposite the camera reference
-    azalt_ref = [known_azalt[0] - az_rel*x_direction, alt_ref]
-
-    return azalt_ref
-
-
 def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
 	# create the info object, add the awim data to the info object, save the png with the info object 
     png_data_container = PIL.PngImagePlugin.PngInfo()
@@ -152,69 +101,3 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
 
 
-def generate_image_with_AWIM_tag(src_img_path, metadata_source_path, tz_default, center_ref, current_camera, img_orientation, img_tilt):
-
-    AWIMtag_dictionary = {'Location': None, 'LocationUnit': None, 'LocationSource': None, \
-                            'LocationAltitude': None, 'LocationAltitudeUnit': None, 'LocationAltitudeSource': None, \
-                            'LocationAGL': None, 'LocationAGLUnit': None, 'LocationAGLSource': None, \
-                            'CaptureMoment': None, 'CaptureMomentUnit': None, 'CaptureMomentSource': None, \
-                            'PixelMapType': None, 'CenterPixel': None, 'CenterPixelRef': None, 'CenterAzArt': None, \
-                            'PixelModelsFeatures': None, 'AngleModelsFeatures': None, 'PixelBorders': None, 'AngleBorders': None, \
-                            'AzimuthArtifaeBorders': None, 'RADecBorders': None, 'RADecUnit': None, \
-                            'PixelSizeCenterHorizontal: ': None, 'PixelSizeCenterVertical: ': None, 'PixelSizeUnit': 'Degrees per pixel'}
-
-    exif_present = basic_functions.exif_to_pickle(metadata_source_path)
-    if exif_present:
-        location, locationAltitude = basic_functions.exif_GPSlatlng_formatted(metadata_source_path)
-        UTC_datetime_str, UTC_source = basic_functions.UTC_from_exif(metadata_source_path, tz_default)
-    else:
-        location = locationAltitude = UTC_datetime_str = False
-
-    if location:
-        AWIMtag_dictionary['Location'] = ', '.join(str(i) for i in location)
-        AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude'
-        AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
-    if locationAltitude:
-        AWIMtag_dictionary['LocationAltitude'] = '%f' % locationAltitude
-        AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-        AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
-    if UTC_datetime_str:
-        AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
-        AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
-        AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
-
-
-    # take user input for missing information
-    # generate the directional tag information
-    # format the directional information and fill in the dictionary
-
-    pixel_map_type, xyangs_model_csv, px_model_csv = current_camera.generate_xyang_pixel_models\
-                                                                        (src_img_path, img_orientation, img_tilt)
-
-    img_center_px = basic_functions.do_center_ref(src_img_path, center_ref)
-
-    print('pause here to check')
-
-    px_LT = [0-img_center[0], img_center[1]]
-    px_top = [0, img_center[1]]
-    px_RT = [img_center[0], img_center[1]]
-    px_left = [0-img_center[0], 0]
-    px_center = [0, 0]
-    px_right = [img_center[0], 0]
-    px_LB = [0-img_center[0], 0-img_center[1]]
-    px_bottom = [0, 0-img_center[1]]
-    px_RB = [img_center[0], 0-img_center[1]]
-    img_px_borders = np.concatenate((px_LT, px_top, px_RT, px_left, px_center, px_right, px_LB, px_bottom, px_RB)).reshape(-1,2)
-    img_xyangs_borders = self.px_xyangs_models_convert(input=np.divide(img_px_borders, img_resize_factor), direction='px_to_xyangs')
-
-    pxs_LRUD = np.array([[-1,0],[1,0],[0,-1],[0,1]])
-    img_xyangs_LRUD = self.px_xyangs_models_convert(input=np.divide(pxs_LRUD, img_resize_factor), direction='px_to_xyangs')
-    x_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[0,0]-img_xyangs_LRUD[1,0]) / abs(pxs_LRUD[0,0]-pxs_LRUD[1,0])
-    y_pxsize_degperhundredpx = 100 * abs(img_xyangs_LRUD[2,1]-img_xyangs_LRUD[3,1]) / abs(pxs_LRUD[2,1]-pxs_LRUD[3,1])
-    px_size_center = [x_pxsize_degperhundredpx, y_pxsize_degperhundredpx]
-
-    center_ref_string = ', '.join(str(i) for i in center_ref)
-    azalt_ref_string = ', '.join(str(i) for i in azalt_ref)
-    px_borders_string = ', '.join(str(i) for i in img_px_borders)
-    xyangs_borders_string = ', '.join(str(i) for i in img_xyangs_borders)
-    px_size_center_str = ', '.join(str(i) for i in px_size_center)
