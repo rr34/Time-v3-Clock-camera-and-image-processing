@@ -6,6 +6,10 @@ import pickle
 
 
 # TODOnext convert this object into dictionary information from exif to match the image AWIM tag.
+# 1. load the calibration image itself with exif
+# 2. put the AWIM inside the comments on the calibration image exif
+# 3. convert all self.___ to dictionary entries.
+# 4. use appropriate functions already created
 class CameraAWIMData(object):
 	def __init__(self, calibration_file):
 		# parameters are defined with a calibration CSV file for convenient data entry

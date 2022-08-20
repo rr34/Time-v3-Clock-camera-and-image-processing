@@ -54,8 +54,6 @@ def process_image():
     with open(r'code output dump folder/image awim data.txt', 'w') as f:
         f.write(AWIMtag_dictionary_string)
 
-    print('pause here to check')
-
 
 def continue1():
     if azart_source_var.get() == 'Pixel x,y of sun':
@@ -120,7 +118,7 @@ def png_read():
 
     png_filename = tkinter.filedialog.askopenfilename()
     awim_dictionary = actions.png_text_reader(png_filename)
-    clock_image_data_obj = astroimage.ImageAWIMData(awim_dictionary)
+    clock_image_data_obj = astroimage.ImageAWIMData(awim_dictionary) # deleted the file, keeping this for reference for now
 
 
 AWIMtkapp = tkinter.Tk()
