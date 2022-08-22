@@ -5,6 +5,65 @@ from PIL import Image, PngImagePlugin
 import pickle
 
 
+# theta is CCW from the positive x axis. r is cm from center
+def _xycm_to_polar(xycm):
+	r = math.sqrt(xycm[0]**2 + xycm[1]**2)
+
+	if xycm[0] == 0 and xycm[1] == 0:
+		theta_rad = 0
+	elif xycm[0] >= 0 and xycm[1] == 0:
+		theta_rad = 0
+	elif xycm[0] == 0 and xycm[1] > 0:
+		theta_rad = math.pi/2
+	elif xycm[0] < 0 and xycm[1] == 0:
+		theta_rad = math.pi
+	elif xycm[0] == 0 and xycm[1] < 0:
+		theta_rad = 3/2*math.pi
+	elif xycm[0] > 0 and xycm[1] != 0:
+		theta_rad = (math.atan(xycm[1] / xycm[0])) % (2*math.pi)
+	elif xycm[0] < 0 and xycm[1] != 0:
+		theta_rad = math.atan(xycm[1] / xycm[0]) + math.pi
+
+	theta = theta_rad * 180/math.pi
+
+	return  [r, theta]
+
+
+# calculate the miss angle as xang,yang
+def _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
+	target_x_radius_deg = abs(math.atan(x_small_cm[0] / self.calibration_distance_cm)) * 180/math.pi
+	target_y_radius_deg = abs(math.atan(y_small_cm[1] / self.calibration_distance_cm)) * 180/math.pi
+	target_x_radius_px = math.sqrt((target_pos_px[0]-x_small_px[0])**2 + (target_pos_px[1]-x_small_px[1])**2)
+	target_y_radius_px = math.sqrt((target_pos_px[0]-y_small_px[0])**2 + (target_pos_px[1]-y_small_px[1])**2)
+	pixel_delta_x_cm = abs(x_small_cm[0] / target_x_radius_px) # cm per pixel horizontal
+	pixel_delta_y_cm = abs(y_small_cm[1] / target_y_radius_px) # cm per pixel vertical
+	pixel_delta_x_deg = target_x_radius_deg / target_x_radius_px # deg per pixel horizontal
+	pixel_delta_y_deg = target_y_radius_deg / target_y_radius_px # deg per pixel vertical
+	target_pos_xcm_rel = (target_pos_px[0] - self.center_px[0]) * pixel_delta_x_cm # camera aim error xang
+	target_pos_ycm_rel = -1 * (target_pos_px[1] - self.center_px[1]) * pixel_delta_y_cm # camera aim error yang, note (-)y_px is (+)yang!
+
+	target_pos_xycm_relaim = [target_pos_xcm_rel, target_pos_ycm_rel]
+	return target_pos_xycm_relaim
+
+
+def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px):
+	if align_orientation == 'horizontal':
+		xy_index = 1 # align with the y pixel coordinate for the horizontal axis
+		xycm_index = 0 # use the x_cm for distance from target
+	elif align_orientation == 'vertical':
+		xy_index = 0 # align with the x pixel coordinate for the vertical axis
+		xycm_index = 1 # use the y_cm for distance from target
+	else:
+		print('must specify align_orientation')
+
+	align_radius_px = np.sqrt((align2_px[0] - align1_px[0])**2 + (align2_px[1] - align1_px[1])**2)
+	pixel_delta_cmpx = align_targets_radius_cm / align_radius_px
+	miss_cm = (align1_px[xy_index] - target_pos_px[xy_index]) * pixel_delta_cmpx # grid align pixel not in same pixel line with hit target pixel. should be bc on axis. align1_px right or down from target is CCW and (+)
+	grid_rotation_error_degreesCCW = math.atan(miss_cm/row_xycm[xycm_index]) * 180/math.pi
+
+	return grid_rotation_error_degreesCCW
+
+
 # TODOnext convert this object into dictionary information from exif to match the image AWIM tag.
 # 1. load the calibration image itself with exif
 # 2. put the AWIM inside the comments on the calibration image exif
@@ -199,6 +258,7 @@ class CameraAWIMData(object):
 			f.write(camera_str)
 
 
+	# TODOnext once converted to a dictionary, this is what the result still needs to be able to do
 	# generate awim data in form of a single dictionary for embedding in any image file
 	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
 		source_image = Image.open(src_img_path)
@@ -245,64 +305,6 @@ class CameraAWIMData(object):
 		output = np.multiply(output, output_sign)
 
 		return output
-
-# theta is CCW from the positive x axis. r is cm from center
-def _xycm_to_polar(xycm):
-	r = math.sqrt(xycm[0]**2 + xycm[1]**2)
-
-	if xycm[0] == 0 and xycm[1] == 0:
-		theta_rad = 0
-	elif xycm[0] >= 0 and xycm[1] == 0:
-		theta_rad = 0
-	elif xycm[0] == 0 and xycm[1] > 0:
-		theta_rad = math.pi/2
-	elif xycm[0] < 0 and xycm[1] == 0:
-		theta_rad = math.pi
-	elif xycm[0] == 0 and xycm[1] < 0:
-		theta_rad = 3/2*math.pi
-	elif xycm[0] > 0 and xycm[1] != 0:
-		theta_rad = (math.atan(xycm[1] / xycm[0])) % (2*math.pi)
-	elif xycm[0] < 0 and xycm[1] != 0:
-		theta_rad = math.atan(xycm[1] / xycm[0]) + math.pi
-
-	theta = theta_rad * 180/math.pi
-
-	return  [r, theta]
-
-
-# calculate the miss angle as xang,yang
-def _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
-	target_x_radius_deg = abs(math.atan(x_small_cm[0] / self.calibration_distance_cm)) * 180/math.pi
-	target_y_radius_deg = abs(math.atan(y_small_cm[1] / self.calibration_distance_cm)) * 180/math.pi
-	target_x_radius_px = math.sqrt((target_pos_px[0]-x_small_px[0])**2 + (target_pos_px[1]-x_small_px[1])**2)
-	target_y_radius_px = math.sqrt((target_pos_px[0]-y_small_px[0])**2 + (target_pos_px[1]-y_small_px[1])**2)
-	pixel_delta_x_cm = abs(x_small_cm[0] / target_x_radius_px) # cm per pixel horizontal
-	pixel_delta_y_cm = abs(y_small_cm[1] / target_y_radius_px) # cm per pixel vertical
-	pixel_delta_x_deg = target_x_radius_deg / target_x_radius_px # deg per pixel horizontal
-	pixel_delta_y_deg = target_y_radius_deg / target_y_radius_px # deg per pixel vertical
-	target_pos_xcm_rel = (target_pos_px[0] - self.center_px[0]) * pixel_delta_x_cm # camera aim error xang
-	target_pos_ycm_rel = -1 * (target_pos_px[1] - self.center_px[1]) * pixel_delta_y_cm # camera aim error yang, note (-)y_px is (+)yang!
-
-	target_pos_xycm_relaim = [target_pos_xcm_rel, target_pos_ycm_rel]
-	return target_pos_xycm_relaim
-
-
-def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px):
-	if align_orientation == 'horizontal':
-		xy_index = 1 # align with the y pixel coordinate for the horizontal axis
-		xycm_index = 0 # use the x_cm for distance from target
-	elif align_orientation == 'vertical':
-		xy_index = 0 # align with the x pixel coordinate for the vertical axis
-		xycm_index = 1 # use the y_cm for distance from target
-	else:
-		print('must specify align_orientation')
-
-	align_radius_px = np.sqrt((align2_px[0] - align1_px[0])**2 + (align2_px[1] - align1_px[1])**2)
-	pixel_delta_cmpx = align_targets_radius_cm / align_radius_px
-	miss_cm = (align1_px[xy_index] - target_pos_px[xy_index]) * pixel_delta_cmpx # grid align pixel not in same pixel line with hit target pixel. should be bc on axis. align1_px right or down from target is CCW and (+)
-	grid_rotation_error_degreesCCW = math.atan(miss_cm/row_xycm[xycm_index]) * 180/math.pi
-
-	return grid_rotation_error_degreesCCW
 
 
 # Apparently I stopped using this.

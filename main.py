@@ -2,7 +2,7 @@ import tkinter
 import pickle
 import datetime
 from pytz import timezone
-import actions, astroimage, awimlib
+import actions, awimlib
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
