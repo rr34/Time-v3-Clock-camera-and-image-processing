@@ -87,12 +87,12 @@ def get_exif(metadata_source_path):
         with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
             pickle.dump(img_exif, exif_pickle, 5)
 
-        return img_exif_readable
+        return img_exif, img_exif_readable
     else:
         return False
 
 
-def get_exif_GPS(exif_readable):
+def extract_latlng_from_exif_GPS(exif_readable):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
     if exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'N':
@@ -434,13 +434,13 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     degrees_digits = 2
     hourangle_digits = 3
     
-    exif_readable = get_exif(metadata_source_path)
+    exif_raw, exif_readable = get_exif(metadata_source_path)
 
     if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
         pass # allows user to specify location without being overridden by the exif GPS
     elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
         if exif_readable.get('GPSInfo'):
-            location, location_altitude = get_exif_GPS(exif_readable)
+            location, location_altitude = extract_latlng_from_exif_GPS(exif_readable)
             if location:
                 AWIMtag_dictionary['Location'] = [round(f, lat_lng_digits) for f in location]
                 AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'

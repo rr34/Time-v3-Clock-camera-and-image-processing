@@ -18,8 +18,9 @@ import camera, awimlib, astropytools
 def generate_save_camera_AWIM():
 
     # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
+    calibration_image = tkinter.filedialog.askopenfilename()
     calibration_file = tkinter.filedialog.askopenfilename()
-    this_camera = camera.CameraAWIMData(calibration_file)
+    camera_AWIM_dictionary, camera_AWIM_dictionary_string, full_exif_with_AWIM = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)
 
     # save to a pickle .awim_camera_aim_pkl
     this_camera_filename = str(this_camera.camera_name) + ' - lens ' + str(this_camera.lens_name) + ' - zoom ' + str(this_camera.zoom_factor) + '.awim'
