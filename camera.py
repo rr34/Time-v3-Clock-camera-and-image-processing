@@ -1,7 +1,7 @@
 import math
 import numpy as np
 import pandas as pd
-from PIL import Image, PngImagePlugin
+import PIL
 import pickle
 import awimlib
 
@@ -70,24 +70,22 @@ def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px
 # 2. put the AWIM inside the comments on the calibration image exif
 # 3. convert all self.___ to dictionary entries.
 # 4. use appropriate functions already created
-def generate_camera_AWIM_from_calibration(calibration_image, calibration_file):
+def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
-	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image)
-	cal_df = pd.read_csv(calibration_file)
+	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image_path)
+	cal_df = pd.read_csv(calibration_file_path)
+	calibration_image = PIL.Image.open(calibration_image_path)
+
+	camera_lens_system = cal_df[cal_df['type'] == 'camera_lens_system']['misc'].iat[0]
+	AWIM_cal_type = cal_df[cal_df['type'] == 'AWIM_calibration_type']['misc'].iat[0]
+	cam_image_dimensions = calibration_image.size
+
 	print('stop here to check')
-
-	# calibration data includes most of requirements to initialize the object:
-	self.camera_name = cal_df[cal_df['type'] == 'camera_name']['misc'].iat[0]
-	self.lens_name = cal_df[cal_df['type'] == 'lens_name']['misc'].iat[0]
-	self.zoom_factor = cal_df[cal_df['type'] == 'zoom_factor']['misc'].iat[0]
-	self.settings_notes = cal_df[cal_df['type'] == 'settings_notes']['misc'].iat[0]
-	self.cam_image_dimensions = [int(cal_df[cal_df['type'] == 'cam_image_dimensions']['x_rec'].iat[0]), int(cal_df[cal_df['type'] == 'cam_image_dimensions']['y_rec'].iat[0])]
-	self.max_image_index = np.subtract(self.cam_image_dimensions, 1)
-	self.pixel_map_type = cal_df[cal_df['type'] == 'pixel_map_type']['misc'].iat[0]
-	self.center_px = self.max_image_index / 2 # usually x.5, non-integer, bc most images have an even number of pixels means center is a boundary rather than a pixel. Seems most programs accept float values for pixel reference now anyway.
+	max_image_index = np.subtract(cam_image_dimensions, 1)
+	center_px = max_image_index / 2 # usually xxx.5, non-integer, bc most images have an even number of pixels, means center is a boundary rather than a pixel. Seems most programs accept float values for pixel reference now anyway.
 	calibration_orientation = cal_df[cal_df['type'] == 'orientation']['misc'].iat[0]
 	calibration_quadrant = cal_df[cal_df['type'] == 'quadrant']['misc'].iat[0]
-	self.calibration_distance_cm = float(cal_df[cal_df['type'] == 'distance']['misc'].iat[0])
+	calibration_distance_cm = float(cal_df[cal_df['type'] == 'distance']['misc'].iat[0])
 	align_targets_radius_cm = float(cal_df[cal_df['type'] == 'align_targets_radius']['misc'].iat[0])
 
 	if calibration_orientation == 'portrait':
