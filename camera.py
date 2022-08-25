@@ -31,23 +31,23 @@ def _xycm_to_polar(xycm):
 
 
 # calculate the miss angle as xang,yang
-def _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
-	target_x_radius_deg = abs(math.atan(x_small_cm[0] / self.calibration_distance_cm)) * 180/math.pi
-	target_y_radius_deg = abs(math.atan(y_small_cm[1] / self.calibration_distance_cm)) * 180/math.pi
+def _target_miss(calibration_distance_cm, center_px, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
+	target_x_radius_deg = abs(math.atan(x_small_cm[0] / calibration_distance_cm)) * 180/math.pi
+	target_y_radius_deg = abs(math.atan(y_small_cm[1] / calibration_distance_cm)) * 180/math.pi
 	target_x_radius_px = math.sqrt((target_pos_px[0]-x_small_px[0])**2 + (target_pos_px[1]-x_small_px[1])**2)
 	target_y_radius_px = math.sqrt((target_pos_px[0]-y_small_px[0])**2 + (target_pos_px[1]-y_small_px[1])**2)
 	pixel_delta_x_cm = abs(x_small_cm[0] / target_x_radius_px) # cm per pixel horizontal
 	pixel_delta_y_cm = abs(y_small_cm[1] / target_y_radius_px) # cm per pixel vertical
 	pixel_delta_x_deg = target_x_radius_deg / target_x_radius_px # deg per pixel horizontal
 	pixel_delta_y_deg = target_y_radius_deg / target_y_radius_px # deg per pixel vertical
-	target_pos_xcm_rel = (target_pos_px[0] - self.center_px[0]) * pixel_delta_x_cm # camera aim error xang
-	target_pos_ycm_rel = -1 * (target_pos_px[1] - self.center_px[1]) * pixel_delta_y_cm # camera aim error yang, note (-)y_px is (+)yang!
+	target_pos_xcm_rel = (target_pos_px[0] - center_px[0]) * pixel_delta_x_cm # camera aim error xang
+	target_pos_ycm_rel = -1 * (target_pos_px[1] - center_px[1]) * pixel_delta_y_cm # camera aim error yang, note (-)y_px is (+)yang!
 
 	target_pos_xycm_relaim = [target_pos_xcm_rel, target_pos_ycm_rel]
 	return target_pos_xycm_relaim
 
 
-def _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px):
+def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px):
 	if align_orientation == 'horizontal':
 		xy_index = 1 # align with the y pixel coordinate for the horizontal axis
 		xycm_index = 0 # use the x_cm for distance from target
@@ -78,9 +78,8 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	camera_lens_system = cal_df[cal_df['type'] == 'camera_lens_system']['misc'].iat[0]
 	AWIM_cal_type = cal_df[cal_df['type'] == 'AWIM_calibration_type']['misc'].iat[0]
-	cam_image_dimensions = calibration_image.size
+	cam_image_dimensions = np.array(calibration_image.size)
 
-	print('stop here to check')
 	max_image_index = np.subtract(cam_image_dimensions, 1)
 	center_px = max_image_index / 2 # usually xxx.5, non-integer, bc most images have an even number of pixels, means center is a boundary rather than a pixel. Seems most programs accept float values for pixel reference now anyway.
 	calibration_orientation = cal_df[cal_df['type'] == 'orientation']['misc'].iat[0]
@@ -89,9 +88,9 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	align_targets_radius_cm = float(cal_df[cal_df['type'] == 'align_targets_radius']['misc'].iat[0])
 
 	if calibration_orientation == 'portrait':
-		self.center_px = self.center_px[::-1]
-		self.cam_image_dimensions = self.cam_image_dimensions[::-1]
-		self.max_image_index = self.max_image_index[::-1]
+		center_px = center_px[::-1]
+		cam_image_dimensions = cam_image_dimensions[::-1]
+		max_image_index = max_image_index[::-1]
 
 	for row in cal_df[cal_df['type'] == 'calculate_and_record'].iterrows():
 		row_xycm = [float(row[1]['x_cm']), float(row[1]['y_cm'])]
@@ -103,7 +102,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 			y_small_cm = cal_df[cal_df['misc']=='y_small'][['x_cm', 'y_cm']].values[0]
 			y_small_px = cal_df[cal_df['misc']=='y_small'][['x_rec', 'y_rec']].values[0]
 
-			target_pos_xycm_relaim = _target_miss(self, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px)
+			target_pos_xycm_relaim = _target_miss(calibration_distance_cm, center_px, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px)
 			cal_df.loc[row[0], 'out1'] = target_pos_xycm_relaim[0]
 			cal_df.loc[row[0], 'out2'] = target_pos_xycm_relaim[1]
 
@@ -112,14 +111,14 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 			align1_px = cal_df[cal_df['misc']=='align_v_center'][['x_rec', 'y_rec']].values[0]
 			align2_px = cal_df[cal_df['misc']=='align_v_left'][['x_rec', 'y_rec']].values[0]
 			if not math.isnan(align1_px[0]) and not math.isnan(align1_px[1]) and not math.isnan(align2_px[0]) and not math.isnan(align2_px[1]): # IF NOT BLANK
-				grid_rotation_error_degreesCCW = _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px)
+				grid_rotation_error_degreesCCW = _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px)
 				cal_df.loc[row[0], 'out1'] = grid_rotation_error_degreesCCW
 		elif row[1]['misc'] == 'rotation_error_top_degCCW':
 			align_orientation = 'horizontal'
 			align1_px = cal_df[cal_df['misc']=='align_h_center'][['x_rec', 'y_rec']].values[0]
 			align2_px = cal_df[cal_df['misc']=='align_h_down'][['x_rec', 'y_rec']].values[0]
 			if not math.isnan(align1_px[0]) and not math.isnan(align1_px[1]) and not math.isnan(align2_px[0]) and not math.isnan(align2_px[1]): # IF NOT BLANK
-				grid_rotation_error_degreesCCW = _grid_rotation_error(self, row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px)
+				grid_rotation_error_degreesCCW = _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, align_targets_radius_cm, target_pos_px)
 				cal_df.loc[row[0], 'out1'] = grid_rotation_error_degreesCCW
 		elif row[1]['misc'] == 'average_rotation_error_degCCW':
 			align_v_degCCW = float(cal_df[cal_df['misc']=='rotation_error_side_degCCW'][['out1']].values[0])
@@ -141,22 +140,22 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 			# record the ref pixels for the 4 cases
 			if row_xycm[0]==0 and row_xycm[1]==0: # origin
-				cal_df.loc[row[0], 'x_px'] = self.center_px[0]
-				cal_df.loc[row[0], 'y_px'] = self.center_px[1]
+				cal_df.loc[row[0], 'x_px'] = center_px[0]
+				cal_df.loc[row[0], 'y_px'] = center_px[1]
 				cal_df.loc[row[0], 'xang'] = 0.0
 				cal_df.loc[row[0], 'yang'] = 0.0
 			elif row_xycm[0]==0 and row_xycm[1]!=0: # on the vertical axis just take the px distance and put on the line with nominal cm value
 				px_dist = math.sqrt((px[0] - target_pos_px[0])**2 + (px[1] - target_pos_px[1])**2)
-				cal_df.loc[row[0], 'x_px'] = self.center_px[0]
-				cal_df.loc[row[0], 'y_px'] = self.center_px[1] + px_dist
-				yang = math.atan(row_xycm[1]/self.calibration_distance_cm) * 180/math.pi # (-) as appropriate bc (-) ycm and (+) distance
+				cal_df.loc[row[0], 'x_px'] = center_px[0]
+				cal_df.loc[row[0], 'y_px'] = center_px[1] + px_dist
+				yang = math.atan(row_xycm[1]/calibration_distance_cm) * 180/math.pi # (-) as appropriate bc (-) ycm and (+) distance
 				cal_df.loc[row[0], 'xang'] = 0.0
 				cal_df.loc[row[0], 'yang'] = yang
 			elif row_xycm[0]!=0 and row_xycm[1]==0: # on the horizontal axis just take the px distance and put on the line with nominal cm value
 				px_dist = math.sqrt((px[0] - target_pos_px[0])**2 + (px[1] - target_pos_px[1])**2)
-				cal_df.loc[row[0], 'x_px'] = self.center_px[0] - px_dist
-				cal_df.loc[row[0], 'y_px'] = self.center_px[1]
-				xang = math.atan(row_xycm[0]/self.calibration_distance_cm) * 180/math.pi # (-) as appropriate bc (-) xcm and (+) distance
+				cal_df.loc[row[0], 'x_px'] = center_px[0] - px_dist
+				cal_df.loc[row[0], 'y_px'] = center_px[1]
+				xang = math.atan(row_xycm[0]/calibration_distance_cm) * 180/math.pi # (-) as appropriate bc (-) xcm and (+) distance
 				cal_df.loc[row[0], 'xang'] = xang
 				cal_df.loc[row[0], 'yang'] = 0.0
 			else: # anywhere else
@@ -169,7 +168,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 				actual_y_cm_rel_center = row_xycm[1] + target_pos_xycm_relaim[1] + rotation_y_cmatpt
 				
 				# trigonometry: there is very little for the calibration bc it isolates the camera with other variables being zero.
-				r1 = self.calibration_distance_cm
+				r1 = calibration_distance_cm
 				r2 = r1 # because the cal board is flat, not a sphere
 				yang = math.atan(actual_y_cm_rel_center/r2) * 180/math.pi # mostly (-) because y_cm is (-). the cal board lines would project a small circle on a sphere, so correct
 				xang = math.atan(actual_x_cm_rel_center/r1) * 180/math.pi  # is the same as az_rel from diagram bc camera is level and perpendicular to the board
@@ -186,17 +185,17 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	# standardize the reference pixels:
 	# center, convert to positive values (RB quadrant in PhotoShop coordinate system), then orient landscape
-	ref_df['x_px'] = ref_df['x_px'] - self.center_px[0]
-	ref_df['y_px'] = ref_df['y_px'] - self.center_px[1]
+	ref_df['x_px'] = ref_df['x_px'] - center_px[0]
+	ref_df['y_px'] = ref_df['y_px'] - center_px[1]
 	if calibration_quadrant == 'LB':
 		ref_df['x_px'] = ref_df['x_px'] * -1
 		ref_df['y_px'] = ref_df['y_px'] * -1 * -1 # twice because y PSpx is (-) down
 		ref_df['xang'] = ref_df['xang'] * -1
 		ref_df['yang'] = ref_df['yang'] * -1
 	if calibration_orientation == 'portrait':
-		self.center_px = self.center_px[::-1]
-		self.cam_image_dimensions = self.cam_image_dimensions[::-1]
-		self.max_image_index = self.max_image_index[::-1]
+		center_px = center_px[::-1]
+		cam_image_dimensions = cam_image_dimensions[::-1]
+		max_image_index = max_image_index[::-1]
 		ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 		ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
 
@@ -204,22 +203,23 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	from sklearn.preprocessing import PolynomialFeatures
 	from sklearn.linear_model import LinearRegression
 
-	poly1 = PolynomialFeatures(degree=3, include_bias=False)
-	poly2 = PolynomialFeatures(degree=3, include_bias=False)
 
 	ref_df.to_csv(r'code output dump folder/ref df.csv')
 
-	independent_poly_px = pd.DataFrame(data=poly1.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly1.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
+	poly_px = PolynomialFeatures(degree=3, include_bias=False)
+	independent_poly_px = pd.DataFrame(data=poly_px.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly_px.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
 	xyangs_model = LinearRegression(fit_intercept=False)
 	xyangs_model.fit(independent_poly_px, ref_df[['xang', 'yang']])
 
-	independent_poly_xyangs = pd.DataFrame(data=poly2.fit_transform(ref_df[['xang', 'yang']]), columns=poly2.get_feature_names_out(ref_df[['xang', 'yang']].columns))
+	poly_xyangs = PolynomialFeatures(degree=3, include_bias=False)
+	independent_poly_xyangs = pd.DataFrame(data=poly_xyangs.fit_transform(ref_df[['xang', 'yang']]), columns=poly_xyangs.get_feature_names_out(ref_df[['xang', 'yang']].columns))
 	px_model = LinearRegression(fit_intercept=False)
 	px_model.fit(independent_poly_xyangs, ref_df[['x_px', 'y_px']])
 
+	print('stop here to check')
 	self.ref_df = ref_df
-	self.poly1 = poly1
-	self.poly2 = poly2
+	self.poly_px = poly_px
+	self.poly_xyangs = poly_xyangs
 	self.xyangs_model = xyangs_model
 	self.px_model = px_model
 
@@ -297,10 +297,10 @@ def represent_camera(self):
 		input = np.abs(input)
 		input = input.reshape(-1,2)
 		if direction == 'px_to_xyangs':
-			input_poly = self.poly1.fit_transform(input)
+			input_poly = self.poly_px.fit_transform(input)
 			output = self.xyangs_model.predict(input_poly).reshape(full_shape)
 		elif direction == 'xyangs_to_px':
-			input_poly = self.poly2.fit_transform(input)
+			input_poly = self.poly_xyangs.fit_transform(input)
 			output = self.px_model.predict(input_poly).reshape(full_shape)
 		output = np.multiply(output, output_sign)
 
