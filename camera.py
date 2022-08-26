@@ -199,12 +199,11 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 		ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
 
+	ref_df.to_csv(r'code output dump folder/ref df.csv')
+
 	# create the px to xyangs models
 	from sklearn.preprocessing import PolynomialFeatures
 	from sklearn.linear_model import LinearRegression
-
-
-	ref_df.to_csv(r'code output dump folder/ref df.csv')
 
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
 	independent_poly_px = pd.DataFrame(data=poly_px.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly_px.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
@@ -216,27 +215,32 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	px_model = LinearRegression(fit_intercept=False)
 	px_model.fit(independent_poly_xyangs, ref_df[['x_px', 'y_px']])
 
-	print('stop here to check')
-	self.ref_df = ref_df
-	self.poly_px = poly_px
-	self.poly_xyangs = poly_xyangs
-	self.xyangs_model = xyangs_model
-	self.px_model = px_model
+	cam_AWIMtag = awimlib.generate_empty_AWIMtag_dictionary(default_units=False)
 
-	px_LT = [0-self.center_px[0], self.center_px[1]]
-	px_RT = [self.center_px[0], self.center_px[1]]
-	px_LB = [0-self.center_px[0], 0-self.center_px[1]]
-	px_RB = [self.center_px[0], 0-self.center_px[1]]
-	self.px_corners = np.concatenate((px_LT, px_RT, px_LB, px_RB)).reshape(-1,2)
-	xyangs_LT, xyangs_RT, xyangs_LB, xyangs_RB = self.px_xyangs_models_convert(input=self.px_corners, direction='px_to_xyangs')
-	self.xyangs_corners = np.concatenate((xyangs_LT, xyangs_RT, xyangs_LB, xyangs_RB)).reshape(-1,2)
-	px_top = [0, self.center_px[1]]
-	px_right = [self.center_px[0], 0]
-	px_bottom = [0, 0-self.center_px[1]]
-	px_left = [0-self.center_px[0], 0]
-	self.px_edges = np.concatenate((px_top, px_right, px_bottom, px_left)).reshape(-1,2)
-	xyangs_top, xyangs_right, xyangs_bottom, xyangs_left = self.px_xyangs_models_convert(input=self.px_edges, direction='px_to_xyangs')
-	self.xyangs_edges = np.concatenate((xyangs_top, xyangs_right, xyangs_bottom, xyangs_left)).reshape(-1,2)
+	cam_AWIMtag['PixelMapType'] = AWIM_cal_type
+
+	xyangs_model_df = pd.DataFrame(xyangs_model.coef_, columns=xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
+	cam_AWIMtag['AngleModels'] = xyangs_model_df
+
+	px_model_df = pd.DataFrame(px_model.coef_, columns=px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+	cam_AWIMtag['PixelModels'] = px_model_df
+
+	filler_variable, cam_borders_pxs = awimlib.get_ref_px_and_borders(calibration_image_path, 'center, get from image')
+	cam_AWIMtag['BorderPixels'] = cam_borders_pxs
+
+	cam_borders_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_borders_pxs)
+	cam_AWIMtag['BorderAngles'] = cam_borders_angs
+
+	px_size_center, px_size_average = awimlib.get_pixel_sizes(calibration_image_path, cam_AWIMtag)
+	cam_AWIMtag['PixelSizeCenterHorizontalVertical'] = px_size_center
+	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = px_size_average
+	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
+
+	cam_AWIMtag_string = awimlib.stringify_tag(cam_AWIMtag)
+
+	print('stop here to check')
+
+	return cam_AWIMtag, cam_AWIMtag_string, image_with_full_exif_plus_AWIM
 
 
 def represent_camera(self):

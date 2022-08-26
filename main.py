@@ -97,8 +97,6 @@ def continue2():
         celestial_object_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
         azart_ref = actions.azart_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
 
-    awim_dictionary_in = current_camera.generate_xyang_pixel_models(current_image, image_capture_moment, img_latlng, center_ref, azart_ref, img_orientation, img_tilt)
-    
     awim_dictionary_str = ''
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'

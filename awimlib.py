@@ -193,7 +193,7 @@ def stringify_tag(AWIMtag_dictionary):
     for key, value in AWIMtag_dictionary.items():
         if isinstance(value, (list, tuple)):
             AWIMtag_dictionary_ofstrings[key] = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float)):
+        elif isinstance(value, (int, float)) or (value is None):
             AWIMtag_dictionary_ofstrings[key] = str(value)
         elif isinstance(value, pd.DataFrame):
             AWIMtag_dictionary_ofstrings[key] = value.to_csv(index_label='features')
@@ -213,7 +213,7 @@ def de_stringify_tag(AWIMtag_dictionary_string):
     for key, value in AWIMtag_dictionary_ofstrings.items():
         if value is None:
             AWIMtag_dictionary[key] = None
-        elif (key == 'PixelModels') or (key == 'AngleModels'):
+        elif (key == 'PixelModels') or (key == 'AngleModels'): # these two started as dataframes
             AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
         elif key == 'CaptureMoment':
             AWIMtag_dictionary[key] = value
