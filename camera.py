@@ -1,6 +1,7 @@
 import math
 import numpy as np
 import pandas as pd
+import os
 import PIL
 import pickle
 import awimlib
@@ -236,7 +237,19 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = px_size_average
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
+	# prepare to save and save
+	image_filename_tuple = os.path.splitext(os.path.basename(calibration_image_path))
+
 	cam_AWIMtag_string = awimlib.stringify_tag(cam_AWIMtag)
+	with open(r'AWIM tagged folder/' + image_filename_tuple[0] + '.txt', 'w') as f:
+		f.write(cam_AWIMtag_string)
+
+	calimg_exif_raw[37510] = 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
+	with open(r'AWIM tagged folder/' + image_filename_tuple[0] + ' - exif' + '.pickle', 'wb') as exif_pickle:
+		pickle.dump(calimg_exif_raw, exif_pickle, 5)
+
+	# is there a good way to save the image with the comment added in the exif? piexif?
+	# calibration_image.save(r'code output dump folder/' + filename_tuple[0], format = filename_tuple[1])
 
 	print('stop here to check')
 
