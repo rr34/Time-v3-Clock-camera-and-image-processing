@@ -66,11 +66,6 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 	return grid_rotation_error_degreesCCW
 
 
-# TODOnext convert this object into dictionary information from exif to match the image AWIM tag.
-# 1. load the calibration image itself with exif
-# 2. put the AWIM inside the comments on the calibration image exif
-# 3. convert all self.___ to dictionary entries.
-# 4. use appropriate functions already created
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
 	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image_path)
@@ -239,21 +234,25 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	# prepare to save and save
 	image_filename_tuple = os.path.splitext(os.path.basename(calibration_image_path))
+	image_ID = image_filename_tuple[0]
+	savepath = r'AWIM tagged folder/'
 
 	cam_AWIMtag_string = awimlib.stringify_tag(cam_AWIMtag)
-	with open(r'AWIM tagged folder/' + image_filename_tuple[0] + '.txt', 'w') as f:
-		f.write(cam_AWIMtag_string)
+	with open(savepath + image_ID + ' - cameraAWIMtag.txt', 'w') as f:
+		f.write(cam_AWIMtag_string.replace("',", "',\n"))
 
-	calimg_exif_raw[37510] = 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	with open(r'AWIM tagged folder/' + image_filename_tuple[0] + ' - exif' + '.pickle', 'wb') as exif_pickle:
+	if calimg_exif_raw.get(37510):
+		user_comments = calimg_exif_raw[37510]
+	else:
+		user_comments = ''
+	calimg_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
+	with open(savepath + image_ID + ' - exif with cameraAWIMtag.pickle', 'wb') as exif_pickle:
 		pickle.dump(calimg_exif_raw, exif_pickle, 5)
 
 	# is there a good way to save the image with the comment added in the exif? piexif?
 	# calibration_image.save(r'code output dump folder/' + filename_tuple[0], format = filename_tuple[1])
 
-	print('stop here to check')
-
-	return cam_AWIMtag, cam_AWIMtag_string, image_with_full_exif_plus_AWIM
+	return image_ID
 
 
 def represent_camera(self):

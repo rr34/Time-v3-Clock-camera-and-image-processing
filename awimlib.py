@@ -84,8 +84,8 @@ def get_exif(metadata_source_path):
                     GPS_dict_readable[GPSdecode] = img_exif[34853][GPSkey]
                 img_exif_readable[decode] = GPS_dict_readable
 
-        with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
-            pickle.dump(img_exif, exif_pickle, 5)
+        # with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
+        #     pickle.dump(img_exif, exif_pickle, 5)
 
         return img_exif, img_exif_readable
     else:
@@ -208,6 +208,9 @@ def stringify_tag(AWIMtag_dictionary):
 
 
 def de_stringify_tag(AWIMtag_dictionary_string):
+    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("AWIMstart", "")
+    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("AWIMend", "")
+    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("',\n", "',")
     AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
     AWIMtag_dictionary = {}
     for key, value in AWIMtag_dictionary_ofstrings.items():
