@@ -20,7 +20,7 @@ def generate_save_camera_AWIM():
     # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
     calibration_image = tkinter.filedialog.askopenfilename()
     calibration_file = tkinter.filedialog.askopenfilename()
-    image_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
+    camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
     
     print('pause here to check')
 

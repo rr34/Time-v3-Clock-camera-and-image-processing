@@ -24,14 +24,14 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['CaptureMoment'] = None
     AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
     AWIMtag_dictionary['CaptureMomentSource'] = None
-    AWIMtag_dictionary['PixelMapType'] = None
+    AWIMtag_dictionary['PixelAngleModelsType'] = None
     AWIMtag_dictionary['RefPixel'] = None
     AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
     AWIMtag_dictionary['RefPixelAzimuthArtifae'] = None
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = None
     AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees'
-    AWIMtag_dictionary['AngleModels'] = None
-    AWIMtag_dictionary['PixelModels'] = None
+    AWIMtag_dictionary['AnglesModel'] = None
+    AWIMtag_dictionary['PixelsModel'] = None
     AWIMtag_dictionary['BorderPixels'] = None
     AWIMtag_dictionary['BorderAngles'] = None
     AWIMtag_dictionary['BordersAzimuthArtifae'] = None
@@ -216,7 +216,7 @@ def de_stringify_tag(AWIMtag_dictionary_string):
     for key, value in AWIMtag_dictionary_ofstrings.items():
         if value is None:
             AWIMtag_dictionary[key] = None
-        elif (key == 'PixelModels') or (key == 'AngleModels'): # these two started as dataframes
+        elif (key == 'PixelsModel') or (key == 'AnglesModel'): # these two started as dataframes
             AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
         elif key == 'CaptureMoment':
             AWIMtag_dictionary[key] = value
@@ -242,7 +242,7 @@ def pxs_to_xyangs(AWIMtag_dictionary, pxs):
 
     pxs = np.abs(pxs).reshape(-1,2)
 
-    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['PixelAngleModelsType'] == '3d_degree_poly_fit_abs_from_center':
         pxs_poly = np.zeros((pxs.shape[0], 9))
         pxs_poly[:,0] = pxs[:,0]
         pxs_poly[:,1] = pxs[:,1]
@@ -254,8 +254,8 @@ def pxs_to_xyangs(AWIMtag_dictionary, pxs):
         pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
         pxs_poly[:,8] = np.power(pxs[:,1], 3)
 
-    xang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['xang_predict']].values[0]
-    yang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['yang_predict']].values[0]
+    xang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['xang_predict']].values[0]
+    yang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['yang_predict']].values[0]
 
     xyangs = np.zeros(pxs.shape)
     xyangs[:,0] = np.dot(pxs_poly, xang_predict_coeff)
@@ -359,7 +359,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
     xy_angs_direction = np.where(xy_angs < 0, -1, 1)
     xy_angs_abs = np.abs(xy_angs)
 
-    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['PixelAngleModelsType'] == '3d_degree_poly_fit_abs_from_center':
         xy_angs_poly = np.zeros((xy_angs.shape[0], 9))
         xy_angs_poly[:,0] = xy_angs_abs[:,0]
         xy_angs_poly[:,1] = xy_angs_abs[:,1]
@@ -372,7 +372,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
         xy_angs_poly[:,8] = np.power(xy_angs_abs[:,1], 3)
 
     pxs = np.zeros(input_shape)
-    px_models_df = AWIMtag_dictionary['PixelModels']
+    px_models_df = AWIMtag_dictionary['PixelsModel']
     x_px_predict_coeff = px_models_df['']
     pxs[:,0] = np.dot(xy_angs_poly, self.x_px_predict_coeff)
     pxs[:,1] = np.dot(xy_angs_poly, self.y_px_predict_coeff)
@@ -479,9 +479,9 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
 
     pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
                                                     (source_image_path, img_orientation, img_tilt)
-    AWIMtag_dictionary['PixelMapType'] = pixel_map_type
-    AWIMtag_dictionary['AngleModels'] = xyangs_model_df
-    AWIMtag_dictionary['PixelModels'] = px_model_df
+    AWIMtag_dictionary['PixelAngleModelsType'] = pixel_map_type
+    AWIMtag_dictionary['AnglesModel'] = xyangs_model_df
+    AWIMtag_dictionary['PixelsModel'] = px_model_df
     
     ref_px, img_borders_pxs = get_ref_px_and_borders(source_image_path, AWIMtag_dictionary['RefPixel'])
     AWIMtag_dictionary['RefPixel'] = [round(f, pixel_digits) for f in ref_px]
@@ -514,3 +514,12 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     AWIMtag_dictionary_string = stringify_tag(AWIMtag_dictionary)
 
     return AWIMtag_dictionary, AWIMtag_dictionary_string
+
+
+# put the AWIMtag in the comment field of the image exif and re-attach the exif to the image
+def add_AWIMtag_to_exif():
+	if img_exif_raw.get(37510):
+		user_comments = img_exif_raw[37510]
+	else:
+		user_comments = ''
+	img_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'

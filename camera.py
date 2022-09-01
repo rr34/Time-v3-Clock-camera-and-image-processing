@@ -213,13 +213,13 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	cam_AWIMtag = awimlib.generate_empty_AWIMtag_dictionary(default_units=False)
 
-	cam_AWIMtag['PixelMapType'] = AWIM_cal_type
+	cam_AWIMtag['PixelAngleModelsType'] = AWIM_cal_type
 
 	xyangs_model_df = pd.DataFrame(xyangs_model.coef_, columns=xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-	cam_AWIMtag['AngleModels'] = xyangs_model_df
+	cam_AWIMtag['AnglesModel'] = xyangs_model_df
 
 	px_model_df = pd.DataFrame(px_model.coef_, columns=px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-	cam_AWIMtag['PixelModels'] = px_model_df
+	cam_AWIMtag['PixelsModel'] = px_model_df
 
 	filler_variable, cam_borders_pxs = awimlib.get_ref_px_and_borders(calibration_image_path, 'center, get from image')
 	cam_AWIMtag['BorderPixels'] = cam_borders_pxs
@@ -233,12 +233,25 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
 	# prepare to save and save
-	image_filename_tuple = os.path.splitext(os.path.basename(calibration_image_path))
-	image_ID = image_filename_tuple[0]
 	savepath = r'AWIM tagged folder/'
+	cam_ID = ''
+	if calimg_exif_readable.get('Make'):
+		cam_ID += calimg_exif_readable['Make']
+	if calimg_exif_readable.get('Model'):
+		if cam_ID != '':
+			cam_ID += ' - '
+		cam_ID += calimg_exif_readable['Model']
+	if calimg_exif_readable.get('LensModel'):
+		if cam_ID != '':
+			cam_ID += ' - '
+		cam_ID += calimg_exif_readable['LensModel']
+	if calimg_exif_readable.get('FocalLength'):
+		if cam_ID != '':
+			cam_ID += ' - '
+		cam_ID += str(calimg_exif_readable['FocalLength'])
 
 	cam_AWIMtag_string = awimlib.stringify_tag(cam_AWIMtag)
-	with open(savepath + image_ID + ' - cameraAWIMtag.txt', 'w') as f:
+	with open(savepath + cam_ID + ' - cameraAWIMtag.txt', 'w') as f:
 		f.write(cam_AWIMtag_string.replace("',", "',\n"))
 
 	if calimg_exif_raw.get(37510):
@@ -246,13 +259,15 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	else:
 		user_comments = ''
 	calimg_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	with open(savepath + image_ID + ' - exif with cameraAWIMtag.pickle', 'wb') as exif_pickle:
+	with open(savepath + cam_ID + ' - exif with cameraAWIMtag.pickle', 'wb') as exif_pickle:
 		pickle.dump(calimg_exif_raw, exif_pickle, 5)
+
+	# TODO save a text file of the readable exif just for usability
 
 	# is there a good way to save the image with the comment added in the exif? piexif?
 	# calibration_image.save(r'code output dump folder/' + filename_tuple[0], format = filename_tuple[1])
 
-	return image_ID
+	return cam_ID
 
 
 def represent_camera(self):

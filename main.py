@@ -11,6 +11,9 @@ global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_captur
 
 
 def load_camera():
+    # TODOnext: start here and load just the text file of just the AWIMtag
+    # maybe before starting, write exif_reader function to help deal with the various exif info images and cal images will have
+    # maybe modify get_exif and stringify___ functions? exif should be very readable and transparent to user
     global current_camera
     camera_filename = tkinter.filedialog.askopenfilename()
 
@@ -38,7 +41,7 @@ def process_image():
     AWIMtag_dictionary['LocationAGL'] = 1.7
     AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
     AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
-    AWIMtag_dictionary['PixelMapType'] = 'get from camera AWIM'
+    AWIMtag_dictionary['PixelAngleModelsType'] = 'get from camera AWIM'
     AWIMtag_dictionary['RefPixel'] = 'center, get from image'
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = 'from known px'
     elevation_at_Location = False
