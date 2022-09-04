@@ -68,7 +68,7 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
-	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image_path)
+	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image_path, save_exif_text_file=True)
 	cal_df = pd.read_csv(calibration_file_path)
 	calibration_image = PIL.Image.open(calibration_image_path)
 
@@ -250,7 +250,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 			cam_ID += ' - '
 		cam_ID += str(calimg_exif_readable['FocalLength'])
 
-	cam_AWIMtag_string = awimlib.stringify_tag(cam_AWIMtag)
+	cam_AWIMtag_string = awimlib.format_dictionary(cam_AWIMtag, 'string')
 	with open(savepath + cam_ID + ' - cameraAWIMtag.txt', 'w') as f:
 		f.write(cam_AWIMtag_string.replace("',", "',\n"))
 
