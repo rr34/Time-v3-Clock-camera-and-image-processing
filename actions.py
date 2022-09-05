@@ -22,14 +22,6 @@ def generate_save_camera_AWIM():
     calibration_file = tkinter.filedialog.askopenfilename()
     camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
     
-    print('pause here to check')
-
-    # save to a pickle .awim_camera_aim_pkl
-    this_camera_filename = str(this_camera.camera_name) + ' - lens ' + str(this_camera.lens_name) + ' - zoom ' + str(this_camera.zoom_factor) + '.awim'
-    camera_aim_pickle = open(this_camera_filename, 'wb')
-    pickle.dump(this_camera, camera_aim_pickle, 5)
-    camera_aim_pickle.close()
-
 
 def display_camera_AWIM_object():
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions

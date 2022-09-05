@@ -9,10 +9,7 @@ import actions, awimlib
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
-# TODOnext: start here and load just the text file of just the AWIMtag
-# maybe before starting, write exif_reader function to help deal with the various exif info images and cal images will have
-# maybe modify get_exif and stringify___ functions? exif should be very readable and transparent to user
-# good AWIM action function
+# TODOnext: start here and load just pickle of the exif of the calibration file with AWIMtag
 def process_image():
     camera_filename = tkinter.filedialog.askopenfilename()
     with open(camera_filename) as f:
@@ -28,7 +25,6 @@ def process_image():
     metadata_source_path = source_image_path
     current_image_str.set(source_image_path)
     camera_AWIM = current_camera
-    print('stop here to check')
     AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
     AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
     AWIMtag_dictionary['LocationAltitude'] = 266.7

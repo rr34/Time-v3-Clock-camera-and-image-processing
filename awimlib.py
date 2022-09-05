@@ -66,6 +66,33 @@ def format_datetime(input_datetime_UTC, direction):
     return output
 
 
+def format_exif_values(exif_value):
+    if isinstance(exif_value, PIL.TiffImagePlugin.IFDRational):
+        if exif_value.denominator != 0:
+            value_readable = exif_value.numerator / exif_value.denominator
+        else:
+            value_readable = float('nan')
+    elif isinstance(exif_value, bytes):
+        try:
+            value_readable = exif_value.decode()
+            if not value_readable.isprintable():
+                value_readable = ''.join([str(ord(x))[1:] for x in value_readable])
+        except (UnicodeDecodeError, AttributeError):
+            print('something unexpected happened look here')
+    elif isinstance(exif_value, str) and not exif_value.isprintable():
+        value_readable = ''
+        string_list = exif_value.split()
+        for element in exif_value:
+            if element.isprintable():
+                value_readable += element
+            else:
+                pass
+    else:
+        value_readable = exif_value
+
+    return value_readable
+
+
 def get_exif(metadata_source_path, save_exif_text_file=False):
     metadata_src_type = os.path.splitext(metadata_source_path)[-1]
     current_image = PIL.Image.open(metadata_source_path)
@@ -74,22 +101,20 @@ def get_exif(metadata_source_path, save_exif_text_file=False):
     if img_exif:
         img_exif_readable = {}
         for key, value in img_exif.items():
-            decode = TAGS.get(key,key)
+            key_decoded = TAGS.get(key,key)
             if key != 34853:
-                img_exif_readable[decode] = value
+                value_readable = format_exif_values(value)
+                img_exif_readable[key_decoded] = value_readable
             else:
                 GPS_dict_readable = {}
                 for GPSkey, GPSvalue in value.items():
-                    GPSdecode = GPSTAGS.get(GPSkey,GPSkey)
-                    GPS_dict_readable[GPSdecode] = GPSvalue
-                img_exif_readable[decode] = GPS_dict_readable
-
-        # with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
-        #     pickle.dump(img_exif, exif_pickle, 5)
+                    GPSkey_decoded = GPSTAGS.get(GPSkey,GPSkey)
+                    GPSvalue_readable = format_exif_values(GPSvalue)
+                    GPS_dict_readable[GPSkey_decoded] = GPSvalue_readable
+                img_exif_readable[key_decoded] = GPS_dict_readable
 
         if save_exif_text_file:
-            img_exif_readable_str = format_dictionary(img_exif_readable, 'string')
-            img_exif_readable_str = img_exif_readable_str.replace("',", "',\n")
+            img_exif_readable_str = stringify_dictionary(img_exif_readable, 'txtfile')
             savename = os.path.splitext(metadata_source_path)[0]
             with open(savename + ' - exif_readable.txt', 'w') as f:
                 f.write(img_exif_readable_str)
@@ -195,27 +220,24 @@ def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Lo
     return LocationAGL
 
 
-def format_dictionary(any_dictionary, output_type):
-    any_dictionary_ofstrings = {}
-    any_dictionary_asstring = ''
+# output types: 1. 'string' is with new lines 2. 'dictionary' is comma-separated
+def stringify_dictionary(any_dictionary, output_type):
+    dictionary_ofstrings = {}
+    dictionary_string_txtfile = ''
 
     for key, value in any_dictionary.items():
-        print(type(value))
         if isinstance(value, (list, tuple)):
             value_string = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float)) or (value is None):
+        elif isinstance(value, (int, float, np.ndarray)) or (value is None):
             value_string = str(value)
         elif isinstance(value, pd.DataFrame):
             value_string = value.to_csv(index_label='features')
         elif isinstance(value, dict):
-            value_string = format_dictionary(value, output_type)
+            value_string = stringify_dictionary(value, output_type)
         elif isinstance(value, str):
             value_string = value
         elif isinstance(value, bytes):
-            try:
-                value_string = str(value.decode())
-            except (UnicodeDecodeError, AttributeError):
-                pass
+            value_string = format_exif_values(value)
         elif isinstance(value, PIL.TiffImagePlugin.IFDRational):
             if value.denominator != 0:
                 value_string = str(value.numerator / value.denominator)
@@ -224,17 +246,20 @@ def format_dictionary(any_dictionary, output_type):
         else:
             value_string = 'unexpected data type'
 
-        if output_type == 'dictionary as text':
-            any_dictionary_ofstrings[key] = value_string
-        elif output_type == 'string':
-            value_string = value_string.replace("\\", "") # TODO doesn't work for some reason
-            value_string = key + ': ' + value_string + '\n'
-            any_dictionary_asstring += value_string
+        if not isinstance(key, str):
+            key = str(key)
 
-    if output_type == 'dictionary as text':
-        return str(any_dictionary_ofstrings)
-    elif output_type == 'string':
-        return any_dictionary_asstring
+        dictionary_ofstrings[key] = value_string
+
+        value_string = key + ': ' + value_string + '\n'
+        dictionary_string_txtfile += value_string
+
+    dictionary_ofstrings_str = str(dictionary_ofstrings)
+
+    if output_type == 'dictionary':
+        return dictionary_ofstrings_str
+    elif output_type == 'txtfile':
+        return dictionary_string_txtfile
 
 
 def de_stringify_tag(AWIMtag_dictionary_string):
@@ -540,7 +565,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [round(f, pixel_digits) for f in px_size_center]
     AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [round(f, pixel_digits) for f in px_size_average]
 
-    AWIMtag_dictionary_string = format_dictionary(AWIMtag_dictionary, 'dictionary as text')
+    AWIMtag_dictionary_string = stringify_dictionary(AWIMtag_dictionary, 'dictionary')
 
     return AWIMtag_dictionary, AWIMtag_dictionary_string
 
