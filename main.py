@@ -9,14 +9,13 @@ import actions, awimlib
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
-# TODOnext: start here and load just pickle of the exif of the calibration file with AWIMtag
 def process_image():
     camera_filename = tkinter.filedialog.askopenfilename()
-    with open(camera_filename) as f:
-        current_camera = f.read()
+    with open(camera_filename, 'rb') as exif_pickle:
+        current_camera = pickle.load(exif_pickle)
+# TODOnext: start here and unpack the AWIMtag from the exif dictionary
 
     current_camera_str.set(camera_filename)
-
 
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 

@@ -254,16 +254,16 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	with open(savepath + cam_ID + ' - cameraAWIMtag readable.txt', 'w') as f:
 		f.write(cam_AWIMtag_string_txtfile)
 
-	if calimg_exif_raw.get(37510):
-		user_comments = calimg_exif_raw[37510]
+	if calimg_exif_readable.get('UserComment'):
+		user_comment = calimg_exif_raw['UserComment']
 	else:
-		user_comments = ''
+		user_comment = ''
 	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag, 'dictionary')
 	with open(savepath + cam_ID + ' - cameraAWIMtag.txt', 'w') as f:
 		f.write(cam_AWIMtag_string)
-	calimg_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
+	calimg_exif_readable['UserComment'] = user_comment + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
 	with open(savepath + cam_ID + ' - exif with cameraAWIMtag.pickle', 'wb') as exif_pickle:
-		pickle.dump(calimg_exif_raw, exif_pickle, 5)
+		pickle.dump(calimg_exif_readable, exif_pickle, 5)
 
 	# is there a good way to save the image with the comment added in the exif? piexif?
 	# calibration_image.save(r'code output dump folder/' + filename_tuple[0], format = filename_tuple[1])
