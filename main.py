@@ -44,7 +44,7 @@ def process_image():
     AWIMtag_dictionary, AWIMtag_dictionary_string = awimlib.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
             elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
 
-    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+    with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
         f.write(AWIMtag_dictionary_string)
 
 
@@ -94,7 +94,7 @@ def continue2():
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
     output2_str.set('Center AzArt: ' + str(awim_dictionary_in['Center AzArt']) + '\nsee file code output dump/image awim data.txt for full AWIM tag')
-    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+    with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
         f.write(awim_dictionary_str)
 
 

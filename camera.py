@@ -175,7 +175,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 				cal_df.loc[row[0], 'xang'] = xyangs[0]
 				cal_df.loc[row[0], 'yang'] = xyangs[1]
 
-	cal_df.to_csv(r'code output dump folder/cal output.csv')
+	cal_df.to_csv(r'code-output-dump-folder/cal output.csv')
 	ref_df_filter = pd.notnull(cal_df['x_px'])
 	ref_df = pd.DataFrame(cal_df[ref_df_filter][['x_px', 'y_px', 'xang', 'yang']])
 
@@ -195,7 +195,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 		ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
 
-	ref_df.to_csv(r'code output dump folder/ref df.csv')
+	ref_df.to_csv(r'code-output-dump-folder/ref df.csv')
 
 	# create the px to xyangs models
 	from sklearn.preprocessing import PolynomialFeatures
@@ -266,7 +266,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		pickle.dump(calimg_exif_readable, exif_pickle, 5)
 
 	# is there a good way to save the image with the comment added in the exif? piexif?
-	# calibration_image.save(r'code output dump folder/' + filename_tuple[0], format = filename_tuple[1])
+	# calibration_image.save(r'code-output-dump-folder/' + filename_tuple[0], format = filename_tuple[1])
 
 	return cam_ID
 
@@ -286,7 +286,7 @@ def represent_camera(self):
 	camera_str += '\nDegrees per hundred pixels vertical, avg full image: %.2f' % (100 * (2*self.xyangs_edges[0,1]) / self.cam_image_dimensions[1])
 	
 	print(camera_str)
-	with open(r'code output dump folder/camera awim data.txt', 'w') as f:
+	with open(r'code-output-dump-folder/camera awim data.txt', 'w') as f:
 		f.write(camera_str)
 
 
