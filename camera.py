@@ -88,6 +88,11 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		cam_image_dimensions = cam_image_dimensions[::-1]
 		max_image_index = max_image_index[::-1]
 
+	# first for loop: iterate through each calculate_and_record row to determine calibration grid position, correct for errors
+	# adjustment 1: the target will be slightly off the center pixel usually.
+	# adjustment 2: the grid will be rotated slightly usually. What does the vertical line say the rotation error is?
+	# adjustment 3: the grid will be rotated slightly usually. What does the horizontal line say the rotation error is?
+	# That's it. Just center and rotate the grid then move on to record the reference points with adjustments.
 	for row in cal_df[cal_df['type'] == 'calculate_and_record'].iterrows():
 		row_xycm = [float(row[1]['x_cm']), float(row[1]['y_cm'])]
 		target_pos_px = cal_df[cal_df['misc']=='target_center'][['x_rec', 'y_rec']].values[0]
@@ -123,7 +128,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 			cal_df.loc[row[0], 'out1'] = average_rotation_error_degCCW
 
 
-	# second for loop: each reference point represented by a "ref_point" row
+	# second for loop: iterate through each reference point, each represented by a "ref_point" row
 	# ref point case 1: record the center as a reference point bc defining as original xyangs = [0,0]
 	# ref point case 2: like crosshairs case 2, on xcm axis (vertical)
 	# ref point case 3: like crosshairs case 3. on ycm axis (horizontal)
@@ -233,7 +238,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
 	# prepare to save and save
-	savepath = r'AWIM tagged folder/'
+	savepath = os.path.dirname(calibration_image_path) + r'/'
 	cam_ID = ''
 	if calimg_exif_readable.get('Make'):
 		cam_ID += calimg_exif_readable['Make']
@@ -259,10 +264,8 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	else:
 		user_comment = ''
 	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag, 'dictionary')
-	with open(savepath + cam_ID + ' - cameraAWIMtag.txt', 'w') as f:
-		f.write(cam_AWIMtag_string)
 	calimg_exif_readable['UserComment'] = user_comment + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	with open(savepath + cam_ID + ' - exif with cameraAWIMtag.pickle', 'wb') as exif_pickle:
+	with open(savepath + cam_ID + ' - exif plus cameraAWIMtag.pickle', 'wb') as exif_pickle:
 		pickle.dump(calimg_exif_readable, exif_pickle, 5)
 
 	# is there a good way to save the image with the comment added in the exif? piexif?
