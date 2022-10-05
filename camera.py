@@ -239,12 +239,14 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	# prepare to save and save
 	savepath = os.path.dirname(calibration_image_path) + r'/'
-	cam_ID = ''
+	cam_ID = os.path.splitext(os.path.basename(calibration_image_path))[0]
 	if calimg_exif_readable.get('Make'):
+		if cam_ID != '':
+			cam_ID += ' - '
 		cam_ID += calimg_exif_readable['Make']
 	if calimg_exif_readable.get('Model'):
 		if cam_ID != '':
-			cam_ID += ' - '
+			cam_ID += ' '
 		cam_ID += calimg_exif_readable['Model']
 	if calimg_exif_readable.get('LensModel'):
 		if cam_ID != '':
@@ -252,8 +254,8 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		cam_ID += calimg_exif_readable['LensModel']
 	if calimg_exif_readable.get('FocalLength'):
 		if cam_ID != '':
-			cam_ID += ' - '
-		cam_ID += str(calimg_exif_readable['FocalLength'])
+			cam_ID += ' at '
+		cam_ID += str(calimg_exif_readable['FocalLength']) + 'mm'
 
 	cam_AWIMtag_string_txtfile = awimlib.stringify_dictionary(cam_AWIMtag, 'txtfile')
 	with open(savepath + cam_ID + ' - cameraAWIMtag readable.txt', 'w') as f:
