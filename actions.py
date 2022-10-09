@@ -23,7 +23,7 @@ def generate_save_camera_AWIM():
     camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
     
 
-def display_camera_AWIM_object():
+def display_camera_lens_shape(awim_dictionary):
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
     this_camera_filename = tkinter.filedialog.askopenfilename()
     camera_aim_pickle = open(this_camera_filename, 'rb')

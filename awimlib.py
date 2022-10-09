@@ -12,54 +12,63 @@ import astropytools
 
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Location'] = None
-    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude to 6 decimal places, ~11cm'
-    AWIMtag_dictionary['LocationSource'] = None
-    AWIMtag_dictionary['LocationAltitude'] = None
-    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-    AWIMtag_dictionary['LocationAltitudeSource'] = None
-    AWIMtag_dictionary['LocationAGL'] = None
-    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
-    AWIMtag_dictionary['LocationAGLSource'] = None
-    AWIMtag_dictionary['CaptureMoment'] = None
+    AWIMtag_dictionary['Location'] = [-999.9, -999.9]
+    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude; to 6 decimal places, ~11cm'
+    AWIMtag_dictionary['LocationSource'] = ''
+    AWIMtag_dictionary['LocationAltitude'] = -999.9
+    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level; to 1 decimal place, 10cm'
+    AWIMtag_dictionary['LocationAltitudeSource'] = ''
+    AWIMtag_dictionary['LocationAGL'] = -999.9
+    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level; to 2 decimal places, 1cm'
+    AWIMtag_dictionary['LocationAGLSource'] = ''
+    AWIMtag_dictionary['CaptureMoment'] = np.datetime64(-1970, 'Y')
     AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
-    AWIMtag_dictionary['CaptureMomentSource'] = None
-    AWIMtag_dictionary['PixelAngleModelsType'] = None
-    AWIMtag_dictionary['RefPixel'] = None
-    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
-    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = None
-    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = None
-    AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees'
-    AWIMtag_dictionary['AnglesModel'] = None
-    AWIMtag_dictionary['PixelsModel'] = None
-    AWIMtag_dictionary['BorderPixels'] = None
-    AWIMtag_dictionary['BorderAngles'] = None
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = None
-    AWIMtag_dictionary['BordersRADec'] = None
-    AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch'
-    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = None
-    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = None
-    AWIMtag_dictionary['PixelSizeUnit'] = 'Pixels per Degree'
+    AWIMtag_dictionary['CaptureMomentSource'] = ''
+    AWIMtag_dictionary['PixelAngleModelsType'] = ''
+    AWIMtag_dictionary['RefPixel'] = [-999.9, -999.9]
+    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard; to 1 decimal; to tenth of a pixel'
+    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = [-999.9, -999.9]
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ''
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees; to hundredth of a degree'
+    AWIMtag_dictionary['AnglesModel'] = 'csv'
+    AWIMtag_dictionary['PixelsModel'] = 'csv'
+    AWIMtag_dictionary['BorderPixels'] = np.zeros((3,6))
+    AWIMtag_dictionary['BorderAngles'] = np.zeros((3,6))
+    AWIMtag_dictionary['BordersAzimuthArtifae'] = np.zeros((3,6))
+    AWIMtag_dictionary['BordersRADec'] = np.zeros((3,6))
+    AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
+    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['PixelSizeUnit'] = 'Pixels per Degree; to tenth of a pixel'
 
     if not default_units:
-        for key in AWIMtag_dictionary:
-            AWIMtag_dictionary[key] = None
+        AWIMtag_dictionary['LocationUnit'] = ''
+        AWIMtag_dictionary['LocationAltitudeUnit'] = ''
+        AWIMtag_dictionary['LocationAGLUnit'] = ''
+        AWIMtag_dictionary['CaptureMomentUnit'] = ''
+        AWIMtag_dictionary['RefPixelCoordType'] = ''
+        AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = ''
+        AWIMtag_dictionary['RADecUnit'] = ''
+        AWIMtag_dictionary['PixelSizeUnit'] = ''
 
     return AWIMtag_dictionary
 
 
+# numpy datetime64 is International Atomic Time (TAI), not UTC, so it ignores leap seconds.
+# numpy datetime64 uses astronomical year numbering, i.e. year 2BC = year -1, 1BC = year 0, 1AD = year 1
 def format_datetime(input_datetime_UTC, direction):
-    datetime_format = "%Y:%m:%d %H:%M:%S" # directly from exif documentation
+    exif_datetime_format = "%Y:%m:%d %H:%M:%S" # directly from exif documentation
+    numpy_datetime_format = "%Y-%m-%dT%H:%M:%S" # from numpy documentation
+    readable_datetime_format = "%Y-%m-%d %H:%M:%S" # my opinion
     
-    if direction == 'to string':
+    if direction == 'to string for exif':
         if isinstance(input_datetime_UTC, datetime.datetime):
-            output = input_datetime_UTC.strftime(datetime_format)
+            output = input_datetime_UTC.strftime(exif_datetime_format)
         elif isinstance(input_datetime_UTC, np.datetime64):
             pass # TODO convert the format to datetime_format, necessary?
 
     elif direction == 'from string':
-        datetime_object = datetime.datetime.strptime(input_datetime_UTC, datetime_format)
-        numpy_datetime_format = "%Y-%m-%dT%H:%M:%S" # from numpy documentation
+        datetime_object = datetime.datetime.strptime(input_datetime_UTC, exif_datetime_format)
         datetime_string_for_numpy = datetime.datetime.strftime(datetime_object, numpy_datetime_format)
         output = np.datetime64(datetime_string_for_numpy)
 
@@ -187,7 +196,7 @@ def UTC_from_exif(exif_readable, tz_default):
             UTC_source = 'exif DateTimeOriginal adjusted with user-entered timezone'
 
     if exif_UTC:
-        UTC_datetime_str = format_datetime(exif_UTC, 'to string')
+        UTC_datetime_str = format_datetime(exif_UTC, 'to string for exif')
 
     return UTC_datetime_str, UTC_source
 
@@ -228,8 +237,10 @@ def stringify_dictionary(any_dictionary, output_type):
     for key, value in any_dictionary.items():
         if isinstance(value, (list, tuple)):
             value_string = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float, np.ndarray)) or (value is None):
+        elif isinstance(value, (int, float)) or (value is None):
             value_string = str(value)
+        elif isinstance(value, np.ndarray):
+            value_string = '\n' + str(value)
         elif isinstance(value, pd.DataFrame):
             value_string = value.to_csv(index_label='features')
         elif isinstance(value, dict):
@@ -268,18 +279,19 @@ def de_stringify_tag(AWIMtag_dictionary_string):
     AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("',\n", "',")
     AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
     AWIMtag_dictionary = {}
+    AWIMtag_template = generate_empty_AWIMtag_dictionary()
     for key, value in AWIMtag_dictionary_ofstrings.items():
-        if value is None:
+        if value is None or value == '':
             AWIMtag_dictionary[key] = None
-        elif (key == 'PixelsModel') or (key == 'AnglesModel'): # these two started as dataframes
+        elif AWIMtag_template[key] == 'csv':
             AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
-        elif key == 'CaptureMoment':
-            AWIMtag_dictionary[key] = value
-        elif (',' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a list
+        elif isinstance(AWIMtag_template[key], np.datetime64):
+            AWIMtag_dictionary[key] = format_datetime(value, 'from string')
+        elif isinstance(AWIMtag_template[key], np.ndarray):
+            AWIMtag_dictionary[key] = np.array(value)
+        elif isinstance(AWIMtag_template[key], list):
             AWIMtag_dictionary[key] = [float(list_value) for list_value in value.split(',')]
-        elif (',' not in value) and ('.' not in value) and not (re.search('[a-zA-Z]', value)): # evaluate as an int
-            AWIMtag_dictionary[key] = int(value)
-        elif (',' not in value) and ('.' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a float
+        elif isinstance(AWIMtag_template[key], float):
             AWIMtag_dictionary[key] = float(value)
         else:
             AWIMtag_dictionary[key] = value

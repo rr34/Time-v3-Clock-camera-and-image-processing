@@ -194,6 +194,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 + jpg > jpg: if exif won't let me use an unused ID, then put it under user comments ID 37510
 - Note: the LightRoom / (PS also?) lens aberration database could be used to convert linear approximations to actual camera models.
 - **ArtAz** and artifae update name.
+- correctly identify TAI time vs UTC time. What does astropy use? I think TAI.
 
 # 21 June to do
 - store camera info as a dictionary rather than as an object. Use the exif from the cal images rather than the user calibration file.

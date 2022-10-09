@@ -295,7 +295,7 @@ def represent_camera(self):
 		f.write(camera_str)
 
 
-	# TODOnext once converted to a dictionary, this is what the result still needs to be able to do
+	# TODOnext2 once converted to a dictionary, this is what the result still needs to be able to do
 	# generate awim data in form of a single dictionary for embedding in any image file
 	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
 		source_image = Image.open(src_img_path)

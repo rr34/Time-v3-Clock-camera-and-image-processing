@@ -13,10 +13,14 @@ def process_image():
     camera_filename = tkinter.filedialog.askopenfilename()
     with open(camera_filename, 'rb') as exif_pickle:
         current_camera = pickle.load(exif_pickle)
-# TODOnext: start here and unpack the AWIMtag from the exif dictionary
 
     current_camera_str.set(camera_filename)
 
+    cameraAWIMtag = current_camera['UserComment']
+
+    # TODOnext1: 1. label the files I'm opening in tkinter 2. label the functions that currently work by stepping through with F11. de-stringify the tag using an empty "type" AWIMtag dictionary as example.
+    cameraAWIMdictionary = awimlib.de_stringify_tag(cameraAWIMtag)
+    
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
     # user inputs etc.
@@ -128,7 +132,7 @@ file_menu.add_command(label='Exit', command=AWIMtkapp.quit)
 
 camera_menu = tkinter.Menu(menu_bar, tearoff=0)
 camera_menu.add_command(label='Generate camera AWIM file from calibration CSV', command=actions.generate_save_camera_AWIM)
-camera_menu.add_command(label='Display camera AWIM object file', command=actions.display_camera_AWIM_object)
+camera_menu.add_command(label='Display camera AWIM object file', command=actions.display_camera_lens_shape)
 camera_menu.add_command(label='TODO Calibrate camera from calibration images', command=actions.do_nothing)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
