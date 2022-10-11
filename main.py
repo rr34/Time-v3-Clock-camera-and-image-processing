@@ -9,16 +9,14 @@ import actions, awimlib
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
-def process_image():
-    camera_filename = tkinter.filedialog.askopenfilename()
+def tag_image_with_AWIM():
+    camera_filename = tkinter.filedialog.askopenfilename(title='open camera pickle')
     with open(camera_filename, 'rb') as exif_pickle:
         current_camera = pickle.load(exif_pickle)
 
-    current_camera_str.set(camera_filename)
-
     cameraAWIMtag = current_camera['UserComment']
 
-    # TODOnext1: 1. label the files I'm opening in tkinter 2. label the functions that currently work by stepping through with F11. de-stringify the tag using an empty "type" AWIMtag dictionary as example.
+    # TODOnext1: de-stringify the tag using an empty "type" AWIMtag dictionary as example.
     cameraAWIMdictionary = awimlib.de_stringify_tag(cameraAWIMtag)
     
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
@@ -52,7 +50,7 @@ def process_image():
         f.write(AWIMtag_dictionary_string)
 
 
-def continue1():
+def user_input1():
     if azart_source_var.get() == 'Pixel x,y of sun':
         entry4_label_str.set('Enter pixel x,y of sun')
         entry5_label_str.set('NR')
@@ -64,7 +62,7 @@ def continue1():
         entry5_label_str.set('NR')
 
 
-def continue2():
+def user_input2():
     global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
@@ -125,7 +123,7 @@ menu_bar = tkinter.Menu(AWIMtkapp)
 
 file_menu = tkinter.Menu(menu_bar, tearoff=0)
 file_menu.add_command(label='X Load Camera', command=actions.do_nothing)
-file_menu.add_command(label='Process Image', command=process_image)
+file_menu.add_command(label='Process Image', command=tag_image_with_AWIM)
 file_menu.add_command(label='Save', command=actions.do_nothing)
 file_menu.add_separator()
 file_menu.add_command(label='Exit', command=AWIMtkapp.quit)
@@ -191,7 +189,7 @@ azart_source_var.set('Pixel x,y of sun')
 azart_source_menu = tkinter.OptionMenu(AWIMtkapp, azart_source_var, 'Pixel x,y of sun', 'Pixel x,y on horizon, with known azimuth to pixel', 'Manual Az,Art')
 azart_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
-continue_button = tkinter.Button(AWIMtkapp, text='Continue', command=continue1)
+continue_button = tkinter.Button(AWIMtkapp, text='Continue', command=user_input1)
 continue_button.grid(row=7, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
 entry4_label_str = tkinter.StringVar()
@@ -208,7 +206,7 @@ entry5 = tkinter.Entry(AWIMtkapp)
 entry5_label.grid(row=9, column=0, ipadx=column_width)
 entry5.grid(row=9, column=1, ipadx=column_width)
 
-entry_button2 = tkinter.Button(AWIMtkapp, text='Show Data', command=continue2)
+entry_button2 = tkinter.Button(AWIMtkapp, text='Show Data', command=user_input2)
 entry_button2.grid(row=10, column=0, columnspan=2, ipadx=column_width)
 
 output2_str = tkinter.StringVar()

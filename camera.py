@@ -31,7 +31,7 @@ def _xycm_to_polar(xycm):
 	return  [r, theta]
 
 
-# calculate the miss angle as xang,yang
+# works 11 Oct 2022 # calculate the miss angle as xang,yang
 def _target_miss(calibration_distance_cm, center_px, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
 	target_x_radius_deg = abs(math.atan(x_small_cm[0] / calibration_distance_cm)) * 180/math.pi
 	target_y_radius_deg = abs(math.atan(y_small_cm[1] / calibration_distance_cm)) * 180/math.pi
@@ -65,10 +65,10 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 
 	return grid_rotation_error_degreesCCW
 
-
+# works 11 Oct 2022
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
-	calimg_exif_raw, calimg_exif_readable = awimlib.get_exif(calibration_image_path, save_exif_text_file=True)
+	calimg_exif_readable = awimlib.get_exif(calibration_image_path)
 	cal_df = pd.read_csv(calibration_file_path)
 	calibration_image = PIL.Image.open(calibration_image_path)
 
@@ -257,21 +257,21 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 			cam_ID += ' at '
 		cam_ID += str(calimg_exif_readable['FocalLength']) + 'mm'
 
-	cam_AWIMtag_string_txtfile = awimlib.stringify_dictionary(cam_AWIMtag, 'txtfile')
-	with open(savepath + cam_ID + ' - cameraAWIMtag readable.txt', 'w') as f:
-		f.write(cam_AWIMtag_string_txtfile)
-
 	if calimg_exif_readable.get('UserComment'):
-		user_comment = calimg_exif_raw['UserComment']
+		user_comment_existing = calimg_exif_readable['UserComment']
 	else:
-		user_comment = ''
-	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag, 'dictionary')
-	calimg_exif_readable['UserComment'] = user_comment + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	with open(savepath + cam_ID + ' - exif plus cameraAWIMtag.pickle', 'wb') as exif_pickle:
-		pickle.dump(calimg_exif_readable, exif_pickle, 5)
+		user_comment_existing = ''
 
-	# is there a good way to save the image with the comment added in the exif? piexif?
-	# calibration_image.save(r'code-output-dump-folder/' + filename_tuple[0], format = filename_tuple[1])
+	cam_AWIMtag_txtfile = awimlib.stringify_dictionary(cam_AWIMtag, 'txtfile')
+	calimg_exif_readable['UserComment'] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_txtfile + 'AWIMend'
+	calimg_exif_readable_txtfile = awimlib.stringify_dictionary(calimg_exif_readable, 'txtfile')
+	with open(savepath + cam_ID + ' - exif w AWIMtag.txt', 'w') as f:
+		f.write(calimg_exif_readable_txtfile)
+
+	calimg_exif_raw = calibration_image.getexif()
+	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag, 'dictionary')
+	calimg_exif_raw[37510] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
+	calibration_image.save(savepath + cam_ID + ' - w cameraAWIMtag.jpg', exif=calimg_exif_raw)
 
 	return cam_ID
 

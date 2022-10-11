@@ -74,8 +74,8 @@ def format_datetime(input_datetime_UTC, direction):
 
     return output
 
-
-def format_exif_values(exif_value):
+# works 11 Oct 2022: todorename formats each individual exif value
+def format_individual_exif_values(exif_value):
     if isinstance(exif_value, PIL.TiffImagePlugin.IFDRational):
         if exif_value.denominator != 0:
             value_readable = exif_value.numerator / exif_value.denominator
@@ -105,20 +105,20 @@ def format_exif_values(exif_value):
 def get_exif(metadata_source_path, save_exif_text_file=False):
     metadata_src_type = os.path.splitext(metadata_source_path)[-1]
     current_image = PIL.Image.open(metadata_source_path)
-    img_exif = current_image._getexif()
+    img_exif = current_image._getexif() # ._getexif returns dictionary. .getexif returns PIL object
 
     if img_exif:
         img_exif_readable = {}
         for key, value in img_exif.items():
             key_decoded = TAGS.get(key,key)
             if key != 34853:
-                value_readable = format_exif_values(value)
+                value_readable = format_individual_exif_values(value)
                 img_exif_readable[key_decoded] = value_readable
             else:
                 GPS_dict_readable = {}
                 for GPSkey, GPSvalue in value.items():
                     GPSkey_decoded = GPSTAGS.get(GPSkey,GPSkey)
-                    GPSvalue_readable = format_exif_values(GPSvalue)
+                    GPSvalue_readable = format_individual_exif_values(GPSvalue)
                     GPS_dict_readable[GPSkey_decoded] = GPSvalue_readable
                 img_exif_readable[key_decoded] = GPS_dict_readable
 
@@ -128,12 +128,12 @@ def get_exif(metadata_source_path, save_exif_text_file=False):
             with open(savename + ' - exif_readable.txt', 'w') as f:
                 f.write(img_exif_readable_str)
 
-        return img_exif, img_exif_readable
+        return img_exif_readable
     else:
         return False
 
 
-def extract_latlng_from_exif_GPS(exif_readable):
+def format_GPS_latlng(exif_readable):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
     if exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'N':
@@ -161,7 +161,7 @@ def extract_latlng_from_exif_GPS(exif_readable):
     return GPS_latlng, GPS_alt
 
     
-def UTC_from_exif(exif_readable, tz_default):
+def capture_moment_from_exif(exif_readable, tz_default):
     exif_UTC = False
     UTC_source = False
     UTC_datetime_str = False
@@ -248,7 +248,7 @@ def stringify_dictionary(any_dictionary, output_type):
         elif isinstance(value, str):
             value_string = value
         elif isinstance(value, bytes):
-            value_string = format_exif_values(value)
+            value_string = format_individual_exif_values(value)
         elif isinstance(value, PIL.TiffImagePlugin.IFDRational):
             if value.denominator != 0:
                 value_string = str(value.numerator / value.denominator)
@@ -503,13 +503,13 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     degrees_digits = 2
     hourangle_digits = 3
     
-    exif_raw, exif_readable = get_exif(metadata_source_path)
+    exif_readable = get_exif(metadata_source_path)
 
     if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
         pass # allows user to specify location without being overridden by the exif GPS
     elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
         if exif_readable.get('GPSInfo'):
-            location, location_altitude = extract_latlng_from_exif_GPS(exif_readable)
+            location, location_altitude = format_GPS_latlng(exif_readable)
             if location:
                 AWIMtag_dictionary['Location'] = [round(f, lat_lng_digits) for f in location]
                 AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
@@ -536,7 +536,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
             AWIMtag_dictionary['LocationAGLSource'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
     if AWIMtag_dictionary['CaptureMomentSource'] == 'get from exif':
-        UTC_datetime_str, UTC_source = UTC_from_exif(exif_readable, tz)
+        UTC_datetime_str, UTC_source = capture_moment_from_exif(exif_readable, tz)
         if UTC_datetime_str:
             AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
             AWIMtag_dictionary['CaptureMomentSource'] = UTC_source

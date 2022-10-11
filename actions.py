@@ -18,8 +18,8 @@ import camera, awimlib, astropytools
 def generate_save_camera_AWIM():
 
     # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
-    calibration_image = tkinter.filedialog.askopenfilename()
-    calibration_file = tkinter.filedialog.askopenfilename()
+    calibration_image = tkinter.filedialog.askopenfilename(title='open calibration image')
+    calibration_file = tkinter.filedialog.askopenfilename(title='open calibration csv file')
     camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
     
 
@@ -94,5 +94,3 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     save_filename_string = os.path.splitext(current_image.filename)[0] + ' - awim.png'
     current_image = current_image.rotate(angle=rotate_degrees, expand=True) # rotates CW
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
-
-
