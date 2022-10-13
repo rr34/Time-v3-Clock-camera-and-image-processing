@@ -65,6 +65,7 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 
 	return grid_rotation_error_degreesCCW
 
+
 # works 11 Oct 2022
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
@@ -72,6 +73,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cal_df = pd.read_csv(calibration_file_path)
 	calibration_image = PIL.Image.open(calibration_image_path)
 
+	time_zone = cal_df[cal_df['type'] == 'time_zone']['misc'].iat[0]
 	camera_lens_system = cal_df[cal_df['type'] == 'camera_lens_system']['misc'].iat[0]
 	AWIM_cal_type = cal_df[cal_df['type'] == 'AWIM_calibration_type']['misc'].iat[0]
 	cam_image_dimensions = np.array(calibration_image.size)
@@ -216,8 +218,36 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	px_model = LinearRegression(fit_intercept=False)
 	px_model.fit(independent_poly_xyangs, ref_df[['x_px', 'y_px']])
 
+	# generate the empty tag and populate it
 	cam_AWIMtag = awimlib.generate_empty_AWIMtag_dictionary(default_units=False)
+	round_digits = awimlib.AWIMtag_rounding_digits()
 
+	# get some basic exif for completeness
+	if calimg_exif_readable.get('GPSInfo'):
+		location, location_altitude = awimlib.format_GPS_latlng(calimg_exif_readable)
+		
+		if location:
+			cam_AWIMtag['Location'] = [round(f, round_digits['lat long']) for f in location]
+			cam_AWIMtag['LocationSource'] = 'exif GPS'
+		else:
+			cam_AWIMtag['LocationSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'	
+		if location_altitude:
+			cam_AWIMtag['LocationAltitude'] = round(location_altitude, round_digits['altitude'])
+			cam_AWIMtag['LocationAltitudeSource'] = 'exif GPS'
+		else:
+			cam_AWIMtag['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+	else:
+		cam_AWIMtag['LocationSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+		cam_AWIMtag['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+    
+	UTC_datetime_str, UTC_source = awimlib.capture_moment_from_exif(calimg_exif_readable)
+	if UTC_datetime_str:
+		cam_AWIMtag['CaptureMoment'] = UTC_datetime_str
+		cam_AWIMtag['CaptureMomentSource'] = UTC_source
+	else:
+		cam_AWIMtag['CaptureMomentSource'] = 'Attempted to get from exif, but was not present or not complete.'
+
+	# fill in the tag
 	cam_AWIMtag['PixelAngleModelsType'] = AWIM_cal_type
 
 	xyangs_model_df = pd.DataFrame(xyangs_model.coef_, columns=xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
@@ -237,7 +267,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = px_size_average
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
-	# prepare to save and save
+	# prepare to save by getting filename
 	savepath = os.path.dirname(calibration_image_path) + r'/'
 	cam_ID = os.path.splitext(os.path.basename(calibration_image_path))[0]
 	if calimg_exif_readable.get('Make'):
