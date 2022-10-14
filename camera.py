@@ -257,14 +257,14 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelsModel'] = px_model_df
 
 	filler_variable, cam_borders_pxs = awimlib.get_ref_px_and_borders(calibration_image_path, 'center, get from image')
-	cam_AWIMtag['BorderPixels'] = cam_borders_pxs
+	cam_AWIMtag['BorderPixels'] = cam_borders_pxs.round(round_digits['pixels']).tolist()
 
 	cam_borders_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_borders_pxs)
-	cam_AWIMtag['BorderAngles'] = cam_borders_angs
+	cam_AWIMtag['BorderAngles'] = cam_borders_angs.round(round_digits['degrees'])
 
 	px_size_center, px_size_average = awimlib.get_pixel_sizes(calibration_image_path, cam_AWIMtag)
-	cam_AWIMtag['PixelSizeCenterHorizontalVertical'] = px_size_center
-	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = px_size_average
+	cam_AWIMtag['PixelSizeCenterHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
+	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
 	# prepare to save by getting filename
@@ -289,17 +289,17 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	if calimg_exif_readable.get('UserComment'):
 		user_comment_existing = calimg_exif_readable['UserComment']
+		print('Hey, there was already a UserComment. That is unusual. Look at this comment: ' + user_comment_existing)
 	else:
 		user_comment_existing = ''
-
-	cam_AWIMtag_txtfile = awimlib.stringify_dictionary(cam_AWIMtag, 'txtfile')
-	calimg_exif_readable['UserComment'] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_txtfile + 'AWIMend'
-	calimg_exif_readable_txtfile = awimlib.stringify_dictionary(calimg_exif_readable, 'txtfile')
+	
+	calimg_exif_readable['UserComment'] = cam_AWIMtag
+	calimg_exif_readable_txtfile = awimlib.dictionary_to_readable_textfile(calimg_exif_readable)
 	with open(savepath + cam_ID + ' - exif w AWIMtag.txt', 'w') as f:
 		f.write(calimg_exif_readable_txtfile)
 
 	calimg_exif_raw = calibration_image.getexif()
-	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag, 'dictionary')
+	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag)
 	calimg_exif_raw[37510] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
 	calibration_image.save(savepath + cam_ID + ' - w cameraAWIMtag.jpg', exif=calimg_exif_raw)
 

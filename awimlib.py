@@ -141,7 +141,7 @@ def get_exif(metadata_source_path, save_exif_text_file=False):
                 img_exif_readable[key_decoded] = GPS_dict_readable
 
         if save_exif_text_file:
-            img_exif_readable_str = stringify_dictionary(img_exif_readable, 'txtfile')
+            img_exif_readable_str = dictionary_to_readable_textfile(img_exif_readable, 'txtfile')
             savename = os.path.splitext(metadata_source_path)[0]
             with open(savename + ' - exif_readable.txt', 'w') as f:
                 f.write(img_exif_readable_str)
@@ -253,8 +253,7 @@ def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Lo
 
 
 # output types: 1. 'string' is with new lines 2. 'dictionary' is comma-separated
-def stringify_dictionary(any_dictionary, output_type):
-    dictionary_ofstrings = {}
+def dictionary_to_readable_textfile(any_dictionary):
     dictionary_string_txtfile = ''
 
     for key, value in any_dictionary.items():
@@ -267,7 +266,42 @@ def stringify_dictionary(any_dictionary, output_type):
         elif isinstance(value, pd.DataFrame):
             value_string = value.to_csv(index_label='features')
         elif isinstance(value, dict):
-            value_string = stringify_dictionary(value, output_type)
+            value_string = dictionary_to_readable_textfile(value)
+        elif isinstance(value, str):
+            value_string = value
+        elif isinstance(value, bytes):
+            value_string = format_individual_exif_values(value)
+        elif isinstance(value, PIL.TiffImagePlugin.IFDRational):
+            if value.denominator != 0:
+                value_string = str(value.numerator / value.denominator)
+            else:
+                value_string = str(float('nan'))
+        else:
+            value_string = 'unexpected data type'
+
+        if not isinstance(key, str):
+            key = str(key)
+
+        value_string = key + ': ' + value_string + '\n'
+        dictionary_string_txtfile += value_string
+
+    return dictionary_string_txtfile
+
+
+def stringify_dictionary(any_dictionary):
+    dictionary_ofstrings = {}
+
+    for key, value in any_dictionary.items():
+        if isinstance(value, (list, tuple)):
+            value_string = ', '.join(str(i) for i in value)
+        elif isinstance(value, (int, float)) or (value is None):
+            value_string = str(value)
+        elif isinstance(value, np.ndarray):
+            value_string = str(value)
+        elif isinstance(value, pd.DataFrame):
+            value_string = value.to_csv(index_label='features')
+        elif isinstance(value, dict):
+            value_string = stringify_dictionary(value)
         elif isinstance(value, str):
             value_string = value
         elif isinstance(value, bytes):
@@ -285,21 +319,16 @@ def stringify_dictionary(any_dictionary, output_type):
 
         dictionary_ofstrings[key] = value_string
 
-        value_string = key + ': ' + value_string + '\n'
-        dictionary_string_txtfile += value_string
-
     dictionary_ofstrings_str = str(dictionary_ofstrings)
 
-    if output_type == 'dictionary':
-        return dictionary_ofstrings_str
-    elif output_type == 'txtfile':
-        return dictionary_string_txtfile
+    return dictionary_ofstrings_str
 
 
 def de_stringify_tag(AWIMtag_dictionary_string):
-    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("AWIMstart", "")
-    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("AWIMend", "")
-    AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("',\n", "',")
+    AWIMstart = AWIMtag_dictionary_string.find("AWIMstart")
+    AWIMend = AWIMtag_dictionary_string.find("AWIMend")
+    AWIMtag_dictionary_string = AWIMtag_dictionary_string[AWIMstart+9:AWIMend]
+    # AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("',\n", "',")
     AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
     AWIMtag_dictionary = {}
     AWIMtag_template = generate_empty_AWIMtag_dictionary()
