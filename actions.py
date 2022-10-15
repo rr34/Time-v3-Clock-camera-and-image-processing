@@ -1,5 +1,4 @@
 import tkinter
-import pickle
 import os
 import numpy as np
 import math

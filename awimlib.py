@@ -1,5 +1,5 @@
-import pickle
 import os, io, ast, re
+import json
 import math
 import numpy as np
 import PIL
@@ -91,6 +91,7 @@ def format_datetime(input_datetime_UTC, direction):
         output = np.datetime64(datetime_string_for_numpy)
 
     return output
+
 
 # works 11 Oct 2022: todorename formats each individual exif value
 def format_individual_exif_values(exif_value):
@@ -292,25 +293,20 @@ def stringify_dictionary(any_dictionary):
     dictionary_ofstrings = {}
 
     for key, value in any_dictionary.items():
-        if isinstance(value, (list, tuple)):
-            value_string = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float)) or (value is None):
+        if isinstance(value, (int, float, list, tuple)):
+            value_string = json.dumps(value)
+        elif value is None:
             value_string = str(value)
         elif isinstance(value, np.ndarray):
-            value_string = str(value)
+            value_string = json.dumps(value.tolist())
         elif isinstance(value, pd.DataFrame):
-            value_string = value.to_csv(index_label='features')
+            value_string = value.to_csv()
         elif isinstance(value, dict):
             value_string = stringify_dictionary(value)
         elif isinstance(value, str):
             value_string = value
-        elif isinstance(value, bytes):
-            value_string = format_individual_exif_values(value)
-        elif isinstance(value, PIL.TiffImagePlugin.IFDRational):
-            if value.denominator != 0:
-                value_string = str(value.numerator / value.denominator)
-            else:
-                value_string = str(float('nan'))
+        elif isinstance(value, bytes, PIL.TiffImagePlugin.IFDRational):
+            value_string = str(format_individual_exif_values(value))
         else:
             value_string = 'unexpected data type'
 
@@ -328,7 +324,6 @@ def de_stringify_tag(AWIMtag_dictionary_string):
     AWIMstart = AWIMtag_dictionary_string.find("AWIMstart")
     AWIMend = AWIMtag_dictionary_string.find("AWIMend")
     AWIMtag_dictionary_string = AWIMtag_dictionary_string[AWIMstart+9:AWIMend]
-    # AWIMtag_dictionary_string = AWIMtag_dictionary_string.replace("',\n", "',")
     AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
     AWIMtag_dictionary = {}
     AWIMtag_template = generate_empty_AWIMtag_dictionary()
@@ -337,14 +332,12 @@ def de_stringify_tag(AWIMtag_dictionary_string):
             AWIMtag_dictionary[key] = None
         elif AWIMtag_template[key] == 'csv':
             AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
+        elif isinstance(AWIMtag_template[key], (int, float, list, tuple)):
+            AWIMtag_dictionary[key] = json.loads(value)
         elif isinstance(AWIMtag_template[key], np.datetime64):
             AWIMtag_dictionary[key] = format_datetime(value, 'from AWIM string')
         elif isinstance(AWIMtag_template[key], np.ndarray):
-            AWIMtag_dictionary[key] = np.array(value)
-        elif isinstance(AWIMtag_template[key], list):
-            AWIMtag_dictionary[key] = [float(list_value) for list_value in value.split(',')]
-        elif isinstance(AWIMtag_template[key], float):
-            AWIMtag_dictionary[key] = float(value)
+            AWIMtag_dictionary[key] = np.array(json.loads(value))
         else:
             AWIMtag_dictionary[key] = value
 
@@ -598,7 +591,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     
     ref_px, img_borders_pxs = get_ref_px_and_borders(source_image_path, AWIMtag_dictionary['RefPixel'])
     AWIMtag_dictionary['RefPixel'] = [round(f, round_digits['pixels']) for f in ref_px]
-    AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels']).tolist()
+    AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 
     if AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] == 'from known px':
         if isinstance(known_px_azart, str):
@@ -606,19 +599,19 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
             known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
 
         ref_azart = ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
-    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.round(round_digits['degrees']).tolist()
+    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.round(round_digits['degrees'])
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ref_azart_source
 
     img_borders_angs = pxs_to_xyangs(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(round_digits['degrees']).tolist()
+    AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(round_digits['degrees'])
 
     img_borders_azarts = pxs_to_azarts(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(round_digits['degrees']).tolist()
+    AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(round_digits['degrees'])
 
     img_borders_RADecs = astropytools.AzArts_to_RADecs(AWIMtag_dictionary, img_borders_azarts)
     img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(round_digits['hourangle'])
     img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(round_digits['degrees'])
-    AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs.tolist()
+    AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs
 
     px_size_center, px_size_average = get_pixel_sizes(source_image_path, AWIMtag_dictionary)
     AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_center]

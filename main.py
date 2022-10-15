@@ -1,5 +1,4 @@
 import tkinter
-import pickle
 import datetime
 from pytz import timezone
 import actions, awimlib
@@ -15,11 +14,10 @@ def tag_image_with_AWIM():
     exif_dict = awimlib.get_exif(camera_filename)
     full_user_comment = exif_dict['UserComment']
     # TODOnext1: de-stringify correctly
-    AWIMtag_dictionary = awimlib.de_stringify_tag(full_user_comment)
+    cameraAWIMdictionary = awimlib.de_stringify_tag(full_user_comment)
     print(AWIMtag_dictionary)
     # TODOnext1: use this AWIMtag
 
-    cameraAWIMdictionary = awimlib.de_stringify_tag(cameraAWIMtag)
     
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 

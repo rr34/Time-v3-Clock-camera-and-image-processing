@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import os
 import PIL
-import pickle
 import awimlib
 
 
@@ -257,7 +256,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelsModel'] = px_model_df
 
 	filler_variable, cam_borders_pxs = awimlib.get_ref_px_and_borders(calibration_image_path, 'center, get from image')
-	cam_AWIMtag['BorderPixels'] = cam_borders_pxs.round(round_digits['pixels']).tolist()
+	cam_AWIMtag['BorderPixels'] = cam_borders_pxs.round(round_digits['pixels'])
 
 	cam_borders_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_borders_pxs)
 	cam_AWIMtag['BorderAngles'] = cam_borders_angs.round(round_digits['degrees'])
