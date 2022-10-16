@@ -79,7 +79,7 @@ def format_datetime(input_datetime_UTC, direction):
         elif isinstance(input_datetime_UTC, np.datetime64):
             pass # TODO convert this format, necessary?
 
-    if direction == 'to string for AWIMtag':
+    elif direction == 'to string for AWIMtag':
         if isinstance(input_datetime_UTC, datetime.datetime):
             output = input_datetime_UTC.strftime(readable_datetime_format)
         elif isinstance(input_datetime_UTC, np.datetime64):
@@ -258,25 +258,26 @@ def dictionary_to_readable_textfile(any_dictionary):
     dictionary_string_txtfile = ''
 
     for key, value in any_dictionary.items():
-        if isinstance(value, (list, tuple)):
-            value_string = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float)) or (value is None):
+        if isinstance(value, (int, float)):
+            value_string = json.dumps(value)
+        elif isinstance(value, (list, tuple)):
+            value_string = []
+            for list_item in value:
+                value_string.append(format_individual_exif_values(list_item))
+            value_string = json.dumps(value_string)
+        elif value is None:
             value_string = str(value)
         elif isinstance(value, np.ndarray):
-            value_string = '\n' + str(value)
+            value_string = '\n' + json.dumps(value.tolist())
+            value_string = value_string.replace('],', '],\n')
         elif isinstance(value, pd.DataFrame):
             value_string = value.to_csv(index_label='features')
         elif isinstance(value, dict):
             value_string = dictionary_to_readable_textfile(value)
         elif isinstance(value, str):
             value_string = value
-        elif isinstance(value, bytes):
-            value_string = format_individual_exif_values(value)
-        elif isinstance(value, PIL.TiffImagePlugin.IFDRational):
-            if value.denominator != 0:
-                value_string = str(value.numerator / value.denominator)
-            else:
-                value_string = str(float('nan'))
+        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
+            value_string = str(format_individual_exif_values(value))
         else:
             value_string = 'unexpected data type'
 
@@ -293,8 +294,13 @@ def stringify_dictionary(any_dictionary):
     dictionary_ofstrings = {}
 
     for key, value in any_dictionary.items():
-        if isinstance(value, (int, float, list, tuple)):
+        if isinstance(value, (int, float)):
             value_string = json.dumps(value)
+        elif isinstance(value, (list, tuple)):
+            value_string = []
+            for list_item in value:
+                value_string.append(format_individual_exif_values(list_item))
+            value_string = json.dumps(value_string)
         elif value is None:
             value_string = str(value)
         elif isinstance(value, np.ndarray):
@@ -305,7 +311,7 @@ def stringify_dictionary(any_dictionary):
             value_string = stringify_dictionary(value)
         elif isinstance(value, str):
             value_string = value
-        elif isinstance(value, bytes, PIL.TiffImagePlugin.IFDRational):
+        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
             value_string = str(format_individual_exif_values(value))
         else:
             value_string = 'unexpected data type'
