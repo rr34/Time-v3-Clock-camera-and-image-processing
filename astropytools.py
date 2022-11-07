@@ -5,7 +5,7 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz, ICRS, get_sun, g
 import awimlib
 
 def get_AzArt(AWIMtag_dictionary, celestial_object):
-    capture_moment = awimlib.format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from string')
+    capture_moment = awimlib.format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from AWIM string')
     earth_latlng = AWIMtag_dictionary['Location']
 
     astropy_moment = Time(capture_moment)
@@ -28,7 +28,7 @@ def get_AzArt(AWIMtag_dictionary, celestial_object):
 def AzArts_to_RADecs(AWIMtag_dictionary, azarts):
     input_shape = azarts.shape
     azarts = azarts.reshape(-1,2)
-    capture_moment = awimlib.format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from string')
+    capture_moment = awimlib.format_datetime(AWIMtag_dictionary['CaptureMoment'], 'from AWIM string')
     earth_latlng = AWIMtag_dictionary['Location']
 
     astropy_moment = Time(capture_moment)

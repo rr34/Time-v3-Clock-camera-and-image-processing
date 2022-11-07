@@ -1,5 +1,4 @@
 import tkinter
-import pickle
 import os
 import numpy as np
 import math
@@ -16,19 +15,13 @@ import camera, awimlib, astropytools
 
 
 def generate_save_camera_AWIM():
-
     # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
-    calibration_file = tkinter.filedialog.askopenfilename()
-    this_camera = camera.CameraAWIMData(calibration_file)
+    calibration_image = tkinter.filedialog.askopenfilename(title='open calibration image')
+    calibration_file = tkinter.filedialog.askopenfilename(title='open calibration csv file')
+    camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
+    
 
-    # save to a pickle .awim_camera_aim_pkl
-    this_camera_filename = str(this_camera.camera_name) + ' - lens ' + str(this_camera.lens_name) + ' - zoom ' + str(this_camera.zoom_factor) + '.awim'
-    camera_aim_pickle = open(this_camera_filename, 'wb')
-    pickle.dump(this_camera, camera_aim_pickle, 5)
-    camera_aim_pickle.close()
-
-
-def display_camera_AWIM_object():
+def display_camera_lens_shape(awim_dictionary):
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
     this_camera_filename = tkinter.filedialog.askopenfilename()
     camera_aim_pickle = open(this_camera_filename, 'rb')
@@ -99,5 +92,3 @@ def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
     save_filename_string = os.path.splitext(current_image.filename)[0] + ' - awim.png'
     current_image = current_image.rotate(angle=rotate_degrees, expand=True) # rotates CW
     current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)
-
-

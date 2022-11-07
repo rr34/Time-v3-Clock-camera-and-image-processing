@@ -148,8 +148,27 @@ Artifae is the Arabic word for altitude (using Roman letters). There should be a
 ## ArtAz
 Together, azimuth and artifae are AzArt. Astropy and most astronomers use the term "AltAz" to mean azimuth and artifae together. I prefer to put azimuth first because it's usually the first way we think of orienting ourselves.
 
+## Standard Files Used by this Software
+- C: is camera-side. I: is image-side
+- C: calibration csv file. Should be renamed to match the exif filename output.
+- C: calibration image with good exif from the camera / lens. Should be renamed to match the exif filename output.
+- I: original images to be tagged that contain complete exif.
+- I: images to be tagged that are just the image because they have lost their exif.
+- I: **pickle of exif, readable (not raw), of calibration image plus AWIMtag single string in UserComment. produced and used**
+
+## Standard Files Produced by this Software
+- CI: text of exif, readable, produced with the same name in same directory as the image and simple text with new lines separating different fields.
+- C: text, readable, of AWIMtag with new lines, named using the exif of the image in order to ID the AWIMtag by camera / lens
+- C: text of AWIMtag single string, named using the exif of the calibration image in order to ID the AWIMtag by camera / lens
+- C: cal output.csv is the "scratchpad" of the calibration calculations
+- C: ref df.csv is the calibration reference data points - after adjustments - used in the best-fit model creation.
+- I: **pickle of exif, readable (not raw), of calibration image plus AWIMtag single string in UserComment. produced and used**
+- I: final product: copy of image file with exif from original image file plus AWIMtag in UserComment
+- I: text of exif readable plus AWIMtag in UserComment with new lines, same name and directory as image to be tagged.
+
 ## TODO
-- **Batch generate AWIM-tagged images:** I have been using the software and recording required information to determine Az,Alt in a spreadsheet then manually transferring the spreadsheet data image-by-image using the GUI. The menu item "Batch generate AWIM files" would be the primary option I would use and does not require a GUI at all. "Batch generate AWIM files" would work best by requiring the user to collecting the following files in a single directory:
+
+- **Batch generate AWIM-tagged images:** I have been using the software and recording required information to determine Az,Art in a spreadsheet then manually transferring the spreadsheet data image-by-image using the GUI. The menu item "Batch generate AWIM files" would be the primary option I would use and does not require a GUI at all. "Batch generate AWIM files" would work best by requiring the user to collect the following files in a single directory:
 	1. Spreadsheet of standard data recorded during a photoshoot. See example in test files. Spreadsheet includes a unique identifier for each photo to be processed (modern cameras already name their files sequentially therefore with a convenient unique ID). This standardized spreadsheet would effectively replace the GUI.
 	2. Original photo files with the EXIF data tag (often editing software, including Photoshop, does not transfer EXIF data to exported images, especially for PNGs which only have text tags, no EXIF specifically)
 	3. Image files to be tagged. Could be separate from the original photo files, only requiring that filename include the same unique ID present on the original photo filenames to relate the two and enable use of EXIF data and transfer same.
@@ -167,7 +186,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - current image / image base filename
 - 
 
-- what is an unused exif tag number to use fot AWIMInfo? How are individual GPS values stored under 34853 (= hex 8825)
+- what is an unused exif tag number to use for AWIMInfo? How are individual GPS values stored under 34853 (= hex 8825)
 - format conversions
 + arw > jpg: use the jpg exif data
 + arw > png: need exiv or similar to get the tag from the arw file.
@@ -175,6 +194,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 + jpg > jpg: if exif won't let me use an unused ID, then put it under user comments ID 37510
 - Note: the LightRoom / (PS also?) lens aberration database could be used to convert linear approximations to actual camera models.
 - **ArtAz** and artifae update name.
+- correctly identify TAI time vs UTC time. What does astropy use? I think TAI.
 
 # 21 June to do
 - store camera info as a dictionary rather than as an object. Use the exif from the cal images rather than the user calibration file.

@@ -1,29 +1,23 @@
 import tkinter
-import pickle
 import datetime
 from pytz import timezone
-import actions, astroimage, awimlib
+import actions, awimlib
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
-global current_camera
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
-def load_camera():
-    global current_camera
-    camera_filename = tkinter.filedialog.askopenfilename()
+def tag_image_with_AWIM():
+    camera_filename = tkinter.filedialog.askopenfilename(title='open calibration image')
 
-    with open(camera_filename, 'rb') as f:
-        current_camera = pickle.load(f)
-
-    current_camera_str.set(str(current_camera.camera_name))
-
-
-# good AWIM action function
-def process_image():
-    global current_camera
-
+    exif_dict = awimlib.get_exif(camera_filename)
+    full_user_comment = exif_dict['UserComment']
+    # TODOnext1: de-stringify correctly
+    cameraAWIMdictionary = awimlib.de_stringify_tag(full_user_comment)
+    print(cameraAWIMdictionary)
+    # TODOnext1: use this AWIMtag
+    
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
     # user inputs etc.
@@ -38,7 +32,7 @@ def process_image():
     AWIMtag_dictionary['LocationAGL'] = 1.7
     AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
     AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
-    AWIMtag_dictionary['PixelMapType'] = 'get from camera AWIM'
+    AWIMtag_dictionary['PixelAngleModelsType'] = 'get from camera AWIM'
     AWIMtag_dictionary['RefPixel'] = 'center, get from image'
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = 'from known px'
     elevation_at_Location = False
@@ -51,11 +45,11 @@ def process_image():
     AWIMtag_dictionary, AWIMtag_dictionary_string = awimlib.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
             elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
 
-    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+    with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
         f.write(AWIMtag_dictionary_string)
 
 
-def continue1():
+def user_input1():
     if azart_source_var.get() == 'Pixel x,y of sun':
         entry4_label_str.set('Enter pixel x,y of sun')
         entry5_label_str.set('NR')
@@ -67,7 +61,7 @@ def continue1():
         entry5_label_str.set('NR')
 
 
-def continue2():
+def user_input2():
     global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
@@ -97,13 +91,11 @@ def continue2():
         celestial_object_px = [float(px_coord_str.split(',')[0]), float(px_coord_str.split(',')[1])]
         azart_ref = actions.azart_ref_from_known_px(current_camera, current_image, image_capture_moment, img_latlng, center_ref, known_pt_px, celestial_object_px, img_orientation, img_tilt)
 
-    awim_dictionary_in = current_camera.generate_xyang_pixel_models(current_image, image_capture_moment, img_latlng, center_ref, azart_ref, img_orientation, img_tilt)
-    
     awim_dictionary_str = ''
     for item in awim_dictionary_in:
         awim_dictionary_str += item + ': ' + awim_dictionary_in[item] + '\n'
     output2_str.set('Center AzArt: ' + str(awim_dictionary_in['Center AzArt']) + '\nsee file code output dump/image awim data.txt for full AWIM tag')
-    with open(r'code output dump folder/image awim data.txt', 'w') as f:
+    with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
         f.write(awim_dictionary_str)
 
 
@@ -129,15 +121,15 @@ AWIMtkapp.geometry('1200x800')
 menu_bar = tkinter.Menu(AWIMtkapp)
 
 file_menu = tkinter.Menu(menu_bar, tearoff=0)
-file_menu.add_command(label='Load Camera', command=load_camera)
-file_menu.add_command(label='Load Image', command=process_image)
+file_menu.add_command(label='X Load Camera', command=actions.do_nothing)
+file_menu.add_command(label='Process Image', command=tag_image_with_AWIM)
 file_menu.add_command(label='Save', command=actions.do_nothing)
 file_menu.add_separator()
 file_menu.add_command(label='Exit', command=AWIMtkapp.quit)
 
 camera_menu = tkinter.Menu(menu_bar, tearoff=0)
 camera_menu.add_command(label='Generate camera AWIM file from calibration CSV', command=actions.generate_save_camera_AWIM)
-camera_menu.add_command(label='Display camera AWIM object file', command=actions.display_camera_AWIM_object)
+camera_menu.add_command(label='Display camera AWIM object file', command=actions.display_camera_lens_shape)
 camera_menu.add_command(label='TODO Calibrate camera from calibration images', command=actions.do_nothing)
 
 image_menu = tkinter.Menu(menu_bar, tearoff=0)
@@ -196,7 +188,7 @@ azart_source_var.set('Pixel x,y of sun')
 azart_source_menu = tkinter.OptionMenu(AWIMtkapp, azart_source_var, 'Pixel x,y of sun', 'Pixel x,y on horizon, with known azimuth to pixel', 'Manual Az,Art')
 azart_source_menu.grid(row=6, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
-continue_button = tkinter.Button(AWIMtkapp, text='Continue', command=continue1)
+continue_button = tkinter.Button(AWIMtkapp, text='Continue', command=user_input1)
 continue_button.grid(row=7, column=0, columnspan=2, ipady=row_height, ipadx=column_width)
 
 entry4_label_str = tkinter.StringVar()
@@ -213,7 +205,7 @@ entry5 = tkinter.Entry(AWIMtkapp)
 entry5_label.grid(row=9, column=0, ipadx=column_width)
 entry5.grid(row=9, column=1, ipadx=column_width)
 
-entry_button2 = tkinter.Button(AWIMtkapp, text='Show Data', command=continue2)
+entry_button2 = tkinter.Button(AWIMtkapp, text='Show Data', command=user_input2)
 entry_button2.grid(row=10, column=0, columnspan=2, ipadx=column_width)
 
 output2_str = tkinter.StringVar()

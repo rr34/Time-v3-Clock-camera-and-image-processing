@@ -1,5 +1,5 @@
-import pickle
 import os, io, ast, re
+import json
 import math
 import numpy as np
 import PIL
@@ -10,89 +10,149 @@ import pandas as pd
 import astropytools
 
 
+def AWIMtag_rounding_digits():
+    rounding_digits_dict = {}
+    rounding_digits_dict['lat long'] = 6
+    rounding_digits_dict['altitude'] = 1
+    rounding_digits_dict['AGL'] = 2
+    rounding_digits_dict['pixels'] = 1
+    rounding_digits_dict['degrees'] = 2
+    rounding_digits_dict['hourangle'] = 3
+
+    return rounding_digits_dict
+
+
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Location'] = None
-    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude to 6 decimal places, ~11cm'
-    AWIMtag_dictionary['LocationSource'] = None
-    AWIMtag_dictionary['LocationAltitude'] = None
-    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level'
-    AWIMtag_dictionary['LocationAltitudeSource'] = None
-    AWIMtag_dictionary['LocationAGL'] = None
-    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level'
-    AWIMtag_dictionary['LocationAGLSource'] = None
-    AWIMtag_dictionary['CaptureMoment'] = None
+    AWIMtag_dictionary['Location'] = [-999.9, -999.9]
+    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude; to 6 decimal places, ~11cm'
+    AWIMtag_dictionary['LocationSource'] = ''
+    AWIMtag_dictionary['LocationAltitude'] = -999.9
+    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level; to 1 decimal place, 10cm'
+    AWIMtag_dictionary['LocationAltitudeSource'] = ''
+    AWIMtag_dictionary['LocationAGL'] = -999.9
+    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level; to 2 decimal places, 1cm'
+    AWIMtag_dictionary['LocationAGLSource'] = ''
+    AWIMtag_dictionary['CaptureMoment'] = np.datetime64(-1970, 'Y')
     AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
-    AWIMtag_dictionary['CaptureMomentSource'] = None
-    AWIMtag_dictionary['PixelMapType'] = None
-    AWIMtag_dictionary['RefPixel'] = None
-    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard.'
-    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = None
-    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = None
-    AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees'
-    AWIMtag_dictionary['AngleModels'] = None
-    AWIMtag_dictionary['PixelModels'] = None
-    AWIMtag_dictionary['BorderPixels'] = None
-    AWIMtag_dictionary['BorderAngles'] = None
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = None
-    AWIMtag_dictionary['BordersRADec'] = None
-    AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch'
-    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = None
-    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = None
-    AWIMtag_dictionary['PixelSizeUnit'] = 'Pixels per Degree'
+    AWIMtag_dictionary['CaptureMomentSource'] = ''
+    AWIMtag_dictionary['PixelAngleModelsType'] = ''
+    AWIMtag_dictionary['RefPixel'] = [-999.9, -999.9]
+    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard; to 1 decimal; to tenth of a pixel'
+    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = [-999.9, -999.9]
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ''
+    AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees; to hundredth of a degree'
+    AWIMtag_dictionary['AnglesModel'] = 'csv'
+    AWIMtag_dictionary['PixelsModel'] = 'csv'
+    AWIMtag_dictionary['BorderPixels'] = np.zeros((3,6))
+    AWIMtag_dictionary['BorderAngles'] = np.zeros((3,6))
+    AWIMtag_dictionary['BordersAzimuthArtifae'] = np.zeros((3,6))
+    AWIMtag_dictionary['BordersRADec'] = np.zeros((3,6))
+    AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
+    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['PixelSizeUnit'] = 'Pixels per Degree; to tenth of a pixel'
 
     if not default_units:
-        for key in AWIMtag_dictionary:
-            AWIMtag_dictionary[key] = None
+        AWIMtag_dictionary['LocationUnit'] = ''
+        AWIMtag_dictionary['LocationAltitudeUnit'] = ''
+        AWIMtag_dictionary['LocationAGLUnit'] = ''
+        AWIMtag_dictionary['CaptureMomentUnit'] = ''
+        AWIMtag_dictionary['RefPixelCoordType'] = ''
+        AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = ''
+        AWIMtag_dictionary['RADecUnit'] = ''
+        AWIMtag_dictionary['PixelSizeUnit'] = ''
 
     return AWIMtag_dictionary
 
 
+# numpy datetime64 is International Atomic Time (TAI), not UTC, so it ignores leap seconds.
+# numpy datetime64 uses astronomical year numbering, i.e. year 2BC = year -1, 1BC = year 0, 1AD = year 1
 def format_datetime(input_datetime_UTC, direction):
-    datetime_format = "%Y:%m:%d %H:%M:%S" # directly from exif documentation
+    exif_datetime_format = "%Y:%m:%d %H:%M:%S" # directly from exif documentation
+    numpy_datetime_format = "%Y-%m-%dT%H:%M:%S" # from numpy documentation
+    readable_datetime_format = "%Y-%m-%d %H:%M:%S" # my opinion
     
-    if direction == 'to string':
+    if direction == 'to string for exif':
         if isinstance(input_datetime_UTC, datetime.datetime):
-            output = input_datetime_UTC.strftime(datetime_format)
+            output = input_datetime_UTC.strftime(exif_datetime_format)
         elif isinstance(input_datetime_UTC, np.datetime64):
-            pass # TODO convert the format to datetime_format, necessary?
+            pass # TODO convert this format, necessary?
 
-    elif direction == 'from string':
-        datetime_object = datetime.datetime.strptime(input_datetime_UTC, datetime_format)
-        numpy_datetime_format = "%Y-%m-%dT%H:%M:%S" # from numpy documentation
+    elif direction == 'to string for AWIMtag':
+        if isinstance(input_datetime_UTC, datetime.datetime):
+            output = input_datetime_UTC.strftime(readable_datetime_format)
+        elif isinstance(input_datetime_UTC, np.datetime64):
+            pass # TODO convert this format, necessary?
+
+    elif direction == 'from AWIM string':
+        datetime_object = datetime.datetime.strptime(input_datetime_UTC, readable_datetime_format)
         datetime_string_for_numpy = datetime.datetime.strftime(datetime_object, numpy_datetime_format)
         output = np.datetime64(datetime_string_for_numpy)
 
     return output
 
 
-def get_exif(metadata_source_path):
+# works 11 Oct 2022: todorename formats each individual exif value
+def format_individual_exif_values(exif_value):
+    if isinstance(exif_value, PIL.TiffImagePlugin.IFDRational):
+        if exif_value.denominator != 0:
+            value_readable = exif_value.numerator / exif_value.denominator
+        else:
+            value_readable = float('nan')
+    elif isinstance(exif_value, bytes):
+        try:
+            value_readable = exif_value.decode()
+            if not value_readable.isprintable():
+                value_readable = ''.join([str(ord(x))[1:] for x in value_readable])
+        except (UnicodeDecodeError, AttributeError):
+            print('something unexpected happened look here')
+    elif isinstance(exif_value, str) and not exif_value.isprintable():
+        value_readable = ''
+        string_list = exif_value.split()
+        for element in exif_value:
+            if element.isprintable():
+                value_readable += element
+            else:
+                pass
+    else:
+        value_readable = exif_value
+
+    return value_readable
+
+
+def get_exif(metadata_source_path, save_exif_text_file=False):
     metadata_src_type = os.path.splitext(metadata_source_path)[-1]
     current_image = PIL.Image.open(metadata_source_path)
-    img_exif = current_image._getexif()
+    img_exif = current_image._getexif() # ._getexif returns dictionary. .getexif returns PIL object
 
     if img_exif:
         img_exif_readable = {}
-        for key in img_exif.keys():
-            decode = TAGS.get(key,key)
+        for key, value in img_exif.items():
+            key_decoded = TAGS.get(key,key)
             if key != 34853:
-                img_exif_readable[decode] = img_exif[key]
+                value_readable = format_individual_exif_values(value)
+                img_exif_readable[key_decoded] = value_readable
             else:
                 GPS_dict_readable = {}
-                for GPSkey in img_exif[34853].keys():
-                    GPSdecode = GPSTAGS.get(GPSkey,GPSkey)
-                    GPS_dict_readable[GPSdecode] = img_exif[34853][GPSkey]
-                img_exif_readable[decode] = GPS_dict_readable
+                for GPSkey, GPSvalue in value.items():
+                    GPSkey_decoded = GPSTAGS.get(GPSkey,GPSkey)
+                    GPSvalue_readable = format_individual_exif_values(GPSvalue)
+                    GPS_dict_readable[GPSkey_decoded] = GPSvalue_readable
+                img_exif_readable[key_decoded] = GPS_dict_readable
 
-        with open((os.path.splitext(metadata_source_path)[0] + ' - exif' + '.pickle'), 'wb') as exif_pickle:
-            pickle.dump(img_exif, exif_pickle, 5)
+        if save_exif_text_file:
+            img_exif_readable_str = dictionary_to_readable_textfile(img_exif_readable, 'txtfile')
+            savename = os.path.splitext(metadata_source_path)[0]
+            with open(savename + ' - exif_readable.txt', 'w') as f:
+                f.write(img_exif_readable_str)
 
         return img_exif_readable
     else:
         return False
 
 
-def get_exif_GPS(exif_readable):
+def format_GPS_latlng(exif_readable):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
     if exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'N':
@@ -120,7 +180,7 @@ def get_exif_GPS(exif_readable):
     return GPS_latlng, GPS_alt
 
     
-def UTC_from_exif(exif_readable, tz_default):
+def capture_moment_from_exif(exif_readable, tz_default=False):
     exif_UTC = False
     UTC_source = False
     UTC_datetime_str = False
@@ -150,12 +210,17 @@ def UTC_from_exif(exif_readable, tz_default):
             exif_UTC = exif_datetime_object_naive - UTC_offset_timedelta
             UTC_source = 'exif DateTimeOriginal and exif OffsetTimeOriginal'
         else:
-            exif_datetime_object_localized = tz_default.localize(exif_datetime_object_naive)
-            exif_UTC = exif_datetime_object_localized.astimezone(pytz.utc)
-            UTC_source = 'exif DateTimeOriginal adjusted with user-entered timezone'
+            if tz_default:
+                exif_datetime_object_localized = tz_default.localize(exif_datetime_object_naive)
+                exif_UTC = exif_datetime_object_localized.astimezone(pytz.utc)
+                UTC_source = 'exif DateTimeOriginal adjusted with user-entered timezone'
+            else:
+                exif_UTC = exif_datetime_object_naive
+                UTC_source = 'exif DateTimeOriginal not adjusted for timezone, probably not UTC'
+
 
     if exif_UTC:
-        UTC_datetime_str = format_datetime(exif_UTC, 'to string')
+        UTC_datetime_str = format_datetime(exif_UTC, 'to string for AWIMtag')
 
     return UTC_datetime_str, UTC_source
 
@@ -188,44 +253,99 @@ def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Lo
     return LocationAGL
 
 
-def stringify_tag(AWIMtag_dictionary):
-    AWIMtag_dictionary_ofstrings = {}
-    for key, value in AWIMtag_dictionary.items():
-        if isinstance(value, (list, tuple)):
-            AWIMtag_dictionary_ofstrings[key] = ', '.join(str(i) for i in value)
-        elif isinstance(value, (int, float)):
-            AWIMtag_dictionary_ofstrings[key] = str(value)
+# output types: 1. 'string' is with new lines 2. 'dictionary' is comma-separated
+def dictionary_to_readable_textfile(any_dictionary):
+    dictionary_string_txtfile = ''
+
+    for key, value in any_dictionary.items():
+        if isinstance(value, (int, float)):
+            value_string = json.dumps(value)
+        elif isinstance(value, (list, tuple)):
+            value_string = []
+            for list_item in value:
+                value_string.append(format_individual_exif_values(list_item))
+            value_string = json.dumps(value_string)
+        elif value is None:
+            value_string = str(value)
+        elif isinstance(value, np.ndarray):
+            value_string = '\n' + json.dumps(value.tolist())
+            value_string = value_string.replace('],', '],\n')
         elif isinstance(value, pd.DataFrame):
-            AWIMtag_dictionary_ofstrings[key] = value.to_csv(index_label='features')
+            value_string = value.to_csv(index_label='features')
+        elif isinstance(value, dict):
+            value_string = dictionary_to_readable_textfile(value)
         elif isinstance(value, str):
-            AWIMtag_dictionary_ofstrings[key] = value
+            value_string = value
+        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
+            value_string = str(format_individual_exif_values(value))
         else:
-            print('error: unexpected data type')
+            value_string = 'unexpected data type'
 
-    AWIMtag_dictionary_string = str(AWIMtag_dictionary_ofstrings)
+        if not isinstance(key, str):
+            key = str(key)
 
-    return AWIMtag_dictionary_string
+        value_string = key + ': ' + value_string + '\n'
+        dictionary_string_txtfile += value_string
+
+    return dictionary_string_txtfile
+
+
+def stringify_dictionary(any_dictionary):
+    dictionary_ofstrings = {}
+
+    for key, value in any_dictionary.items():
+        if isinstance(value, (int, float)):
+            value_string = json.dumps(value)
+        elif isinstance(value, (list, tuple)):
+            value_string = []
+            for list_item in value:
+                value_string.append(format_individual_exif_values(list_item))
+            value_string = json.dumps(value_string)
+        elif value is None:
+            value_string = str(value)
+        elif isinstance(value, np.ndarray):
+            value_string = json.dumps(value.tolist())
+        elif isinstance(value, pd.DataFrame):
+            value_string = value.to_csv()
+        elif isinstance(value, dict):
+            value_string = stringify_dictionary(value)
+        elif isinstance(value, str):
+            value_string = value
+        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
+            value_string = str(format_individual_exif_values(value))
+        else:
+            value_string = 'unexpected data type'
+
+        if not isinstance(key, str):
+            key = str(key)
+
+        dictionary_ofstrings[key] = value_string
+
+    dictionary_ofstrings_str = str(dictionary_ofstrings)
+
+    return dictionary_ofstrings_str
 
 
 def de_stringify_tag(AWIMtag_dictionary_string):
+    AWIMstart = AWIMtag_dictionary_string.find("AWIMstart")
+    AWIMend = AWIMtag_dictionary_string.find("AWIMend")
+    AWIMtag_dictionary_string = AWIMtag_dictionary_string[AWIMstart+9:AWIMend]
     AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
     AWIMtag_dictionary = {}
+    AWIMtag_template = generate_empty_AWIMtag_dictionary()
     for key, value in AWIMtag_dictionary_ofstrings.items():
-        if value is None:
+        if value is None or value == '':
             AWIMtag_dictionary[key] = None
-        elif (key == 'PixelModels') or (key == 'AngleModels'):
+        elif AWIMtag_template[key] == 'csv':
             AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
-        elif key == 'CaptureMoment':
-            AWIMtag_dictionary[key] = value
-        elif (',' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a list
-            AWIMtag_dictionary[key] = [float(list_value) for list_value in value.split(',')]
-        elif (',' not in value) and ('.' not in value) and not (re.search('[a-zA-Z]', value)): # evaluate as an int
-            AWIMtag_dictionary[key] = int(value)
-        elif (',' not in value) and ('.' in value) and not (re.search('[a-zA-Z]', value)): # evaluate as a float
-            AWIMtag_dictionary[key] = float(value)
+        elif isinstance(AWIMtag_template[key], (int, float, list, tuple)):
+            AWIMtag_dictionary[key] = json.loads(value)
+        elif isinstance(AWIMtag_template[key], np.datetime64):
+            AWIMtag_dictionary[key] = format_datetime(value, 'from AWIM string')
+        elif isinstance(AWIMtag_template[key], np.ndarray):
+            AWIMtag_dictionary[key] = np.array(json.loads(value))
         else:
             AWIMtag_dictionary[key] = value
-
 
     return AWIMtag_dictionary
 
@@ -239,7 +359,7 @@ def pxs_to_xyangs(AWIMtag_dictionary, pxs):
 
     pxs = np.abs(pxs).reshape(-1,2)
 
-    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['PixelAngleModelsType'] == '3d_degree_poly_fit_abs_from_center':
         pxs_poly = np.zeros((pxs.shape[0], 9))
         pxs_poly[:,0] = pxs[:,0]
         pxs_poly[:,1] = pxs[:,1]
@@ -251,8 +371,8 @@ def pxs_to_xyangs(AWIMtag_dictionary, pxs):
         pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
         pxs_poly[:,8] = np.power(pxs[:,1], 3)
 
-    xang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['xang_predict']].values[0]
-    yang_predict_coeff = AWIMtag_dictionary['AngleModels'].loc[['yang_predict']].values[0]
+    xang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['xang_predict']].values[0]
+    yang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['yang_predict']].values[0]
 
     xyangs = np.zeros(pxs.shape)
     xyangs[:,0] = np.dot(pxs_poly, xang_predict_coeff)
@@ -356,7 +476,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
     xy_angs_direction = np.where(xy_angs < 0, -1, 1)
     xy_angs_abs = np.abs(xy_angs)
 
-    if AWIMtag_dictionary['PixelMapType'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['PixelAngleModelsType'] == '3d_degree_poly_fit_abs_from_center':
         xy_angs_poly = np.zeros((xy_angs.shape[0], 9))
         xy_angs_poly[:,0] = xy_angs_abs[:,0]
         xy_angs_poly[:,1] = xy_angs_abs[:,1]
@@ -369,7 +489,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
         xy_angs_poly[:,8] = np.power(xy_angs_abs[:,1], 3)
 
     pxs = np.zeros(input_shape)
-    px_models_df = AWIMtag_dictionary['PixelModels']
+    px_models_df = AWIMtag_dictionary['PixelsModel']
     x_px_predict_coeff = px_models_df['']
     pxs[:,0] = np.dot(xy_angs_poly, self.x_px_predict_coeff)
     pxs[:,1] = np.dot(xy_angs_poly, self.y_px_predict_coeff)
@@ -427,12 +547,7 @@ def get_pixel_sizes(source_image_path, AWIMtag_dictionary):
 def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
         elevation_at_location, tz, known_px, known_px_azart, img_orientation, img_tilt):
 
-    lat_lng_digits = 6
-    GPS_alt_digits = 1
-    AGL_digits = 2
-    pixel_digits = 1
-    degrees_digits = 2
-    hourangle_digits = 3
+    round_digits = AWIMtag_rounding_digits()
     
     exif_readable = get_exif(metadata_source_path)
 
@@ -440,15 +555,15 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
         pass # allows user to specify location without being overridden by the exif GPS
     elif AWIMtag_dictionary['LocationSource'] == 'get from exif GPS':
         if exif_readable.get('GPSInfo'):
-            location, location_altitude = get_exif_GPS(exif_readable)
+            location, location_altitude = format_GPS_latlng(exif_readable)
             if location:
-                AWIMtag_dictionary['Location'] = [round(f, lat_lng_digits) for f in location]
+                AWIMtag_dictionary['Location'] = [round(f, round_digits['lat long']) for f in location]
                 AWIMtag_dictionary['LocationSource'] = 'DSC exif GPS'
             else:
                 AWIMtag_dictionary['LocationSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
                 
             if location_altitude:
-                AWIMtag_dictionary['LocationAltitude'] = round(location_altitude, GPS_alt_digits)
+                AWIMtag_dictionary['LocationAltitude'] = round(location_altitude, round_digits['altitude'])
                 AWIMtag_dictionary['LocationAltitudeSource'] = 'DSC exif GPS'
             else:
                 AWIMtag_dictionary['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
@@ -461,28 +576,28 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     if AWIMtag_dictionary['LocationAGLSource'] == 'get from altitude minus terrain elevation':
         location_AGL = get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_location)
         if location_AGL:
-            AWIMtag_dictionary['LocationAGL'] = [round(f, AGL_digits) for f in location_AGL]
+            AWIMtag_dictionary['LocationAGL'] = [round(f, round_digits['AGL']) for f in location_AGL]
             AWIMtag_dictionary['LocationAGLSource'] = 'Subtracted terrain elevation from altitude.'
         else:
             AWIMtag_dictionary['LocationAGLSource'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
     if AWIMtag_dictionary['CaptureMomentSource'] == 'get from exif':
-        UTC_datetime_str, UTC_source = UTC_from_exif(exif_readable, tz)
+        UTC_datetime_str, UTC_source = capture_moment_from_exif(exif_readable, tz)
         if UTC_datetime_str:
             AWIMtag_dictionary['CaptureMoment'] = UTC_datetime_str
             AWIMtag_dictionary['CaptureMomentSource'] = UTC_source
         else:
-            AWIMtag_dictionary['CaptureMomentSource'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+            AWIMtag_dictionary['CaptureMomentSource'] = 'Attempted to get from exif, but was not present or not complete.'
 
     pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
                                                     (source_image_path, img_orientation, img_tilt)
-    AWIMtag_dictionary['PixelMapType'] = pixel_map_type
-    AWIMtag_dictionary['AngleModels'] = xyangs_model_df
-    AWIMtag_dictionary['PixelModels'] = px_model_df
+    AWIMtag_dictionary['PixelAngleModelsType'] = pixel_map_type
+    AWIMtag_dictionary['AnglesModel'] = xyangs_model_df
+    AWIMtag_dictionary['PixelsModel'] = px_model_df
     
     ref_px, img_borders_pxs = get_ref_px_and_borders(source_image_path, AWIMtag_dictionary['RefPixel'])
-    AWIMtag_dictionary['RefPixel'] = [round(f, pixel_digits) for f in ref_px]
-    AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(pixel_digits).tolist()
+    AWIMtag_dictionary['RefPixel'] = [round(f, round_digits['pixels']) for f in ref_px]
+    AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 
     if AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] == 'from known px':
         if isinstance(known_px_azart, str):
@@ -490,24 +605,33 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
             known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
 
         ref_azart = ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
-    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.round(degrees_digits).tolist()
+    AWIMtag_dictionary['RefPixelAzimuthArtifae'] = ref_azart.round(round_digits['degrees'])
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ref_azart_source
 
     img_borders_angs = pxs_to_xyangs(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(degrees_digits).tolist()
+    AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(round_digits['degrees'])
 
     img_borders_azarts = pxs_to_azarts(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(degrees_digits).tolist()
+    AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(round_digits['degrees'])
 
     img_borders_RADecs = astropytools.AzArts_to_RADecs(AWIMtag_dictionary, img_borders_azarts)
-    img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(hourangle_digits)
-    img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(degrees_digits)
-    AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs.tolist()
+    img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(round_digits['hourangle'])
+    img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(round_digits['degrees'])
+    AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs
 
     px_size_center, px_size_average = get_pixel_sizes(source_image_path, AWIMtag_dictionary)
-    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [round(f, pixel_digits) for f in px_size_center]
-    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [round(f, pixel_digits) for f in px_size_average]
+    AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
+    AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 
-    AWIMtag_dictionary_string = stringify_tag(AWIMtag_dictionary)
+    AWIMtag_dictionary_string = stringify_dictionary(AWIMtag_dictionary, 'dictionary')
 
     return AWIMtag_dictionary, AWIMtag_dictionary_string
+
+
+# put the AWIMtag in the comment field of the image exif and re-attach the exif to the image
+def add_AWIMtag_to_exif():
+	if img_exif_raw.get(37510):
+		user_comments = img_exif_raw[37510]
+	else:
+		user_comments = ''
+	img_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
