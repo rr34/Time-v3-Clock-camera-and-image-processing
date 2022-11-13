@@ -1,6 +1,7 @@
 import subprocess
 
-def set_UserComment(filepath):
+def append_UserComment(filepath, text_to_append):
+    
     command1 = '-M'
     command2 = 'set Exif.Photo.UserComment '
     user_comment = 'commentstart' + 'i wrote a user comment here\nso you should be super-impressed' + 'commentend'
