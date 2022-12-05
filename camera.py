@@ -4,6 +4,8 @@ import pandas as pd
 import os
 import PIL
 import awimlib
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
 
 
 # theta is CCW from the positive x axis. r is cm from center
@@ -204,8 +206,6 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	ref_df.to_csv(r'code-output-dump-folder/ref df.csv')
 
 	# create the px to xyangs models
-	from sklearn.preprocessing import PolynomialFeatures
-	from sklearn.linear_model import LinearRegression
 
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
 	independent_poly_px = pd.DataFrame(data=poly_px.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly_px.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
@@ -222,7 +222,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	round_digits = awimlib.AWIMtag_rounding_digits()
 
 	# get some basic exif for completeness
-	if calimg_exif_readable.get('GPSInfo'):
+	if calimg_exif_readable.get('Exif.Image.GPSTag'):
 		location, location_altitude = awimlib.format_GPS_latlng(calimg_exif_readable)
 		
 		if location:

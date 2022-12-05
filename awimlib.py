@@ -2,6 +2,7 @@ import os, io, ast, re
 import json
 import math
 import numpy as np
+import pyexiv2
 import PIL
 from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
@@ -123,30 +124,20 @@ def format_individual_exif_values(exif_value):
 
 def get_exif(metadata_source_path, save_exif_text_file=False):
     metadata_src_type = os.path.splitext(metadata_source_path)[-1]
-    current_image = PIL.Image.open(metadata_source_path)
-    img_exif = current_image._getexif() # ._getexif returns dictionary. .getexif returns PIL object
 
-    if img_exif:
-        img_exif_readable = {}
-        for key, value in img_exif.items():
-            key_decoded = TAGS.get(key,key)
-            if key != 34853:
-                value_readable = format_individual_exif_values(value)
-                img_exif_readable[key_decoded] = value_readable
-            else:
-                GPS_dict_readable = {}
-                for GPSkey, GPSvalue in value.items():
-                    GPSkey_decoded = GPSTAGS.get(GPSkey,GPSkey)
-                    GPSvalue_readable = format_individual_exif_values(GPSvalue)
-                    GPS_dict_readable[GPSkey_decoded] = GPSvalue_readable
-                img_exif_readable[key_decoded] = GPS_dict_readable
+    img_pyexiv2 = pyexiv2.Image(metadata_source_path)
+    img_exif_readable = img_pyexiv2.read_exif()
+    img_pyexiv2.close()
 
-        if save_exif_text_file:
-            img_exif_readable_str = dictionary_to_readable_textfile(img_exif_readable, 'txtfile')
-            savename = os.path.splitext(metadata_source_path)[0]
-            with open(savename + ' - exif_readable.txt', 'w') as f:
-                f.write(img_exif_readable_str)
+        
 
+    if save_exif_text_file:
+        img_exif_readable_str = dictionary_to_readable_textfile(img_exif_readable, 'txtfile')
+        savename = os.path.splitext(metadata_source_path)[0]
+        with open(savename + ' - exif_readable.txt', 'w') as f:
+            f.write(img_exif_readable_str)
+
+    if True: #check if there was exif data
         return img_exif_readable
     else:
         return False
