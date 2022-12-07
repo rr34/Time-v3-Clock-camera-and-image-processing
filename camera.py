@@ -294,13 +294,13 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	
 	calimg_exif_readable['UserComment'] = cam_AWIMtag
 	calimg_exif_readable_txtfile = awimlib.dictionary_to_readable_textfile(calimg_exif_readable)
-	with open(savepath + cam_ID + ' - exif w AWIMtag.txt', 'w') as f:
+	with open(savepath + cam_ID + '-exif+AWIMtag.txt', 'w') as f:
 		f.write(calimg_exif_readable_txtfile)
 
 	calimg_exif_raw = calibration_image.getexif()
 	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag)
 	calimg_exif_raw[37510] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	calibration_image.save(savepath + cam_ID + ' - w cameraAWIMtag.jpg', exif=calimg_exif_raw)
+	calibration_image.save(savepath + cam_ID + '+cameraAWIMtag.jpg', exif=calimg_exif_raw)
 
 	return cam_ID
 
@@ -324,8 +324,6 @@ def represent_camera(self):
 		f.write(camera_str)
 
 
-	# TODOnext2 once converted to a dictionary, this is what the result still needs to be able to do
-	# generate awim data in form of a single dictionary for embedding in any image file
 	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
 		source_image = Image.open(src_img_path)
 		img_dimensions = source_image.size

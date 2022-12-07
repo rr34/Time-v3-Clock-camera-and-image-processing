@@ -146,57 +146,66 @@ def get_exif(metadata_source_path, save_exif_text_file=False):
 def format_GPS_latlng(exif_readable):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
-    if exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'N':
+    if exif_readable.get('Exif.GPSInfo.GPSLatitudeRef') == 'N':
         lat_sign = 1
-    elif exif_readable['GPSInfo'].get('GPSLatitudeRef') == 'S':
+    elif exif_readable.get('Exif.GPSInfo.GPSLatitudeRef') == 'S':
         lat_sign = -1
-    if exif_readable['GPSInfo'].get('GPSLongitudeRef') == 'E':
+    if exif_readable.get('Exif.GPSInfo.GPSLongitudeRef') == 'E':
         lng_sign = 1
-    elif exif_readable['GPSInfo'].get('GPSLongitudeRef') == 'W':
+    elif exif_readable.get('Exif.GPSInfo.GPSLongitudeRef') == 'W':
         lng_sign = -1
-    if lat_sign and lng_sign and exif_readable['GPSInfo'].get('GPSLatitude') and exif_readable['GPSInfo'].get('GPSLongitude'):
-        img_lat = lat_sign * float(exif_readable['GPSInfo']['GPSLatitude'][0] + exif_readable['GPSInfo']['GPSLatitude'][1]/60 + exif_readable['GPSInfo']['GPSLatitude'][2]/3600)
-        img_lng = lng_sign * float(exif_readable['GPSInfo']['GPSLongitude'][0] + exif_readable['GPSInfo']['GPSLongitude'][1]/60 + exif_readable['GPSInfo']['GPSLongitude'][2]/3600)
+    if lat_sign and lng_sign and exif_readable.get('Exif.GPSInfo.GPSLatitude') and exif_readable.get('Exif.GPSInfo.GPSLongitude'):
+        lat_dms_list = re.split(' |\/', exif_readable['Exif.GPSInfo.GPSLatitude'])
+        lng_dms_list = re.split(' |\/', exif_readable['Exif.GPSInfo.GPSLongitude'])
+        lat_deg = float(lat_dms_list[0]) / float(lat_dms_list[1])
+        lat_min = float(lat_dms_list[2]) / float(lat_dms_list[3])
+        lat_sec = float(lat_dms_list[4]) / float(lat_dms_list[5])
+        lng_deg = float(lng_dms_list[0]) / float(lng_dms_list[1])
+        lng_min = float(lng_dms_list[2]) / float(lng_dms_list[3])
+        lng_sec = float(lng_dms_list[4]) / float(lng_dms_list[5])
+        img_lat = lat_sign * lat_deg + lat_min/60 + lat_sec/3600
+        img_lng = lng_sign * lng_deg + lng_min/60 + lng_sec/3600
         GPS_latlng = [img_lat, img_lng]
 
-    if exif_readable['GPSInfo'].get('GPSAltitudeRef') and exif_readable['GPSInfo'].get('GPSAltitude'):
-        GPSAltitudeRef = exif_readable['GPSInfo']['GPSAltitudeRef'].decode()
-        if GPSAltitudeRef == '\x00':
+    if exif_readable.get('Exif.GPSInfo.GPSAltitudeRef') and exif_readable.get('Exif.GPSInfo.GPSAltitude'):
+        if exif_readable['Exif.GPSInfo.GPSAltitudeRef'] == '0':
             GPS_alt_sign = 1
         else:
             print('Elevation is something unusual, probably less than zero like in Death Valley or something. Look here.')
             GPS_alt_sign = -1
-        GPS_alt = GPS_alt_sign * float(exif_readable['GPSInfo']['GPSAltitude'])
+        GPS_alt_rational = exif_readable['Exif.GPSInfo.GPSAltitude'].split('/')
+        GPS_alt = float(GPS_alt_rational[0]) / float(GPS_alt_rational[1]) * GPS_alt_sign
 
     return GPS_latlng, GPS_alt
 
     
 def capture_moment_from_exif(exif_readable, tz_default=False):
-    exif_UTC = False
-    UTC_source = False
-    UTC_datetime_str = False
+    exif_UTC = UTC_source = UTC_datetime_str = False
     exif_datetime_format = "%Y:%m:%d %H:%M:%S"
 
     # 1. use the GPS time tag if present and ignore the leap seconds
-    if exif_readable.get('GPSInfo') and exif_readable['GPSInfo'].get('GPSDateStamp') and exif_readable['GPSInfo'].get('GPSTimeStamp'):
-        GPS_datestamp = exif_readable['GPSInfo']['GPSDateStamp']
-        GPS_timestamp = exif_readable['GPSInfo']['GPSTimeStamp']
-        GPSyear = int(GPS_datestamp.split(':')[0])
-        GPSmonth = int(GPS_datestamp.split(':')[1])
-        GPSday = int(GPS_datestamp.split(':')[2])
-        GPShour = int(GPS_timestamp[0])
-        GPSminute = int(GPS_timestamp[1])
-        GPSsecond = int(GPS_timestamp[2])
+    if exif_readable.get('Exif.Image.GPSTag') and exif_readable.get('Exif.GPSInfo.GPSDateStamp') and exif_readable.get('Exif.GPSInfo.GPSTimeStamp'):
+        GPS_datestamp_list = exif_readable['Exif.GPSInfo.GPSDateStamp'].split(':')
+        GPS_timestamp = exif_readable['Exif.GPSInfo.GPSTimeStamp']
+        GPS_timestamp_list = re.split(' |\/', GPS_timestamp)
+        GPSyear = int(GPS_datestamp_list[0])
+        GPSmonth = int(GPS_datestamp_list[1])
+        GPSday = int(GPS_datestamp_list[2])
+        if len(GPS_timestamp_list) == 6 and GPS_timestamp_list[1] == '1' and GPS_timestamp_list[3] == '1' and GPS_timestamp_list[5] == '1':
+            GPShour = int(GPS_timestamp_list[0])
+            GPSminute = int(GPS_timestamp_list[2])
+            GPSsecond = int(GPS_timestamp_list[4])
         exif_UTC = datetime.datetime(year = GPSyear, month = GPSmonth, day = GPSday, hour = GPShour, minute = GPSminute, second = GPSsecond)
         UTC_source = 'exif GPSDateStamp and exif GPSTimeStamp'
     
     # 2. use the datetimeoriginal with either UTCOffset tag or default timezone
-    elif exif_readable.get('DateTimeOriginal'):
-        exif_datetime = exif_readable['DateTimeOriginal']
+    elif exif_readable.get('Exif.Photo.DateTimeOriginal'):
+        exif_datetime = exif_readable['Exif.Photo.DateTimeOriginal']
         exif_datetime_object_naive = datetime.datetime.strptime(exif_datetime, exif_datetime_format)
 
-        if  exif_readable.get('OffsetTimeOriginal'):
-            exif_UTC_offset_minutes = 60 * int(exif_readable['OffsetTimeOriginal'].split(':')[0]) + int(exif_readable['OffsetTimeOriginal'].split(':')[1])
+        if  exif_readable.get('Exif.Photo.OffsetTimeOriginal'):
+            exif_UTC_offset_list = exif_readable['Exif.Photo.OffsetTimeOriginal'].split(':')
+            exif_UTC_offset_minutes = 60 * int(exif_UTC_offset_list[0]) + int(exif_UTC_offset_list[1])
             UTC_offset_timedelta = datetime.timedelta(minutes = exif_UTC_offset_minutes)
             exif_UTC = exif_datetime_object_naive - UTC_offset_timedelta
             UTC_source = 'exif DateTimeOriginal and exif OffsetTimeOriginal'
@@ -523,8 +532,6 @@ def get_pixel_sizes(source_image_path, AWIMtag_dictionary):
     px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
 
     source_image = PIL.Image.open(source_image_path)
-    img_dimensions = source_image.size
-
     dimensions = source_image.size
     border_angles = np.array(AWIMtag_dictionary['BorderAngles'])
     horizontal_angle_width = abs(border_angles[1,0]) + abs(border_angles[1,4])

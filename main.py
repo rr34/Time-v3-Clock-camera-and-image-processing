@@ -15,7 +15,6 @@ def tag_image_with_AWIM():
     full_user_comment = exif_dict['UserComment']
     cameraAWIMdictionary = awimlib.de_stringify_tag(full_user_comment)
     print(cameraAWIMdictionary)
-    # TODOnext2: use this AWIMtag
     
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 

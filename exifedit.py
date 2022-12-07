@@ -1,7 +1,7 @@
 import subprocess
 
-def append_UserComment(filepath, text_to_append):
-    
+def UserComment_append(filepath, text_to_append):
+    # todonext convert this to pyexiv2 with options: append/overwrite UserComment & modify/copy&modify
     command1 = '-M'
     command2 = 'set Exif.Photo.UserComment '
     user_comment = 'commentstart' + 'i wrote a user comment here\nso you should be super-impressed' + 'commentend'
