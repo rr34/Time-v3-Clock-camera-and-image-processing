@@ -4,11 +4,11 @@ import math
 import numpy as np
 import pyexiv2
 import PIL
-from PIL.ExifTags import TAGS, GPSTAGS
 import datetime
 import pytz
 import pandas as pd
 import astropytools
+import metadata_tools
 
 
 def AWIMtag_rounding_digits():
@@ -122,26 +122,6 @@ def format_individual_exif_values(exif_value):
     return value_readable
 
 
-def get_exif(metadata_source_path, save_exif_text_file=False):
-    metadata_src_type = os.path.splitext(metadata_source_path)[-1]
-
-    img_pyexiv2 = pyexiv2.Image(metadata_source_path)
-    img_exif_readable = img_pyexiv2.read_exif()
-    img_pyexiv2.close()
-
-        
-
-    if save_exif_text_file:
-        img_exif_readable_str = dictionary_to_readable_textfile(img_exif_readable, 'txtfile')
-        savename = os.path.splitext(metadata_source_path)[0]
-        with open(savename + ' - exif_readable.txt', 'w') as f:
-            f.write(img_exif_readable_str)
-
-    if True: #check if there was exif data
-        return img_exif_readable
-    else:
-        return False
-
 
 def format_GPS_latlng(exif_readable):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
@@ -226,8 +206,8 @@ def capture_moment_from_exif(exif_readable, tz_default=False):
 
 
 def get_ref_px_and_borders(source_image_path, ref_px):
-    source_image = PIL.Image.open(source_image_path)
-    img_dimensions = source_image.size
+    with PIL.Image.open(source_image_path) as source_image:
+        img_dimensions = source_image.size
     max_img_index = np.subtract(img_dimensions, 1)
 
     if ref_px == 'center, get from image':
@@ -531,8 +511,8 @@ def get_pixel_sizes(source_image_path, AWIMtag_dictionary):
     px_size_center_horizontal = (abs(little_cross_LRUD[0,0]) + abs(little_cross_LRUD[1,0])) / (abs(little_cross_angs[0,0]) + abs(little_cross_angs[1,0]))
     px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
 
-    source_image = PIL.Image.open(source_image_path)
-    dimensions = source_image.size
+    with PIL.Image.open(source_image_path) as source_image:
+        dimensions = source_image.size
     border_angles = np.array(AWIMtag_dictionary['BorderAngles'])
     horizontal_angle_width = abs(border_angles[1,0]) + abs(border_angles[1,4])
     vertical_angle_width = abs(border_angles[0,3]) + abs(border_angles[2,3])
@@ -547,7 +527,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
 
     round_digits = AWIMtag_rounding_digits()
     
-    exif_readable = get_exif(metadata_source_path)
+    exif_readable = metadata_tools.get_metadata(metadata_source_path)
 
     if AWIMtag_dictionary['LocationSource'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
         pass # allows user to specify location without being overridden by the exif GPS
