@@ -206,7 +206,6 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	ref_df.to_csv(r'code-output-dump-folder/ref df.csv')
 
 	# create the px to xyangs models
-
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
 	independent_poly_px = pd.DataFrame(data=poly_px.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly_px.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
 	xyangs_model = LinearRegression(fit_intercept=False)
@@ -265,14 +264,6 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeCenterHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
-
-	# save a harmless text file of the whole dictionary
-	calimg_exif_readable['UserComment'] = cam_AWIMtag
-	calimg_exif_readable_txtfile = awimlib.dictionary_to_readable_textfile(calimg_exif_readable)
-	working_directory = os.path.dirname(calibration_image_path) + r'/'
-	working_filename = os.path.splitext(os.path.basename(calibration_image_path))[0]
-	with open(working_directory + working_filename + '-exif+AWIMtag.txt', 'w') as f:
-		f.write(calimg_exif_readable_txtfile)
 
 	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag)
 	cam_AWIMtag_string = 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
