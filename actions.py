@@ -1,9 +1,8 @@
-import tkinter
+from tkinter.filedialog import askopenfilename
 import os
 import numpy as np
 import math
 import PIL
-from PIL.ExifTags import TAGS, GPSTAGS
 from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
@@ -16,14 +15,14 @@ import camera, awimlib, astropytools
 
 def generate_save_camera_AWIM():
     # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
-    calibration_image = tkinter.filedialog.askopenfilename(title='open calibration image')
-    calibration_file = tkinter.filedialog.askopenfilename(title='open calibration csv file')
-    camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)\
+    calibration_image = askopenfilename(title='open calibration image')
+    calibration_file = askopenfilename(title='open calibration csv file')
+    camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)
     
 
 def display_camera_lens_shape(awim_dictionary):
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
-    this_camera_filename = tkinter.filedialog.askopenfilename()
+    this_camera_filename = askopenfilename()
     camera_aim_pickle = open(this_camera_filename, 'rb')
     this_camera = pickle.load(camera_aim_pickle)
     camera_aim_pickle.close()

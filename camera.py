@@ -3,7 +3,9 @@ import numpy as np
 import pandas as pd
 import os
 import PIL
-import awimlib
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.linear_model import LinearRegression
+import awimlib, metadata_tools
 
 
 # theta is CCW from the positive x axis. r is cm from center
@@ -68,14 +70,14 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 # works 11 Oct 2022
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
-	calimg_exif_readable = awimlib.get_exif(calibration_image_path)
+	calimg_exif_readable = metadata_tools.get_metadata(calibration_image_path)
 	cal_df = pd.read_csv(calibration_file_path)
-	calibration_image = PIL.Image.open(calibration_image_path)
 
 	time_zone = cal_df[cal_df['type'] == 'time_zone']['misc'].iat[0]
 	camera_lens_system = cal_df[cal_df['type'] == 'camera_lens_system']['misc'].iat[0]
 	AWIM_cal_type = cal_df[cal_df['type'] == 'AWIM_calibration_type']['misc'].iat[0]
-	cam_image_dimensions = np.array(calibration_image.size)
+	with PIL.Image.open(calibration_image_path) as calibration_image:
+		cam_image_dimensions = np.array(calibration_image.size)
 
 	max_image_index = np.subtract(cam_image_dimensions, 1)
 	center_px = max_image_index / 2 # usually xxx.5, non-integer, bc most images have an even number of pixels, means center is a boundary rather than a pixel. Seems most programs accept float values for pixel reference now anyway.
@@ -204,9 +206,6 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	ref_df.to_csv(r'code-output-dump-folder/ref df.csv')
 
 	# create the px to xyangs models
-	from sklearn.preprocessing import PolynomialFeatures
-	from sklearn.linear_model import LinearRegression
-
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
 	independent_poly_px = pd.DataFrame(data=poly_px.fit_transform(ref_df[['x_px', 'y_px']]), columns=poly_px.get_feature_names_out(ref_df[['x_px', 'y_px']].columns))
 	xyangs_model = LinearRegression(fit_intercept=False)
@@ -222,7 +221,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	round_digits = awimlib.AWIMtag_rounding_digits()
 
 	# get some basic exif for completeness
-	if calimg_exif_readable.get('GPSInfo'):
+	if calimg_exif_readable.get('Exif.Image.GPSTag'):
 		location, location_altitude = awimlib.format_GPS_latlng(calimg_exif_readable)
 		
 		if location:
@@ -266,43 +265,11 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
-	# prepare to save by getting filename
-	savepath = os.path.dirname(calibration_image_path) + r'/'
-	cam_ID = os.path.splitext(os.path.basename(calibration_image_path))[0]
-	if calimg_exif_readable.get('Make'):
-		if cam_ID != '':
-			cam_ID += ' - '
-		cam_ID += calimg_exif_readable['Make']
-	if calimg_exif_readable.get('Model'):
-		if cam_ID != '':
-			cam_ID += ' '
-		cam_ID += calimg_exif_readable['Model']
-	if calimg_exif_readable.get('LensModel'):
-		if cam_ID != '':
-			cam_ID += ' - '
-		cam_ID += calimg_exif_readable['LensModel']
-	if calimg_exif_readable.get('FocalLength'):
-		if cam_ID != '':
-			cam_ID += ' at '
-		cam_ID += str(calimg_exif_readable['FocalLength']) + 'mm'
-
-	if calimg_exif_readable.get('UserComment'):
-		user_comment_existing = calimg_exif_readable['UserComment']
-		print('Hey, there was already a UserComment. That is unusual. Look at this comment: ' + user_comment_existing)
-	else:
-		user_comment_existing = ''
-	
-	calimg_exif_readable['UserComment'] = cam_AWIMtag
-	calimg_exif_readable_txtfile = awimlib.dictionary_to_readable_textfile(calimg_exif_readable)
-	with open(savepath + cam_ID + ' - exif w AWIMtag.txt', 'w') as f:
-		f.write(calimg_exif_readable_txtfile)
-
-	calimg_exif_raw = calibration_image.getexif()
 	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag)
-	calimg_exif_raw[37510] = user_comment_existing + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	calibration_image.save(savepath + cam_ID + ' - w cameraAWIMtag.jpg', exif=calimg_exif_raw)
+	cam_AWIMtag_string = 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
+	calibration_image_tagged = metadata_tools.UserComment_append(calibration_image_path, cam_AWIMtag_string)
 
-	return cam_ID
+	return calibration_image_tagged
 
 
 def represent_camera(self):
@@ -324,8 +291,6 @@ def represent_camera(self):
 		f.write(camera_str)
 
 
-	# TODOnext2 once converted to a dictionary, this is what the result still needs to be able to do
-	# generate awim data in form of a single dictionary for embedding in any image file
 	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
 		source_image = Image.open(src_img_path)
 		img_dimensions = source_image.size

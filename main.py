@@ -1,7 +1,7 @@
 import tkinter
 import datetime
 from pytz import timezone
-import actions, awimlib
+import actions, awimlib, metadata_tools
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
 # If I convert this app to object oriented, they will become self._____
@@ -11,12 +11,10 @@ global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_captur
 def tag_image_with_AWIM():
     camera_filename = tkinter.filedialog.askopenfilename(title='open calibration image')
 
-    exif_dict = awimlib.get_exif(camera_filename)
+    exif_dict = metadata_tools.get_metadata(camera_filename)
     full_user_comment = exif_dict['UserComment']
-    # TODOnext1: de-stringify correctly
     cameraAWIMdictionary = awimlib.de_stringify_tag(full_user_comment)
     print(cameraAWIMdictionary)
-    # TODOnext1: use this AWIMtag
     
     AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
