@@ -6,6 +6,10 @@
 - todo: Merge in the Lightroom tools from AWIM2.
 
 ## Workflow
+- Take photos in RAW format.
+- Process photos in Lightroom and generate associated XMP files along with export to PNG.
+- Add the awim tag to the XMP files.
+
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 
 # AstroWideImageMapper (AWIM)

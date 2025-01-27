@@ -69,25 +69,3 @@ def display_camera_lens_shape(awim_dictionary):
 
 def do_nothing():
     pass
-
-
-def png_text_reader(image_filename):
-    png_file_1 = PIL.Image.open(image_filename)
-    png_text_dictionary = png_file_1.text
-
-    for key, value in png_text_dictionary.items():
-        print(key, ':', png_text_dictionary[key])
-
-    return png_text_dictionary
-
-
-def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):
-	# create the info object, add the awim data to the info object, save the png with the info object 
-    png_data_container = PIL.PngImagePlugin.PngInfo()
-
-    for key, value in awim_dictionary.items():
-        png_data_container.add_text(key, value)
-    
-    save_filename_string = os.path.splitext(current_image.filename)[0] + ' - awim.png'
-    current_image = current_image.rotate(angle=rotate_degrees, expand=True) # rotates CW
-    current_image.save(save_filename_string, 'PNG', pnginfo=png_data_container)

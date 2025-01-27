@@ -4,7 +4,7 @@ from pytz import timezone
 import actions, awimlib, metadata_tools
 
 # I know I'm not supposed to use globals. They are not referenced outside this file.
-# If I convert this app to object oriented, they will become self._____
+# If I convert this app to object-oriented, they will become self._____
 global rotate_degrees, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
 
@@ -101,13 +101,13 @@ def continue3():
     global current_camera, current_image
     global rotate_degrees, exif_present, GPS_info_present, img_latlng, img_elevation, image_capture_moment, awim_dictionary_in
 
-    actions.generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary_in)
+    metadata_tools.generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary_in)
 
 
 def png_read():
 
     png_filename = tkinter.filedialog.askopenfilename()
-    awim_dictionary = actions.png_text_reader(png_filename)
+    awim_dictionary = metadata_tools.png_text_reader(png_filename)
     clock_image_data_obj = astroimage.ImageAWIMData(awim_dictionary) # deleted the file, keeping this for reference for now
 
 

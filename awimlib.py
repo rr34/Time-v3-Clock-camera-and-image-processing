@@ -2,7 +2,6 @@ import os, io, ast, re
 import json
 import math
 import numpy as np
-import pyexiv2
 import PIL
 import datetime
 import pytz
