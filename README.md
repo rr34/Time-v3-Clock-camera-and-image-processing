@@ -1,3 +1,13 @@
+# 27 January 2024 Resurrecting the Project with Many Updates
+## Notes
+- Going to standardize on XMP sidecar files.
+- Going to operate as an API rather than as a GUI.
+- Assume final product file is PNG because of transparency, but doesn't matter so much because using XMP.
+- todo: Merge in the Lightroom tools from AWIM2.
+
+## Workflow
+- There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
+
 # AstroWideImageMapper (AWIM)
 Tag wide-angle images of any format with with directional azimuth and altitude, to include the "shape" of the image so the angular direction of each pixel is known.
 
@@ -196,7 +206,7 @@ Together, azimuth and artifae are AzArt. Astropy and most astronomers use the te
 - **ArtAz** and artifae update name.
 - correctly identify TAI time vs UTC time. What does astropy use? I think TAI.
 
-# 21 June to do
+# 21 June 2022 to do
 - store camera info as a dictionary rather than as an object. Use the exif from the cal images rather than the user calibration file.
 - make functions use camera dictionary info similar to image dictionary info
 - continue to separate and clean functions
