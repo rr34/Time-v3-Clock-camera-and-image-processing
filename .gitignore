@@ -1,1 +1,5 @@
-targetworking/
+working_images/
+working_lightroom_xmp/
+__pycache__/
+
+test.py
