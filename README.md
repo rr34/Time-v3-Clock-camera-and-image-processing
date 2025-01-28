@@ -7,8 +7,11 @@
 
 ## Workflow
 - Take photos in RAW format.
-- Process photos in Lightroom and generate associated XMP files along with export to PNG.
-- Add the awim tag to the XMP files.
+- Process photos in Lightroom and export to PNG. The PNG files have the XMP text embedded in them as the metadata, but there is no easy way for Lightroom to export the XMP files with the PNG.
+- Already made quick image file processor to extract metadata to text files. In the case of PNG, this means XML format.
+- Save awim information as a separate .awimjson sidecar file.
+- Abandon XML in favor of JSON, but maybe save the data with the file because I'm going to process the PNG files server-side and PIL can save text blocks in the PNG file. Check first if the PNG file maintains its quality.
+- todonext: resurrect the lens calculator function and have it jsonify the resulting awim data instead of pickle-ing it. Make the json data a nice flat dictionary style with each parameter separate and conveniently named for searching the text where necessary.
 
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 

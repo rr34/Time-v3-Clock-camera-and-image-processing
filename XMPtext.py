@@ -53,9 +53,9 @@ def readXMPfiles(XMPdirectory, columns_to_interpolate):
                     tags = re.findall(search_re, tags_fulltext.group())
                     if tags:
                         single_value = ','.join(tags)
-                    else: single_value = 'Placeholder'
+                    else: single_value = 'placeholder'
                 else:
-                    single_value = 'Placeholder'
+                    single_value = 'placeholder'
 
             xmp_snapshot.loc[key,column] = single_value
 

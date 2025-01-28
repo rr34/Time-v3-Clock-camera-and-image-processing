@@ -114,9 +114,11 @@ def lightroom_timelapse_XMP_process():
     print('Completed step 1 labelling XMP files with cellestial events.')
 
     XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
-    XMP2 = XMP_snapshot.copy()
+    XMP2 = XMP_snapshot.copy() # this seems unnecessary since XMP2 is defined in the next line, but maybe reauired to prevent XMP2 from pointing to XMP_snapshot.
+    print('Interpolating the dataframe of XMP values...')
     XMP2 = XMPtext.interpolate(XMP_snapshot, columns_to_interpolate)
 # save dataframe to CSV file
+    print('Saving interpolated dataframe to CSV...')
     timenow = datetime.datetime.now()
     time_string = formatters.format_datetimes(timenow, 'to string for filename')
     filename = f'XMP_step2 {time_string}.csv'

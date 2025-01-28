@@ -1,5 +1,7 @@
 import os, shutil
 import pyexiv2
+# from xml.dom.minidom import parseString
+from xml.etree.ElementTree import fromstring, ElementTree
 import PIL
 import awimlib
 
@@ -14,8 +16,11 @@ def meta_to_textfiles(image_files_dir):
 			png_file_1 = PIL.Image.open(file_path)
 			png_text_dictionary = png_file_1.text
 
+			doc_from_str = ElementTree(fromstring(png_text_dictionary['XML:com.adobe.xmp']))
+
 			if 'XML:com.adobe.xmp' in png_text_dictionary: # check for correct key for XMP data
 				txt_file_name = file_base + metadata_src_type + '_metatext'
+
 				with open(txt_file_name, "w") as text_file:
 					text_file.write(png_text_dictionary['XML:com.adobe.xmp'])
 			
