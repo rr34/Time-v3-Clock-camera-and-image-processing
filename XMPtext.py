@@ -7,7 +7,7 @@ import formatters
 # import time
 # import warnings
 
-def readXMPfiles(XMPdirectory):
+def readXMPfiles(XMPdirectory, columns_to_interpolate):
     XMPdictionary = {}
     XMP_list = []
     # read all the XMP text into a dictionary of strings and also make a list for the rows index of the dataframe
@@ -31,7 +31,7 @@ def readXMPfiles(XMPdirectory):
     crs_list = ['crs ' + s for s in crs_list]
     awim_list = ['awim CommaSeparatedTags']
 
-    all_columns = list(set(exif_list + crs_list + awim_list))
+    all_columns = list(set(exif_list + crs_list + awim_list + columns_to_interpolate))
     xmp_snapshot = pd.DataFrame(columns=all_columns, index=XMP_list)
     
     for key, value in XMPdictionary.items():
@@ -106,11 +106,11 @@ def addTags(df_before, df_new, xmp_directory):
             f.write(xmptext)
 
 
-def interpolate(df_xmp, columns):
+def interpolate(df_xmp, columns_to_interpolate):
     # set all the non-keyframe values equal to np.nan
-    df_xmp.loc[~df_xmp['awim CommaSeparatedTags'].str.contains('keyframe', case=False), columns] = np.nan
+    df_xmp.loc[~df_xmp['awim CommaSeparatedTags'].str.contains('keyframe', case=False), columns_to_interpolate] = np.nan
     # interpolate all the np.nan in between the keyframes, and extend the keyframe values backward to beginning and forward to the end
-    df_xmp[columns] = df_xmp[columns].astype(float).interpolate().bfill().ffill().astype(str)
+    df_xmp[columns_to_interpolate] = df_xmp[columns_to_interpolate].astype(float).interpolate().bfill().ffill().astype(str)
 
     return df_xmp
 

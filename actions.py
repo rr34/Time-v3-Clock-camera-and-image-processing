@@ -79,7 +79,8 @@ def lightroom_timelapse_XMP_process():
     XMPdirectory = os.path.join(os.getcwd(), 'working_lightroom_xmp')
 
     # read XMP files
-    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory)
+    columns_to_interpolate = ['crs Temperature', 'crs Tint', 'crs Exposure2012', 'crs Contrast2012', 'crs Highlights2012', 'crs Shadows2012', 'crs Whites2012', 'crs Blacks2012', 'crs Texture', 'crs Clarity2012', 'crs Dehaze', 'crs Vibrance', 'crs Saturation']
+    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
     XMP2 = XMP_snapshot.copy()
 # set variables for sun and moon calculations
     moments_list = XMP2['exif DateTimeOriginal'].values
@@ -112,9 +113,8 @@ def lightroom_timelapse_XMP_process():
     XMPtext.addTags(XMP_snapshot, XMP2, XMPdirectory)
     print('Completed step 1 labelling XMP files with cellestial events.')
 
-    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory)
+    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
     XMP2 = XMP_snapshot.copy()
-    columns_to_interpolate = ['crs Temperature', 'crs Tint', 'crs Exposure2012', 'crs Contrast2012', 'crs Highlights2012', 'crs Shadows2012', 'crs Whites2012', 'crs Blacks2012', 'crs Texture', 'crs Clarity2012', 'crs Dehaze', 'crs Vibrance', 'crs Saturation']
     XMP2 = XMPtext.interpolate(XMP_snapshot, columns_to_interpolate)
 # save dataframe to CSV file
     timenow = datetime.datetime.now()
