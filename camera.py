@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import os
 import PIL
+import json
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 import awimlib, metadata_tools
@@ -71,11 +72,10 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
 
 	calimg_exif_readable = metadata_tools.get_metadata(calibration_image_path)
-	cal_df = pd.read_csv(calibration_file_path)
+	cal_df = pd.read_excel(calibration_file_path)
 
-	time_zone = cal_df[cal_df['type'] == 'time_zone']['misc'].iat[0]
-	camera_lens_system = cal_df[cal_df['type'] == 'camera_lens_system']['misc'].iat[0]
 	AWIM_cal_type = cal_df[cal_df['type'] == 'AWIM_calibration_type']['misc'].iat[0]
+	camera_lens_system = cal_df[cal_df['type'] == 'lens_name']['misc'].iat[0]
 	with PIL.Image.open(calibration_image_path) as calibration_image:
 		cam_image_dimensions = np.array(calibration_image.size)
 
@@ -183,7 +183,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 				cal_df.loc[row[0], 'xang'] = xyangs[0]
 				cal_df.loc[row[0], 'yang'] = xyangs[1]
 
-	cal_df.to_csv(r'code-output-dump-folder/cal output.csv')
+	cal_df.to_csv(os.path.join('working', 'output_calibration.csv'))
 	ref_df_filter = pd.notnull(cal_df['x_px'])
 	ref_df = pd.DataFrame(cal_df[ref_df_filter][['x_px', 'y_px', 'xang', 'yang']])
 
@@ -203,7 +203,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 		ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
 
-	ref_df.to_csv(r'code-output-dump-folder/ref df.csv')
+	ref_df.to_csv(os.path.join('working', 'output_reference.csv'))
 
 	# create the px to xyangs models
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
@@ -265,11 +265,18 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
-	cam_AWIMtag_string = awimlib.stringify_dictionary(cam_AWIMtag)
-	cam_AWIMtag_string = 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'
-	calibration_image_tagged = metadata_tools.UserComment_append(calibration_image_path, cam_AWIMtag_string)
+	cam_AWIMtag_jsonready = awimlib.dict_json_ready(cam_AWIMtag)
+	cam_AWIMtag_json = json.dumps(cam_AWIMtag_jsonready)
+	with open('output_calibration_awim type1.json', 'w') as text_file:
+		json.dump(cam_AWIMtag, text_file)
+	with open('output_calibration_awim type2.json', 'w') as text_file:
+		text_file.write(cam_AWIMtag_json)
+	with open('output_calibration_awim type3.json', 'w') as text_file:
+		json.dump(cam_AWIMtag, text_file, indent=4)
+	with open('output_calibration_awim type4.json', 'w') as text_file:
+		json.dump(cam_AWIMtag, text_file, indent=4, sort_keys=True)
 
-	return calibration_image_tagged
+	return True
 
 
 def represent_camera(self):

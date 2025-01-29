@@ -132,4 +132,12 @@ def lightroom_timelapse_XMP_process():
 
 def generate_metatext_files():
     workingpath = os.path.join(os.getcwd(), 'working')
-    metadata_tools.meta_to_textfiles(os.path.join(workingpath))
+    metadata_tools.meta_to_textfiles(os.path.join(workingpath)) # todo: is this os.path.join really necessary? Why did I do this?
+
+
+def cam_calibration():
+    workingpath = os.path.join(os.getcwd(), 'working')
+    image_path = os.path.join(workingpath, 'calimage.jpg')
+    cal_file_path = os.path.join(workingpath, 'calspreadsheet.xlsx')
+
+    camera.generate_camera_AWIM_from_calibration(image_path, cal_file_path)

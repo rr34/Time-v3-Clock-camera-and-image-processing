@@ -24,7 +24,7 @@ def format_datetimes(input_datetime, direction):
         if isinstance(input_datetime, datetime.datetime):
             output = input_datetime.strftime(ISO8601_datetime_format)
         elif isinstance(input_datetime, np.datetime64):
-            pass # TODO convert this format, necessary?
+            output = str(np.datetime_as_string(input_datetime, unit='s')) + 'Z'
 
     elif direction == 'to string for filename':
         if isinstance(input_datetime, datetime.datetime):

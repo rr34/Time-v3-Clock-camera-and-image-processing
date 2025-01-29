@@ -4,6 +4,19 @@ import PIL
 import awimlib
 
 
+def get_metadata(metadata_source_path):
+    metadata_src_type = os.path.splitext(metadata_source_path)[-1]
+
+    img_pyexiv2 = pyexiv2.Image(metadata_source_path)
+    img_exif_readable = img_pyexiv2.read_exif()
+    img_pyexiv2.close()
+
+    if True: #check if there was exif data
+        return img_exif_readable
+    else:
+        return False
+
+
 def meta_to_textfiles(image_files_dir):
 	for file in os.listdir(image_files_dir):
 		metadata_src_type = os.path.splitext(file)[-1]
@@ -61,11 +74,6 @@ def UserComment_append(filepath, text, overwrite_append='append', modify_copy='c
 	file_pyexiv2.modify_exif(modify_dictionary)
 
 	return new_file
-
-
-# or possibly save the metadata as XMP in order to match existing standard
-def save_metadata_as_text(metadata_source_path):
-	pass
 
 
 def generate_png_with_awim_tag(current_image, rotate_degrees, awim_dictionary):

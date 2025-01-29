@@ -3,11 +3,12 @@ import json
 import math
 import numpy as np
 import PIL
+import PIL.TiffImagePlugin as piltiff
 import datetime
 import pytz
 import pandas as pd
 import astropytools
-import metadata_tools
+import metadata_tools, formatters
 
 
 def AWIMtag_rounding_digits():
@@ -24,7 +25,7 @@ def AWIMtag_rounding_digits():
 
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Location'] = [-999.9, -999.9]
+    AWIMtag_dictionary['Latitude'] = [-999.9, -999.9]
     AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude; to 6 decimal places, ~11cm'
     AWIMtag_dictionary['LocationSource'] = ''
     AWIMtag_dictionary['LocationAltitude'] = -999.9
@@ -44,10 +45,38 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees; to hundredth of a degree'
     AWIMtag_dictionary['AnglesModel'] = 'csv'
     AWIMtag_dictionary['PixelsModel'] = 'csv'
-    AWIMtag_dictionary['BorderPixels'] = np.zeros((3,6))
-    AWIMtag_dictionary['BorderAngles'] = np.zeros((3,6))
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = np.zeros((3,6))
-    AWIMtag_dictionary['BordersRADec'] = np.zeros((3,6))
+    AWIMtag_dictionary['BorderPixelLT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelCT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelRT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelLC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelRC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelLB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelCB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderPixelRB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleLT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleCT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleRT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleLC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleRC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleLB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleCB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAngleRB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeLT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeCT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeRT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeLC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeRC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeLB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeCB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderAzimuthArtifaeRB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecLT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecCT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecRT'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecLC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecRC'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecLB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecCB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['BorderRADecRB'] = [-999.9, -999.9]
     AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
     AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [-999.9, -999.9]
     AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [-999.9, -999.9]
@@ -95,7 +124,7 @@ def format_datetime(input_datetime_UTC, direction):
 
 # works 11 Oct 2022: todorename formats each individual exif value
 def format_individual_exif_values(exif_value):
-    if isinstance(exif_value, PIL.TiffImagePlugin.IFDRational):
+    if isinstance(exif_value, piltiff.IFDRational):
         if exif_value.denominator != 0:
             value_readable = exif_value.numerator / exif_value.denominator
         else:
@@ -255,7 +284,7 @@ def dictionary_to_readable_textfile(any_dictionary):
             value_string = dictionary_to_readable_textfile(value)
         elif isinstance(value, str):
             value_string = value
-        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
+        elif isinstance(value, (bytes, piltiff.IFDRational)):
             value_string = str(format_individual_exif_values(value))
         else:
             value_string = 'unexpected data type'
@@ -290,7 +319,7 @@ def stringify_dictionary(any_dictionary):
             value_string = stringify_dictionary(value)
         elif isinstance(value, str):
             value_string = value
-        elif isinstance(value, (bytes, PIL.TiffImagePlugin.IFDRational)):
+        elif isinstance(value, (bytes, piltiff.IFDRational)):
             value_string = str(format_individual_exif_values(value))
         else:
             value_string = 'unexpected data type'
@@ -303,6 +332,20 @@ def stringify_dictionary(any_dictionary):
     dictionary_ofstrings_str = str(dictionary_ofstrings)
 
     return dictionary_ofstrings_str
+
+
+def dict_json_ready(any_dictionary):
+    jsonable_dict = {}
+    for key, value in any_dictionary.items():
+        if isinstance(value, np.datetime64):
+            jsonable_dict[key] = formatters.format_datetimes(value, 'to string for AWIMtag')
+        else:
+            jsonable_dict[key] = value
+
+        # if not isinstance(key, str):
+        #     key = str(key)
+
+    return jsonable_dict
 
 
 def de_stringify_tag(AWIMtag_dictionary_string):
