@@ -76,7 +76,7 @@ def lightroom_timelapse_XMP_process():
 # self.bind('<Control-Key-1>', self.step1_initial_label_XMPs)
 # self.bind('<Control-Key-2>', self.step2_interpolate)
 
-    XMPdirectory = os.path.join(os.getcwd(), 'working_lightroom_xmp')
+    XMPdirectory = os.path.join(os.getcwd(), 'working')
 
     # read XMP files
     columns_to_interpolate = ['crs Temperature', 'crs Tint', 'crs Exposure2012', 'crs Contrast2012', 'crs Highlights2012', 'crs Shadows2012', 'crs Whites2012', 'crs Blacks2012', 'crs Texture', 'crs Clarity2012', 'crs Dehaze', 'crs Vibrance', 'crs Saturation']
@@ -131,5 +131,5 @@ def lightroom_timelapse_XMP_process():
 
 
 def generate_metatext_files():
-    workingpath = os.path.join(os.getcwd(), 'working_images')
+    workingpath = os.path.join(os.getcwd(), 'working')
     metadata_tools.meta_to_textfiles(os.path.join(workingpath))

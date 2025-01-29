@@ -1,5 +1,4 @@
-working_images/
-working_lightroom_xmp/
 __pycache__/
+working/
 
 test.py

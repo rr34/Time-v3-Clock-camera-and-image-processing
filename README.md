@@ -1,3 +1,24 @@
+# Instructions
+- The back-end will have no GUI. It will work with files directly that I put into specific hard-coded locations for the code to work on. Long-term, gradually, these tasks can be migrated to the GUI or some GUI. Initally, just the clock will have a GUI because it is the end product.
+## To Process a Lightroom Time-Lapse Sequence
+- Import the sequence of photos into Lightroom that you want to turn into a time lapse video.
+- Select all photos with Ctrl+A > right-click on one photo > Metadata > Save Metadata to Files. This saves XMP files for each of the photos.
+- Copy or move the XMP files to the directory `working/`
+- Once the XMP files are in the directory, simply run the function `actions.lightroom_timelapse_XMP_process()`
+- The XMP files will be modified in-place. It is worthwile to do so right away because the photos will have tags added to them indicating the periods of daylight like day, night, ECT, ENT, EAT, sunrise, sunset, et cetera that can be used to decide which photos to edit.
+- Copy the files back to the Lightroom directory where the RAW files are, replacing the XMP files that are there.
+- In Lightroom, right-click on one photo > Metadata > Read Metadata from Files.
+- Using the daylight period tags, select which photos you want to use as keyframes and add the tag 'keyframe' to them.
+	- You typically want to choose the beginning and end of transition periods.
+	- You do NOT have to keyframe the first and last photos of the sequence because the settings for the first keyframe you select will be extended as-is to the beginnning of the sequence and likewise for the last photo you select as a keyframe, whose settings will be extended as-is to the end of the sequence.
+	- You probably want to avoid keyframing photos too close to one another because it would result in a rapid transition that may not look smooth.
+- Once you have tagged the keyframe photos and edited their settings as you wish in Lightroom, repeat saving metadata to XMP, processing the XMP files with `actions.lightroom_timelapse_XMP_process()`, and reading metadata from XMP files. The settings you applied to the keyframe photos will be interpolated (simple linear) and applied to the photos between the keyframe photos for a smooth transition.
+
+## To Generate Metatext Files for Images
+This function is not really necessary, but useful to visualize the metadata of a group of files without needing to use exiv2 or some other tool.
+- Copy a group of image files to the directory `working/`, and simply run the function `actions.generate_metatext_files()`.
+- Text files with the metadata will be generated and saved in `working/` along with the image files that can be copied out to wherever the image files are.
+
 # 27 January 2024 Resurrecting the Project with Many Updates
 ## Notes
 - Going to standardize on dictionary representation of data and whatever text version of dictionary information is most convenient. This will be a text file of the dictionary or text file of the dictionary jsonified, or always something like a dictionary. BECAUSE, the most common text sidecar file standard is XMP, but supposedly Adobe made XMP just to avoid writing to proprietary files (XMP is a way to store Lightroom edits to RAW files, which are proprietary to the camera maker). Even XMP has limited support and not-so-wide usage. Also because the only reliable way to store metadata in PNG files is with a text data chunk stored along with the image.
