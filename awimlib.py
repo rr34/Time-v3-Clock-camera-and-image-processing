@@ -45,38 +45,10 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees; to hundredth of a degree'
     AWIMtag_dictionary['AnglesModel'] = 'csv'
     AWIMtag_dictionary['PixelsModel'] = 'csv'
-    AWIMtag_dictionary['BorderPixelLT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelCT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelRT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelLC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelRC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelLB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelCB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderPixelRB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleLT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleCT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleRT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleLC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleRC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleLB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleCB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAngleRB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeLT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeCT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeRT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeLC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeRC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeLB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeCB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderAzimuthArtifaeRB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecLT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecCT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecRT'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecLC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecRC'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecLB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecCB'] = [-999.9, -999.9]
-    AWIMtag_dictionary['BorderRADecRB'] = [-999.9, -999.9]
+    AWIMtag_dictionary['GridPixels'] = []
+    AWIMtag_dictionary['GridAngles'] = []
+    AWIMtag_dictionary['GridAzimuthArtifae'] = []
+    AWIMtag_dictionary['GridRADec'] = []
     AWIMtag_dictionary['RADecUnit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
     AWIMtag_dictionary['PixelSizeCenterHorizontalVertical'] = [-999.9, -999.9]
     AWIMtag_dictionary['PixelSizeAverageHorizontalVertical'] = [-999.9, -999.9]
@@ -233,23 +205,29 @@ def capture_moment_from_exif(exif_readable, tz_default=False):
     return UTC_datetime_str, UTC_source
 
 
-def get_ref_px_and_borders(source_image_path, ref_px):
+def get_ref_px_and_thirds_grid(source_image_path, ref_px):
     with PIL.Image.open(source_image_path) as source_image:
-        img_dimensions = source_image.size
-    max_img_index = np.subtract(img_dimensions, 1)
+        img_pxsize = source_image.size
+    img_pointsize = np.subtract(img_pxsize, 1)
 
     if ref_px == 'center, get from image':
-        img_center = np.divide(max_img_index, 2).tolist()
-        ref_px = img_center
+        img_half = np.divide(img_pxsize, 2)
+        img_third = np.divide(img_pxsize, 3)
+        img_center_index = np.subtract(img_half, 0.5).tolist()
+        ref_px = img_center_index
 
-        left = -img_center[0]
-        right = img_center[0]
-        top = img_center[1]
-        bottom = -img_center[1]
+        x1 = -(img_half[0] - 0.5)
+        x2 = -(img_third[0] / 2 - 0.5)
+        x3 = img_third[0] / 2 - 0.5
+        x4 = img_half[0] - 0.5
+        y1 = img_half[1] - 0.5
+        y2 = img_third[1] / 2 - 0.5
+        y3 = -(img_third[1] / 2 - 0.5)
+        y4 = -(img_half[1] - 0.5)
     
-    img_borders_pxs = np.array([[left,top,0,top,right,top], [left,0,0,0,right,0], [left,bottom,0,bottom,right,bottom]])
+    img_grid_pxs = np.array([[x1,y1],[x2,y1],[x3,y1],[x4,y1],[x1,y2],[x2,y2],[x3,y2],[x4,y2],[x1,y3],[x2,y3],[x3,y3],[x4,y3],[x1,y4],[x2,y4],[x3,y4],[x4,y4]])
 
-    return ref_px, img_borders_pxs
+    return ref_px, img_grid_pxs
 
 
 def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location):
@@ -393,8 +371,8 @@ def pxs_to_xyangs(AWIMtag_dictionary, pxs):
         pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
         pxs_poly[:,8] = np.power(pxs[:,1], 3)
 
-    xang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['xang_predict']].values[0]
-    yang_predict_coeff = AWIMtag_dictionary['AnglesModel'].loc[['yang_predict']].values[0]
+    xang_predict_coeff = AWIMtag_dictionary['AnglesModel xang_coeffs']
+    yang_predict_coeff = AWIMtag_dictionary['AnglesModel yang_coeffs']
 
     xyangs = np.zeros(pxs.shape)
     xyangs[:,0] = np.dot(pxs_poly, xang_predict_coeff)
@@ -615,7 +593,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     AWIMtag_dictionary['AnglesModel'] = xyangs_model_df
     AWIMtag_dictionary['PixelsModel'] = px_model_df
     
-    ref_px, img_borders_pxs = get_ref_px_and_borders(source_image_path, AWIMtag_dictionary['RefPixel'])
+    ref_px, img_borders_pxs = get_ref_px_and_thirds_grid(source_image_path, AWIMtag_dictionary['RefPixel'])
     AWIMtag_dictionary['RefPixel'] = [round(f, round_digits['pixels']) for f in ref_px]
     AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 

@@ -249,16 +249,35 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelAngleModelsType'] = AWIM_cal_type
 
 	xyangs_model_df = pd.DataFrame(xyangs_model.coef_, columns=xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-	cam_AWIMtag['AnglesModel'] = xyangs_model_df
+	xyangs_model_df.to_csv(os.path.join('working', 'xyangs_model_df.csv'))
+	xyangs_model_features = list(xyangs_model.feature_names_in_)
+	cam_AWIMtag['AnglesModel Features'] = xyangs_model_features
+	xang_coeffs = list(xyangs_model_df.loc['xang_predict'].values)
+	xang_coeffs = [float(x) for x in xang_coeffs]
+	cam_AWIMtag['AnglesModel xang_coeffs'] = xang_coeffs
+	yang_coeffs = list(xyangs_model_df.loc['yang_predict'].values)
+	yang_coeffs = [float(x) for x in yang_coeffs]
+	cam_AWIMtag['AnglesModel yang_coeffs'] = yang_coeffs
+
 
 	px_model_df = pd.DataFrame(px_model.coef_, columns=px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-	cam_AWIMtag['PixelsModel'] = px_model_df
+	px_model_df.to_csv(os.path.join('working', 'px_model_df.csv'))
+	px_model_features = list(px_model.feature_names_in_)
+	cam_AWIMtag['PixelsModel Features'] = px_model_features
+	xpx_coeffs = list(px_model_df.loc['x_px_predict'].values)
+	xpx_coeffs = [float(x) for x in xpx_coeffs]
+	cam_AWIMtag['PixelsModel xpx_coeffs'] = xpx_coeffs
+	ypx_coeffs = list(px_model_df.loc['y_px_predict'].values)
+	ypx_coeffs = [float(x) for x in ypx_coeffs]
+	cam_AWIMtag['PixelsModel ypx_coeffs'] = ypx_coeffs
 
-	filler_variable, cam_borders_pxs = awimlib.get_ref_px_and_borders(calibration_image_path, 'center, get from image')
-	cam_AWIMtag['BorderPixels'] = cam_borders_pxs.round(round_digits['pixels'])
+	filler_variable, cam_grid_pxs = awimlib.get_ref_px_and_thirds_grid(calibration_image_path, 'center, get from image')
+	cam_grid_pxs = cam_grid_pxs.round(round_digits['pixels'])
+	cam_grid_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_grid_pxs)
+	cam_grid_angs = cam_grid_angs.round(round_digits['degrees'])
 
-	cam_borders_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_borders_pxs)
-	cam_AWIMtag['BorderAngles'] = cam_borders_angs.round(round_digits['degrees'])
+	cam_AWIMtag['GridPixels'] = cam_grid_pxs.tolist()
+	cam_AWIMtag['GridAngles'] = cam_grid_angs.tolist()
 
 	px_size_center, px_size_average = awimlib.get_pixel_sizes(calibration_image_path, cam_AWIMtag)
 	cam_AWIMtag['PixelSizeCenterHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
