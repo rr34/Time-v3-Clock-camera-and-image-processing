@@ -14,10 +14,20 @@
 	- You probably want to avoid keyframing photos too close to one another because it would result in a rapid transition that may not look smooth.
 - Once you have tagged the keyframe photos and edited their settings as you wish in Lightroom, repeat saving metadata to XMP, processing the XMP files with `actions.lightroom_timelapse_XMP_process()`, and reading metadata from XMP files. The settings you applied to the keyframe photos will be interpolated (simple linear) and applied to the photos between the keyframe photos for a smooth transition.
 
-## To Generate Metatext Files for Images
+## To Generate Metadata Text / JSON Files for Images
 This function is not really necessary, but useful to visualize the metadata of a group of files without needing to use exiv2 or some other tool.
 - Copy a group of image files to the directory `working/`, and simply run the function `actions.generate_metatext_files()`.
-- Text files with the metadata will be generated and saved in `working/` along with the image files that can be copied out to wherever the image files are.
+- Text files with the metadata will be generated and saved in `working/` along with the image files.
+
+## To Generate a Camera awim Tag File from a Calibration Spreadsheet
+- Use the calspreadsheet Excel file in `example-files`, and fill in the yellow boxes based on the reference grid. It must be named `calspreadsheet.xlsx`
+- The calibration image itself is also required to be in the `working/` folder for things like dimensions. It must be named `calimage.jpg`
+- Run `actions.camcalibration()`
+- The output files all start with the word 'output'.
+- The main output file is the `awim.json` file.
+
+## Generate awim Tags for a Photoshoot
+- todonext
 
 # 27 January 2024 Resurrecting the Project with Many Updates
 ## Notes
@@ -32,7 +42,7 @@ This function is not really necessary, but useful to visualize the metadata of a
 - Already made quick image file processor to extract metadata to text files. In the case of PNG, this means XML format.
 - Save awim information as a separate .awimjson sidecar file.
 - Abandon XML in favor of JSON, but maybe save the data with the file because I'm going to process the PNG files server-side and PIL can save text blocks in the PNG file. Check first if the PNG file maintains its quality.
-- todonext: resurrect the lens calculator function and have it jsonify the resulting awim data instead of pickle-ing it. Make the json data a nice flat dictionary style with each parameter separate and conveniently named for searching the text where necessary.
+- todonext: `generate_tag_from_exif_plus_misc()` using the photos of Tim's house. ALSO, clean up the awimlib file, especially move the formatting functions to the formatters file. Don't be afraid to depete obsolete formatters.
 
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 

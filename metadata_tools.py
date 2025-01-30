@@ -1,6 +1,8 @@
 import os, shutil
+import json
 import pyexiv2
 import PIL
+import xmltodict
 import awimlib
 
 
@@ -28,25 +30,29 @@ def meta_to_textfiles(image_files_dir):
 			png_text_dictionary = png_file_1.text
 
 			if 'XML:com.adobe.xmp' in png_text_dictionary: # check for correct key for XMP data
-				txt_file_name = file_base + metadata_src_type + '_metatext'
+				AdobeXML = png_text_dictionary['XML:com.adobe.xmp']
+				txt_file_name = file_base + '.XML'
 				with open(txt_file_name, "w") as text_file:
-					text_file.write(png_text_dictionary['XML:com.adobe.xmp'])
+					text_file.write(AdobeXML)
+
+				metadata_dict = xmltodict.parse(AdobeXML)
+				json_file_name = file_base + '.json'
+				with open(json_file_name, "w") as text_file:
+					json.dump(metadata_dict, text_file, indent=4)
 			
 			else:
-				png_text_str = awimlib.stringify_dictionary(png_text_dictionary)
-				txt_file_name = file_base + metadata_src_type + '_metatext'
+				txt_file_name = file_base + '.json'
 				with open(txt_file_name, "w") as text_file:
-					text_file.write(png_text_str)
+					json.dump(png_text_dictionary, text_file, indent=4)
 			
 		elif metadata_src_type.lower() in ('.raw', '.arw', '.jpg', '.jpeg'):
 			img_pyexiv2 = pyexiv2.Image(file_path)
 			img_exif_dict = img_pyexiv2.read_exif()
 			img_pyexiv2.close()
 
-			img_exif_str = awimlib.stringify_dictionary(img_exif_dict)
-			txt_file_name = file_base + metadata_src_type + '_metatext'
-			with open(txt_file_name, "w") as text_file:
-				text_file.write(img_exif_str)
+			json_file_name = file_base + '.json'
+			with open(json_file_name, "w") as text_file:
+				json.dump(img_exif_dict, text_file, indent=4)
 
 	return True
 

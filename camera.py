@@ -211,7 +211,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		ref_df['x_px'], ref_df['y_px'] = ref_df['y_px'], ref_df['x_px']
 		ref_df['yang'], ref_df['xang'] = ref_df['xang'], ref_df['yang']
 
-	ref_df.to_csv(os.path.join('working', 'output_reference.csv'))
+	ref_df.to_csv(os.path.join('working', 'output_refpoints.csv'))
 
 	# create the px to xyangs models
 	poly_px = PolynomialFeatures(degree=3, include_bias=False)
