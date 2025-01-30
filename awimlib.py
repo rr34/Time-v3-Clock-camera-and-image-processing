@@ -26,24 +26,24 @@ def AWIMtag_rounding_digits():
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
     AWIMtag_dictionary['Latitude'] = [-999.9, -999.9]
-    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude; to 6 decimal places, ~11cm'
+    AWIMtag_dictionary['LocationUnit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
     AWIMtag_dictionary['LocationSource'] = ''
     AWIMtag_dictionary['LocationAltitude'] = -999.9
-    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level; to 1 decimal place, 10cm'
+    AWIMtag_dictionary['LocationAltitudeUnit'] = 'Meters above sea level; to 1 decimal place so 10cm'
     AWIMtag_dictionary['LocationAltitudeSource'] = ''
     AWIMtag_dictionary['LocationAGL'] = -999.9
-    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level; to 2 decimal places, 1cm'
+    AWIMtag_dictionary['LocationAGLUnit'] = 'Meters above ground level; to 2 decimal places so 1cm'
     AWIMtag_dictionary['LocationAGLSource'] = ''
     AWIMtag_dictionary['CaptureMoment'] = np.datetime64(-1970, 'Y')
-    AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar YYYY:MM:DD, Time is UTC HH:MM:SS'
+    AWIMtag_dictionary['CaptureMomentUnit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY:MM:DDTHH:MM:SSZ'
     AWIMtag_dictionary['CaptureMomentSource'] = ''
     AWIMtag_dictionary['PixelAngleModelsType'] = ''
     AWIMtag_dictionary['RefPixel'] = [-999.9, -999.9]
-    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard; to 1 decimal; to tenth of a pixel'
+    AWIMtag_dictionary['RefPixelCoordType'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
     AWIMtag_dictionary['RefPixelAzimuthArtifae'] = [-999.9, -999.9]
     AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = ''
     AWIMtag_dictionary['RefPixelAzimuthArtifaeUnit'] = 'Degrees; to hundredth of a degree'
-    AWIMtag_dictionary['AnglesModel'] = 'csv'
+    AWIMtag_dictionary['AnglesModels'] = 'csv'
     AWIMtag_dictionary['PixelsModel'] = 'csv'
     AWIMtag_dictionary['GridPixels'] = []
     AWIMtag_dictionary['GridAngles'] = []
@@ -205,7 +205,7 @@ def capture_moment_from_exif(exif_readable, tz_default=False):
     return UTC_datetime_str, UTC_source
 
 
-def get_ref_px_and_thirds_grid(source_image_path, ref_px):
+def get_ref_px_and_thirds_grid_TBLR(source_image_path, ref_px):
     with PIL.Image.open(source_image_path) as source_image:
         img_pxsize = source_image.size
     img_pointsize = np.subtract(img_pxsize, 1)
@@ -226,8 +226,9 @@ def get_ref_px_and_thirds_grid(source_image_path, ref_px):
         y4 = -(img_half[1] - 0.5)
     
     img_grid_pxs = np.array([[x1,y1],[x2,y1],[x3,y1],[x4,y1],[x1,y2],[x2,y2],[x3,y2],[x4,y2],[x1,y3],[x2,y3],[x3,y3],[x4,y3],[x1,y4],[x2,y4],[x3,y4],[x4,y4]])
+    img_TBLR_pxs = np.array([[0,y1],[0,y4],[x1,0],[x4,0]])
 
-    return ref_px, img_grid_pxs
+    return ref_px, img_grid_pxs, img_TBLR_pxs
 
 
 def get_locationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_Location):
@@ -533,11 +534,11 @@ def get_pixel_sizes(source_image_path, AWIMtag_dictionary):
 
     with PIL.Image.open(source_image_path) as source_image:
         dimensions = source_image.size
-    border_angles = np.array(AWIMtag_dictionary['BorderAngles'])
-    horizontal_angle_width = abs(border_angles[1,0]) + abs(border_angles[1,4])
-    vertical_angle_width = abs(border_angles[0,3]) + abs(border_angles[2,3])
-    px_size_average_horizontal = dimensions[0] / horizontal_angle_width
-    px_size_average_vertical = dimensions[1] / vertical_angle_width
+    border_angles = np.array(AWIMtag_dictionary['TBLRAngles'])
+    horizontal_angle_width = abs(border_angles[2,0]) + abs(border_angles[3,0])
+    vertical_angle_width = abs(border_angles[0,1]) + abs(border_angles[1,1])
+    px_size_average_horizontal = (dimensions[0] - 1) / horizontal_angle_width
+    px_size_average_vertical = (dimensions[1] - 1) / vertical_angle_width
 
     return [px_size_center_horizontal, px_size_center_vertical], [px_size_average_horizontal, px_size_average_vertical]
 
@@ -593,7 +594,7 @@ def generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, ca
     AWIMtag_dictionary['AnglesModel'] = xyangs_model_df
     AWIMtag_dictionary['PixelsModel'] = px_model_df
     
-    ref_px, img_borders_pxs = get_ref_px_and_thirds_grid(source_image_path, AWIMtag_dictionary['RefPixel'])
+    ref_px, img_borders_pxs = get_ref_px_and_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['RefPixel'])
     AWIMtag_dictionary['RefPixel'] = [round(f, round_digits['pixels']) for f in ref_px]
     AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 

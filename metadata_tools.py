@@ -29,7 +29,6 @@ def meta_to_textfiles(image_files_dir):
 
 			if 'XML:com.adobe.xmp' in png_text_dictionary: # check for correct key for XMP data
 				txt_file_name = file_base + metadata_src_type + '_metatext'
-
 				with open(txt_file_name, "w") as text_file:
 					text_file.write(png_text_dictionary['XML:com.adobe.xmp'])
 			
