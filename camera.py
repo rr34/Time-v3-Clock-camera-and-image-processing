@@ -299,7 +299,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag_jsonready = formatters.dict_json_ready(cam_AWIMtag)
 	file_path = os.path.join('working', 'output_cal {} {} awim.json'.format(camera_name, lens_name))
 	with open(file_path, 'w') as text_file:
-		json.dump(cam_AWIMtag_jsonready, text_file, indent=4)
+		json.dump(cam_AWIMtag_jsonready, text_file, indent=4, sort_keys=True)
 
 	return True
 

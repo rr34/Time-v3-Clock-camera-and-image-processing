@@ -31,19 +31,19 @@ def meta_to_textfiles(image_files_dir):
 
 			if 'XML:com.adobe.xmp' in png_text_dictionary: # check for correct key for XMP data
 				AdobeXML = png_text_dictionary['XML:com.adobe.xmp']
-				txt_file_name = file_base + '.XML'
-				with open(txt_file_name, "w") as text_file:
-					text_file.write(AdobeXML)
-
 				metadata_dict = formatters.AdobeXML_to_dict(AdobeXML)
 				json_file_name = file_base + '.json'
 				with open(json_file_name, "w") as text_file:
-					json.dump(metadata_dict, text_file, indent=4)
+					json.dump(metadata_dict, text_file, indent=4, sort_keys=True)
+
+				# txt_file_name = file_base + '.XML'
+				# with open(txt_file_name, "w") as text_file:
+				# 	text_file.write(AdobeXML)
 			
 			else: # this is for the few old awim png files I made where there was a separate text chunk for each parameter that results in a dictionary where the keys are awim
 				txt_file_name = file_base + '.json'
 				with open(txt_file_name, "w") as text_file:
-					json.dump(png_text_dictionary, text_file, indent=4)
+					json.dump(png_text_dictionary, text_file, indent=4, sort_keys=True)
 			
 		elif metadata_src_type.lower() in ('.raw', '.arw', '.jpg', '.jpeg'):
 			img_pyexiv2 = pyexiv2.Image(file_path)
@@ -52,7 +52,7 @@ def meta_to_textfiles(image_files_dir):
 
 			json_file_name = file_base + '.json'
 			with open(json_file_name, "w") as text_file:
-				json.dump(img_exif_dict, text_file, indent=4)
+				json.dump(img_exif_dict, text_file, indent=4, sort_keys=True)
 
 	return True
 
@@ -99,7 +99,7 @@ def capture_moment_from_exif(exif_readable, tz_default=False):
 
 
     if exif_UTC:
-        UTC_datetime_str = format_datetime(exif_UTC, 'to string for AWIMtag')
+        UTC_datetime_str = formatters.format_datetime(exif_UTC, 'to string for AWIMtag')
 
     return UTC_datetime_str, UTC_source
 

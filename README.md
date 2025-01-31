@@ -62,6 +62,7 @@ There really needs to be one format I use. For now, I am committing to not save 
 	- flattened
 	- keys simplified as necessary
 	- datetimes converted to ISO 8601 in Zulu with trailing Z.
+	- Weird fractional values converted to float, at least any I'm going to use.
 	- All awim data with a leading 'awim ' in the key.
 - Save to file
 	- Same dictionary from above.

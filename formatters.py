@@ -42,6 +42,9 @@ def format_datetime(input_datetime, direction):
             output = input_datetime.strftime(ISO8601_datetime_format)
         elif isinstance(input_datetime, np.datetime64):
             output = str(np.datetime_as_string(input_datetime, unit='s')) + 'Z'
+        elif isinstance(input_datetime, str):
+            if re.match(ISO8601_pattern, input_datetime):
+                output = str(np.datetime_as_string(np.datetime64(input_datetime), unit='s')) + 'Z'
 
     elif direction == 'to string for filename':
         if isinstance(input_datetime, datetime.datetime):
@@ -102,9 +105,8 @@ def flatten_dict(dictionary, parent_key='', separator='_'):
     return dict(items)
 
 
-def AdobeXML_to_dict(AdobeXML):
-    metadata_dict = xmltodict.parse(AdobeXML)
-    metadata_dict = flatten_dict(metadata_dict)
+# this is specific to Adobe XML metadata as of 2025-01-31
+def simplify_keys(metadata_dict):
     print('Keys before {}'.format(len(metadata_dict.keys())))
 
     # list of keys I want to be simple
@@ -118,8 +120,9 @@ def AdobeXML_to_dict(AdobeXML):
         for simple_key in simple_keys:
             re_pattern = '(?<=tiff:){}$|(?<=exif:){}$'.format(simple_key, simple_key)
             if re.search(re_pattern, key):
-                if simple_key not in dict_withjust_new_keys:
-                    dict_withjust_new_keys[simple_key] = metadata_dict[key]
+                new_key = 'originalmeta ' + simple_key
+                if new_key not in dict_withjust_new_keys:
+                    dict_withjust_new_keys[new_key] = metadata_dict[key]
                     delete_after_loop.append(key)
                 else:
                     print('There is a duplicate match for ' + simple_key)
@@ -132,6 +135,15 @@ def AdobeXML_to_dict(AdobeXML):
     for delete_this in delete_after_loop:
         del metadata_dict[delete_this]
     print('Keys after {}'.format(len(metadata_dict.keys())))
+
+    return metadata_dict
+
+
+def AdobeXML_to_dict(AdobeXML):
+    metadata_dict = xmltodict.parse(AdobeXML)
+    metadata_dict = flatten_dict(metadata_dict)
+
+    metadata_dict = simplify_keys(metadata_dict)
 
     return metadata_dict
 
@@ -204,7 +216,7 @@ def dict_json_ready(any_dictionary):
     jsonable_dict = {}
     for key, value in any_dictionary.items():
         if isinstance(value, np.datetime64):
-            jsonable_dict[key] = formatters.format_datetime(value, 'to string for AWIMtag')
+            jsonable_dict[key] = format_datetime(value, 'to string for AWIMtag')
         else:
             jsonable_dict[key] = value
 
