@@ -6,7 +6,7 @@ import PIL
 import json
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
-import awimlib, metadata_tools
+import awimlib, metadata_tools, formatters
 
 
 # theta is CCW from the positive x axis. r is cm from center
@@ -33,7 +33,7 @@ def _xycm_to_polar(xycm):
 	return  [r, theta]
 
 
-# works 11 Oct 2022 # calculate the miss angle as xang,yang
+# calculate the miss angle as xang,yang
 def _target_miss(calibration_distance_cm, center_px, target_pos_px, x_small_cm, x_small_px, y_small_cm, y_small_px):
 	target_x_radius_deg = abs(math.atan(x_small_cm[0] / calibration_distance_cm)) * 180/math.pi
 	target_y_radius_deg = abs(math.atan(y_small_cm[1] / calibration_distance_cm)) * 180/math.pi
@@ -68,9 +68,8 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 	return grid_rotation_error_degreesCCW
 
 
-# works 11 Oct 2022
+# works 30 Jan 2025
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
-
 	calimg_exif_readable = metadata_tools.get_metadata(calibration_image_path)
 	cal_df = pd.read_excel(calibration_file_path)
 
@@ -226,11 +225,11 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	# generate the empty tag and populate it
 	cam_AWIMtag = awimlib.generate_empty_AWIMtag_dictionary(default_units=False)
-	round_digits = awimlib.AWIMtag_rounding_digits()
+	round_digits = formatters.AWIMtag_rounding_digits()
 
 	# get some basic exif for completeness
 	if calimg_exif_readable.get('Exif.Image.GPSTag'):
-		location, location_altitude = awimlib.format_GPS_latlng(calimg_exif_readable)
+		location, location_altitude = formatters.format_GPS_latlng(calimg_exif_readable)
 		
 		if location:
 			cam_AWIMtag['Location'] = [round(f, round_digits['lat long']) for f in location]
@@ -246,7 +245,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		cam_AWIMtag['LocationSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
 		cam_AWIMtag['LocationAltitudeSource'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
     
-	UTC_datetime_str, UTC_source = awimlib.capture_moment_from_exif(calimg_exif_readable)
+	UTC_datetime_str, UTC_source = formatters.capture_moment_from_exif(calimg_exif_readable)
 	if UTC_datetime_str:
 		cam_AWIMtag['CaptureMoment'] = UTC_datetime_str
 		cam_AWIMtag['CaptureMomentSource'] = UTC_source
@@ -297,7 +296,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_AWIMtag['PixelSizeAverageHorizontalVertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
 	cam_AWIMtag['PixelSizeUnit'] = 'Pixels per Degree'
 
-	cam_AWIMtag_jsonready = awimlib.dict_json_ready(cam_AWIMtag)
+	cam_AWIMtag_jsonready = formatters.dict_json_ready(cam_AWIMtag)
 	file_path = os.path.join('working', 'output_cal {} {} awim.json'.format(camera_name, lens_name))
 	with open(file_path, 'w') as text_file:
 		json.dump(cam_AWIMtag_jsonready, text_file, indent=4)
@@ -305,6 +304,7 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	return True
 
 
+# ----- unknown below this line -----
 def represent_camera(self):
 	camera_str = ''
 	camera_str += '\nCamera Name: ' + self.camera_name
@@ -324,51 +324,51 @@ def represent_camera(self):
 		f.write(camera_str)
 
 
-	def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
-		source_image = Image.open(src_img_path)
-		img_dimensions = source_image.size
-		if img_orientation == 'landscape':
-			cam_dimensions = [self.cam_image_dimensions[0], self.cam_image_dimensions[1]]
-		elif img_orientation == 'portrait':
-			cam_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
-		img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
-		cam_aspect_ratio = cam_dimensions[0] / cam_dimensions[1]
+def generate_xyang_pixel_models(self, src_img_path, img_orientation, img_tilt):
+	source_image = Image.open(src_img_path)
+	img_dimensions = source_image.size
+	if img_orientation == 'landscape':
+		cam_dimensions = [self.cam_image_dimensions[0], self.cam_image_dimensions[1]]
+	elif img_orientation == 'portrait':
+		cam_dimensions = [self.cam_image_dimensions[1], self.cam_image_dimensions[0]]
+	img_aspect_ratio = img_dimensions[0] / img_dimensions[1]
+	cam_aspect_ratio = cam_dimensions[0] / cam_dimensions[1]
 
-		if abs(img_aspect_ratio - cam_aspect_ratio) > 0.001:
-			print('error: image aspect ratio does not match camera aspect ratio, but it should. Was the image cropped? Not supported yet.')
-		else:
-			img_resize_factor = img_dimensions[0] / cam_dimensions[0]
+	if abs(img_aspect_ratio - cam_aspect_ratio) > 0.001:
+		print('error: image aspect ratio does not match camera aspect ratio, but it should. Was the image cropped? Not supported yet.')
+	else:
+		img_resize_factor = img_dimensions[0] / cam_dimensions[0]
 
-		if img_orientation == 'landscape':
-			xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-			px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-		elif img_orientation == 'portrait': # TODO: make this the transpose of landscape / swap x and y
-			xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
-			px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
-		xyangs_model_df /= img_resize_factor
-		px_model_df *= img_resize_factor
+	if img_orientation == 'landscape':
+		xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
+		px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+	elif img_orientation == 'portrait': # TODO: make this the transpose of landscape / swap x and y
+		xyangs_model_df = pd.DataFrame(self.xyangs_model.coef_, columns=self.xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
+		px_model_df = pd.DataFrame(self.px_model.coef_, columns=self.px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
+	xyangs_model_df /= img_resize_factor
+	px_model_df *= img_resize_factor
 
-		return self.pixel_map_type, xyangs_model_df, px_model_df
+	return self.pixel_map_type, xyangs_model_df, px_model_df
 
 
-	def px_xyangs_models_convert(self, input, direction):
-		if isinstance(input, list): # models require numpy arrays
-			input = np.array(input, dtype=float).reshape(-1,2)
+def px_xyangs_models_convert(self, input, direction):
+	if isinstance(input, list): # models require numpy arrays
+		input = np.array(input, dtype=float).reshape(-1,2)
 
-		full_shape = input.shape # save the shape for reshape later
-		output = np.zeros(full_shape)
-		output_sign = np.where(input < 0, -1, 1) # models are positive values only. Save sign.
-		input = np.abs(input)
-		input = input.reshape(-1,2)
-		if direction == 'px_to_xyangs':
-			input_poly = self.poly_px.fit_transform(input)
-			output = self.xyangs_model.predict(input_poly).reshape(full_shape)
-		elif direction == 'xyangs_to_px':
-			input_poly = self.poly_xyangs.fit_transform(input)
-			output = self.px_model.predict(input_poly).reshape(full_shape)
-		output = np.multiply(output, output_sign)
+	full_shape = input.shape # save the shape for reshape later
+	output = np.zeros(full_shape)
+	output_sign = np.where(input < 0, -1, 1) # models are positive values only. Save sign.
+	input = np.abs(input)
+	input = input.reshape(-1,2)
+	if direction == 'px_to_xyangs':
+		input_poly = self.poly_px.fit_transform(input)
+		output = self.xyangs_model.predict(input_poly).reshape(full_shape)
+	elif direction == 'xyangs_to_px':
+		input_poly = self.poly_xyangs.fit_transform(input)
+		output = self.px_model.predict(input_poly).reshape(full_shape)
+	output = np.multiply(output, output_sign)
 
-		return output
+	return output
 
 
 # Apparently I stopped using this.

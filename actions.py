@@ -13,13 +13,75 @@ from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import camera, awimlib, astropytools, XMPtext, formatters, metadata_tools
 
 
-def generate_save_camera_AWIM():
-    # create a CameraAWIMData object with calibration CSV file, then save using automatic name from calibration data
-    calibration_image = askopenfilename(title='open calibration image')
-    calibration_file = askopenfilename(title='open calibration csv file')
-    camera_ID = camera.generate_camera_AWIM_from_calibration(calibration_image, calibration_file)
-    
+def cam_calibration():
+    workingpath = os.path.join(os.getcwd(), 'working')
+    image_path = os.path.join(workingpath, 'calimage.jpg')
+    cal_file_path = os.path.join(workingpath, 'calspreadsheet.xlsx')
 
+    camera.generate_camera_AWIM_from_calibration(image_path, cal_file_path)
+
+
+def generate_metatext_files():
+    workingpath = os.path.join(os.getcwd(), 'working')
+    metadata_tools.meta_to_textfiles(os.path.join(workingpath)) # todo: is this os.path.join really necessary? Why did I do this?
+
+
+def lightroom_timelapse_XMP_process():
+    XMPdirectory = os.path.join(os.getcwd(), 'working')
+
+    # read XMP files
+    columns_to_interpolate = ['crs Temperature', 'crs Tint', 'crs Exposure2012', 'crs Contrast2012', 'crs Highlights2012', 'crs Shadows2012', 'crs Whites2012', 'crs Blacks2012', 'crs Texture', 'crs Clarity2012', 'crs Dehaze', 'crs Vibrance', 'crs Saturation']
+    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
+    XMP2 = XMP_snapshot.copy()
+    # set variables for sun and moon calculations
+    moments_list = XMP2['exif DateTimeOriginal'].values
+    moments_list = formatters.format_datetime(input_datetime=moments_list, direction='from list of ISO 8601 strings')
+    print(lapse_latlng)
+    # calculate sun and moon values
+    sun_az_list, sun_art_list = astropytools.get_AzArts(earth_latlng=lapse_latlng, moments=moments_list, celestial_object='sun')
+    moon_az_list, moon_art_list = astropytools.get_AzArts(earth_latlng=lapse_latlng, moments=moments_list, celestial_object='moon')
+    # convert sun and moon values to day, night, twilight labels, format numbers, add to dataframe
+    day_night_twilight_list = astropytools.day_night_twilight(sun_art_list, moon_art_list)
+    sun_az_list = formatters.round_to_string(sun_az_list, 'azimuth')
+    sun_art_list = formatters.round_to_string(sun_art_list, 'artifae')
+    moon_az_list = formatters.round_to_string(moon_az_list, 'azimuth')
+    moon_art_list = formatters.round_to_string(moon_art_list, 'artifae')
+    XMP2['awim SunAz'] = sun_az_list
+    XMP2['awim SunArt'] = sun_art_list
+    XMP2['awim MoonAz'] = moon_az_list
+    XMP2['awim MoonArt'] = moon_art_list
+    XMP2['awim DayNightTwilight'] = day_night_twilight_list
+    # concatenate new tags together with the old tags, comma-separated
+    XMP2['awim CommaSeparatedTags'] = XMP2.apply(lambda x:'%s,%s' % (x['awim CommaSeparatedTags'], x['awim DayNightTwilight']), axis=1)
+    # save dataframe to CSV file
+    timenow = datetime.datetime.now()
+    time_string = formatters.format_datetime(timenow, 'to string for filename')
+    filename = f'XMP_step1 {time_string}.csv'
+    filepath = os.path.join(XMPdirectory, filename)
+    XMP2.to_csv(filepath)
+
+    # write the comma-separated tags to the XMP files
+    XMPtext.addTags(XMP_snapshot, XMP2, XMPdirectory)
+    print('Completed step 1 labelling XMP files with celestial events.')
+
+    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
+    XMP2 = XMP_snapshot.copy() # this seems unnecessary since XMP2 is defined in the next line, but maybe reauired to prevent XMP2 from pointing to XMP_snapshot.
+    print('Interpolating the dataframe of XMP values...')
+    XMP2 = XMPtext.interpolate(XMP_snapshot, columns_to_interpolate)
+    # save dataframe to CSV file
+    print('Saving interpolated dataframe to CSV...')
+    timenow = datetime.datetime.now()
+    time_string = formatters.format_datetime(timenow, 'to string for filename')
+    filename = f'XMP_step2 {time_string}.csv'
+    filepath = os.path.join(XMPdirectory, filename)
+    XMP2.to_csv(filepath)
+
+    # write the new values to the XMP files
+    XMPtext.write_values(XMP2, columns_to_interpolate, XMPdirectory)
+    print('Completed step 2 interpolating between the keyframes and writing to XMP files.')
+
+
+# ----- unknown below this line -----
 def display_camera_lens_shape(awim_dictionary):
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
     this_camera_filename = askopenfilename()
@@ -65,79 +127,3 @@ def display_camera_lens_shape(awim_dictionary):
     ax4.scatter(this_camera.ref_df['xang'], this_camera.ref_df['yang'], this_camera.ref_df['y_px'], s=50, c='red')
 
     pyplot.show()
-
-
-def do_nothing():
-    pass
-
-
-def lightroom_timelapse_XMP_process():
-# self.bind('<Control-Key-d>', self.select_XMPdirectory)
-# self.bind('<Control-Key-1>', self.step1_initial_label_XMPs)
-# self.bind('<Control-Key-2>', self.step2_interpolate)
-
-    XMPdirectory = os.path.join(os.getcwd(), 'working')
-
-    # read XMP files
-    columns_to_interpolate = ['crs Temperature', 'crs Tint', 'crs Exposure2012', 'crs Contrast2012', 'crs Highlights2012', 'crs Shadows2012', 'crs Whites2012', 'crs Blacks2012', 'crs Texture', 'crs Clarity2012', 'crs Dehaze', 'crs Vibrance', 'crs Saturation']
-    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
-    XMP2 = XMP_snapshot.copy()
-# set variables for sun and moon calculations
-    moments_list = XMP2['exif DateTimeOriginal'].values
-    moments_list = formatters.format_datetimes(input_datetime=moments_list, direction='from list of ISO 8601 strings')
-    print(lapse_latlng)
-# calculate sun and moon values
-    sun_az_list, sun_art_list = astropytools.get_AzArts(earth_latlng=lapse_latlng, moments=moments_list, celestial_object='sun')
-    moon_az_list, moon_art_list = astropytools.get_AzArts(earth_latlng=lapse_latlng, moments=moments_list, celestial_object='moon')
-# convert sun and moon values to day, night, twilight labels, format numbers, add to dataframe
-    day_night_twilight_list = astropytools.day_night_twilight(sun_art_list, moon_art_list)
-    sun_az_list = formatters.round_to_string(sun_az_list, 'azimuth')
-    sun_art_list = formatters.round_to_string(sun_art_list, 'artifae')
-    moon_az_list = formatters.round_to_string(moon_az_list, 'azimuth')
-    moon_art_list = formatters.round_to_string(moon_art_list, 'artifae')
-    XMP2['awim SunAz'] = sun_az_list
-    XMP2['awim SunArt'] = sun_art_list
-    XMP2['awim MoonAz'] = moon_az_list
-    XMP2['awim MoonArt'] = moon_art_list
-    XMP2['awim DayNightTwilight'] = day_night_twilight_list
-# concatenate new tags together with the old tags, comma-separated
-    XMP2['awim CommaSeparatedTags'] = XMP2.apply(lambda x:'%s,%s' % (x['awim CommaSeparatedTags'], x['awim DayNightTwilight']), axis=1)
-# save dataframe to CSV file
-    timenow = datetime.datetime.now()
-    time_string = formatters.format_datetimes(timenow, 'to string for filename')
-    filename = f'XMP_step1 {time_string}.csv'
-    filepath = os.path.join(XMPdirectory, filename)
-    XMP2.to_csv(filepath)
-
-# write the comma-separated tags to the XMP files
-    XMPtext.addTags(XMP_snapshot, XMP2, XMPdirectory)
-    print('Completed step 1 labelling XMP files with cellestial events.')
-
-    XMP_snapshot, lapse_latlng = XMPtext.readXMPfiles(XMPdirectory, columns_to_interpolate)
-    XMP2 = XMP_snapshot.copy() # this seems unnecessary since XMP2 is defined in the next line, but maybe reauired to prevent XMP2 from pointing to XMP_snapshot.
-    print('Interpolating the dataframe of XMP values...')
-    XMP2 = XMPtext.interpolate(XMP_snapshot, columns_to_interpolate)
-# save dataframe to CSV file
-    print('Saving interpolated dataframe to CSV...')
-    timenow = datetime.datetime.now()
-    time_string = formatters.format_datetimes(timenow, 'to string for filename')
-    filename = f'XMP_step2 {time_string}.csv'
-    filepath = os.path.join(XMPdirectory, filename)
-    XMP2.to_csv(filepath)
-
-# write the new values to the XMP files
-    XMPtext.write_values(XMP2, columns_to_interpolate, XMPdirectory)
-    print('Completed step 2 interpolating between the keyframes and writing to XMP files.')
-
-
-def generate_metatext_files():
-    workingpath = os.path.join(os.getcwd(), 'working')
-    metadata_tools.meta_to_textfiles(os.path.join(workingpath)) # todo: is this os.path.join really necessary? Why did I do this?
-
-
-def cam_calibration():
-    workingpath = os.path.join(os.getcwd(), 'working')
-    image_path = os.path.join(workingpath, 'calimage.jpg')
-    cal_file_path = os.path.join(workingpath, 'calspreadsheet.xlsx')
-
-    camera.generate_camera_AWIM_from_calibration(image_path, cal_file_path)

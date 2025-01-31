@@ -3,9 +3,7 @@ import re
 import numpy as np
 import pandas as pd
 import formatters
-# import numpy as np
-# import time
-# import warnings
+
 
 def readXMPfiles(XMPdirectory, columns_to_interpolate):
     XMPdictionary = {}
@@ -59,7 +57,7 @@ def readXMPfiles(XMPdirectory, columns_to_interpolate):
 
             xmp_snapshot.loc[key,column] = single_value
 
-    xmp_snapshot['exif DateTimeOriginal'] = formatters.format_datetimes(xmp_snapshot['exif DateTimeOriginal'], 'ISO 8601 string tz to Zulu')
+    xmp_snapshot['exif DateTimeOriginal'] = formatters.format_datetime(xmp_snapshot['exif DateTimeOriginal'], 'ISO 8601 string tz to Zulu')
     xmp_snapshot = xmp_snapshot.sort_values('exif DateTimeOriginal')
     xmp_snapshot.insert(0, 'awim FrameNumber', range(0, len(xmp_snapshot)))
 
@@ -83,6 +81,7 @@ def readXMPfiles(XMPdirectory, columns_to_interpolate):
     return xmp_snapshot, latlng
 
 
+# todo: Unique tags only. Prevent this from adding duplicate tags.
 def addTags(df_before, df_new, xmp_directory):
     for row, value in df_new.iterrows(): # 
         tags_before = df_before.loc[row][['awim CommaSeparatedTags']].values[0].split(',')
