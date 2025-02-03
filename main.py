@@ -24,15 +24,15 @@ def tag_image_with_AWIM():
     current_image_str.set(source_image_path)
     camera_AWIM = current_camera
     AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
-    AWIMtag_dictionary['LocationSource'] = 'get from exif GPS'
-    AWIMtag_dictionary['LocationAltitude'] = 266.7
-    AWIMtag_dictionary['LocationAltitudeSource'] = 'get from exif GPS'
-    AWIMtag_dictionary['LocationAGL'] = 1.7
-    AWIMtag_dictionary['LocationAGLSource'] = 'Default: average human height worldwide.'
-    AWIMtag_dictionary['CaptureMomentSource'] = 'get from exif'
-    AWIMtag_dictionary['PixelAngleModelsType'] = 'get from camera AWIM'
-    AWIMtag_dictionary['RefPixel'] = 'center, get from image'
-    AWIMtag_dictionary['RefPixelAzimuthArtifaeSource'] = 'from known px'
+    AWIMtag_dictionary['Location Source'] = 'get from exif GPS'
+    AWIMtag_dictionary['Location Altitude'] = 266.7
+    AWIMtag_dictionary['Location Altitude Source'] = 'get from exif GPS'
+    AWIMtag_dictionary['Location AGL'] = 1.7
+    AWIMtag_dictionary['Location AGL Source'] = 'Default: average human height worldwide.'
+    AWIMtag_dictionary['Capture Moment Source'] = 'get from exif'
+    AWIMtag_dictionary['Pixel Angle Models Type'] = 'get from camera AWIM'
+    AWIMtag_dictionary['Ref Pixel'] = 'center, get from image'
+    AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
     elevation_at_Location = False
     tz = timezone('US/Eastern')
     known_px = [1000,750]
@@ -40,7 +40,7 @@ def tag_image_with_AWIM():
     img_orientation = 'landscape'
     img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    AWIMtag_dictionary, AWIMtag_dictionary_string = awimlib.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+    AWIMtag_dictionary, AWIMtag_dictionary_string = camera.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
             elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
 
     with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:

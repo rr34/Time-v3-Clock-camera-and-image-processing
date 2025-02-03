@@ -1,5 +1,5 @@
 # Instructions
-- The back-end will have no GUI. It will work with files directly that I put into specific hard-coded locations for the code to work on. Long-term, gradually, these tasks can be migrated to the GUI or some GUI. Initally, just the clock will have a GUI because it is the end product.
+This code is intended to never have a built-in GUI. I made a GUI for it in the past, but that was a mistake because the overall goal of this project is to read from and generate files. Therefore, it works with files directly that are put into a specific hard-coded location for the code to work on. That said, I do want this code to support GUIs of all kinds as an API, and the first such "GUI" I want to support is an astronomical clock.
 ## To Process a Lightroom Time-Lapse Sequence
 - Import the sequence of photos into Lightroom that you want to turn into a time lapse video.
 - Select all photos with Ctrl+A > right-click on one photo > Metadata > Save Metadata to Files. This saves XMP files for each of the photos.
@@ -27,7 +27,9 @@ This function is not really necessary, but useful to visualize the metadata of a
 - The main output file is the `awim.json` file.
 
 ## Generate awim Tags for a Photoshoot
-- todonext
+- The information required to make an awim tag is:
+- todonext: Use the photoshoot template to incorporate photoshoot tools into the app and make a database that accepts photoshoot data real-time during photoshoots.
+
 
 # 27 January 2024 Resurrecting the Project with Many Updates
 ## Notes
@@ -42,7 +44,7 @@ This function is not really necessary, but useful to visualize the metadata of a
 - Already made quick image file processor to extract metadata to text files. In the case of PNG, this means XML format.
 - Save awim information as a separate .awimjson sidecar file.
 - Abandon XML in favor of JSON, but maybe save the data with the file because I'm going to process the PNG files server-side and PIL can save text blocks in the PNG file. Check first if the PNG file maintains its quality.
-- todonext: `awimlib.generate_tag_from_exif_plus_misc()` using the photos of Tim's house. ALSO, clean up the awimlib file, especially move the formatting functions to the formatters file. Don't be afraid to depete obsolete formatters.
+- todonext: `camera.generate_tag_from_exif_plus_misc()` using the photos of Tim's house. ALSO, clean up the awimlib file, especially move the formatting functions to the formatters file. Don't be afraid to depete obsolete formatters.
 
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 
@@ -67,6 +69,10 @@ There really needs to be one format I use. For now, I am committing to not save 
 - Save to file
 	- Same dictionary from above.
 	- jsonified, sorted by key name with indent of 4
+
+# Datetime Formats
+Within the code, I use numpy datetime64 because that's what Astropy uses. Datetime64 is time zone naive. It matches TAI, so offset from UTC by applicable leap seconds.
+In string representation, I use ISO 8601 format to seconds precision with the trailing Z for Zulu. The only exception is in filenames, I exclude the colons in the time.
 
 # Lightroom Time Lapse Smoothing
 This feature uses XMP modification to smooth settings changes in time lapse videos processed in Lightroom.
@@ -171,16 +177,6 @@ Question: can GPS signals be used by a receiver with directional antennae to det
 Users should be able to calibrate their own camera with readily-available equipment. The goal is to demystify the idea of angular astronomical direction of photographs and make it available without upgrading equipment.
 
 The data should be text. While there may be some small computer efficiency advantage to some other data format, modern computers can quickly convert text into whatever format it prefers and HUMANS CAN READ TEXT. (some EXIF data is specifically not text, and it is very annoying to work with).
-
-## Dependencies
-- os, numpy, math, pickle, datetime, Pillow (PIL), pandas
-- tkinter is the GUI
-- from matplotlib import pyplot, cm
-- from mpl_toolkits.mplot3d import Axes3D
-- from pytz import timezone
-- import astropy.units as u
-- from astropy.time import Time
-- from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 
 ## Tutorial
 Following is the AWIM workflow from calibrating a camera through tagging an image.

@@ -1,5 +1,6 @@
 from tkinter.filedialog import askopenfilename
 import os
+import json
 import numpy as np
 import math
 import PIL
@@ -24,6 +25,27 @@ def cam_calibration():
 def generate_metatext_files():
     workingpath = os.path.join(os.getcwd(), 'working')
     metadata_tools.meta_to_textfiles(os.path.join(workingpath)) # todo: is this os.path.join really necessary? Why did I do this?
+
+
+def generate_image_tags():
+    workingpath = os.path.join(os.getcwd(), 'working')
+    for file in os.listdir(workingpath):
+        file_type = os.path.splitext(file)[-1]
+        images_list = []
+        if 'cam_awim.json' in file.lower():
+            awim_path = os.path.join(workingpath, file)
+            with open(awim_path, 'r') as json_file:
+                cam_AWIMtag_dictionary = json.load(json_file)
+        elif file_type.lower() in ('.jpg', '.png', 'jpeg'):
+            file_path = os.path.join(workingpath, file)
+            images_list.append(file_path)
+
+    tz_offset = -4 # just because DST at Tim's house in Apr 2022.
+    shoot_latlng = [40.2290,-83.2092] # Tim's yard
+    # the rest of the data needs to come from the database and should include enough to give the photos a unique basename + awim.xxx
+
+    for image_path in images_list:
+        camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, tz_offset, shoot_latlng, photo_AGL, known_px, known_px_azart, img_orientation, img_tilt)
 
 
 def lightroom_timelapse_XMP_process():

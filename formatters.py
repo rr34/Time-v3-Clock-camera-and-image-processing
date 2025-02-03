@@ -26,7 +26,7 @@ def format_datetime(input_datetime, direction):
     exif_datetime_format = "%Y:%m:%d %H:%M:%S" # directly from exif documentation
     numpy_datetime_format = "%Y-%m-%dT%H:%M:%S" # from numpy documentation, is timezone naive
     ISO8601_datetime_format = "%Y-%m-%dT%H:%M:%SZ" # ISO 8601
-    filename_format = "%Y-%m-%dT%H%M%S" # filename
+    filename_format = "%Y-%m-%dT%H%M%SZ" # filename
 
     # regex patterns for recognizing strings
     ISO8601_pattern = r'\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}([+-]\d{2}:\d{2}|Z?)\s*'
