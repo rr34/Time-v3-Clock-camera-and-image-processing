@@ -1,6 +1,6 @@
 import sys
 import mariadb
-import mysql.connector
+import pandas as pd
 import json
 
 # takes mysql text and a tuple of the user input values and returns the results in cursor format. 
@@ -14,10 +14,10 @@ def sql_execute(text, user_input, result_type):
         # )
         conn = mariadb.connect(
             user="nate",
-            host="23.254.144.125",
+            host="108.174.197.50",
             password='hiatus32',
             port=3306,
-            database="tlom"
+            database="awim"
         )
     except mariadb.Error as e:
         print(f"Error connecting to MariaDB platform: {e}")
@@ -31,50 +31,35 @@ def sql_execute(text, user_input, result_type):
     elif not user_input:
         cur.execute(text)
 
-    if result_type == 'table':
+    if result_type == 'dataframe':
         result_fetched = cur.fetchall()
         columns = [c[0] for c in cur.description]
         cur.close()
         conn.close()
-        return result_fetched, columns
-    elif result_type == 'json':
+        result_df = pd.DataFrame(result_fetched, columns=columns)
+        return result_df
+    elif result_type == 'listtuples':
+        result_fetched = cur.fetchall()
+        cur.close()
+        conn.close()
+        return result_fetched
+    elif result_type == 'listsinglefield':
+        result_fetched = cur.fetchall()
+        cur.close()
+        conn.close()
+        results = [x[0] for x in result_fetched]
+        return results
+    elif result_type == 'listdictionaries':
         result_fetched = cur.fetchall()
         columns = [c[0] for c in cur.description]
-        result_json = []
+        results = []
         for result in result_fetched:
-            result_json.append(dict(zip(columns,result)))
+            results.append(dict(zip(columns,result)))
         cur.close()
         conn.close()
-        return result_json
+        return results
     elif result_type == 'updatedb':
         conn.commit()
         cur.close()
         conn.close()
         return
-
-
-
-
-def sql_execute_pd(text, user_input):
-    try:
-        conn = mysql.connector.connect(
-            user="nate",
-            host="23.254.144.125",
-            port=3306,
-            database="tlom"
-        )
-    except mysql.connector.Error as e:
-        print(f"Error connecting to MariaDB platform: {e}")
-        sys.exit(1)
-
-    # Get cursor
-    cur = conn.cursor()
-
-    if user_input:
-        cur.execute(text, user_input)
-    else:
-        cur.execute(text)
-
-    conn.close()
-
-    return cur

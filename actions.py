@@ -11,7 +11,7 @@ import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
-import camera, awimlib, astropytools, XMPtext, formatters, metadata_tools
+import camera, awimlib, astropytools, XMPtext, formatters, metadata_tools, DBsqlstatements
 
 
 def cam_calibration():
@@ -28,24 +28,52 @@ def generate_metatext_files():
 
 
 def generate_image_tags():
+    photoshootID = 'timhouse20220410'
+    # 1. Get lists of photo files and entries in the database.
+    photoshoot_basenames = DBsqlstatements.get_basenames(photoshootID)
     workingpath = os.path.join(os.getcwd(), 'working')
+    imagebases_list = []
+    images_list_iterable = []
     for file in os.listdir(workingpath):
         file_type = os.path.splitext(file)[-1]
-        images_list = []
-        if 'cam_awim.json' in file.lower():
+        file_base = os.path.splitext(file)[0]
+        if 'cam_awim.json' in file.lower(): # software could eventually select the correct camera awim from many based on the exif lens information from the images, but for now all photos in the batch need to be taken with the same lens.
             awim_path = os.path.join(workingpath, file)
             with open(awim_path, 'r') as json_file:
                 cam_AWIMtag_dictionary = json.load(json_file)
         elif file_type.lower() in ('.jpg', '.png', 'jpeg'):
             file_path = os.path.join(workingpath, file)
-            images_list.append(file_path)
+            imagebases_list.append(file_base)
+            if file_base in photoshoot_basenames:
+                images_list_iterable.append((file_path, file_base)) # enough information to match the image file path to the correct unique entry in the database.
 
-    tz_offset = -4 # just because DST at Tim's house in Apr 2022.
-    shoot_latlng = [40.2290,-83.2092] # Tim's yard
-    # todonext: the rest of the data needs to come from the database and should include enough to give the photos a unique basename + awim.xxx
+    # 2. Match the photo files to entries in the database and identify mismatches.
+    matches = list(set(photoshoot_basenames).intersection(imagebases_list))
+    lonely_files = list(set(imagebases_list) - set(photoshoot_basenames))
+    lonely_shootentries = list(set(photoshoot_basenames) - set(imagebases_list))
+    if len(lonely_files) == 0 and len(lonely_shootentries) == 0:
+        perfect_match = True
+    else:
+        perfect_match = False
+    if perfect_match:
+        print('Photo files and shoot entries match perfectly.')
+    else:
+        print('Lonely files list: ' + str(lonely_files))
+        print('Lonely photoshoot entries list: ' + str(lonely_shootentries))
 
-    for image_path in images_list:
-        camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, tz_offset, shoot_latlng, photo_AGL, known_px, known_px_azart, img_orientation, img_tilt)
+    # 3. Iterate over the image files using the basename to get the corresponding entry in the database.
+    for image in images_list_iterable:
+        image_path = image[0]
+        image_basename = image[1]
+        photoshoot_dictionary = DBsqlstatements.get_photo(photoshootID, image_basename)
+        if len(photoshoot_dictionary) == 1:
+            photoshoot_dictionary = photoshoot_dictionary[0]
+        elif len(photoshoot_dictionary) > 1:
+            print('Duplicate entry for basename: ' + image_basename)
+        elif len(photoshoot_dictionary) < 1:
+            print('Some unknown error for : ' + image_basename)
+        
+        camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary)
 
 
 def lightroom_timelapse_XMP_process():

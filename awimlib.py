@@ -12,7 +12,7 @@ import metadata_tools, formatters
 
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Latitude'] = [-999.9, -999.9]
+    AWIMtag_dictionary['Location'] = [-999.9, -999.9]
     AWIMtag_dictionary['Location Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
     AWIMtag_dictionary['Location Source'] = ''
     AWIMtag_dictionary['Location Altitude'] = -999.9
@@ -21,10 +21,10 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['Location AGL'] = -999.9
     AWIMtag_dictionary['Location AGL Unit'] = 'Meters above ground level; to 2 decimal places so 1cm'
     AWIMtag_dictionary['Location AGL Source'] = ''
-    AWIMtag_dictionary['Capture Moment'] = np.datetime64(-1970, 'Y')
+    AWIMtag_dictionary['Capture Moment'] = '0000-01-01T00:00:00Z'
     AWIMtag_dictionary['Capture Moment Unit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY:MM:DDTHH:MM:SSZ'
     AWIMtag_dictionary['Capture Moment Source'] = ''
-    AWIMtag_dictionary['Pixel Angle Models Type'] = ''
+    AWIMtag_dictionary['Pixel Angle Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
     AWIMtag_dictionary['Ref Pixel'] = [-999.9, -999.9]
     AWIMtag_dictionary['Ref Pixel Coord Type'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
     AWIMtag_dictionary['Ref Pixel Azimuth Artifae'] = [-999.9, -999.9]
