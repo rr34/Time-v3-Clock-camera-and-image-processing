@@ -120,7 +120,7 @@ def simplify_keys(metadata_dict):
         for simple_key in simple_keys:
             re_pattern = '(?<=tiff:){}$|(?<=exif:){}$'.format(simple_key, simple_key)
             if re.search(re_pattern, key):
-                new_key = 'originalmeta ' + simple_key
+                new_key = 'origmeta ' + simple_key
                 if new_key not in dict_withjust_new_keys:
                     dict_withjust_new_keys[new_key] = metadata_dict[key]
                     delete_after_loop.append(key)
@@ -142,7 +142,6 @@ def simplify_keys(metadata_dict):
 def AdobeXML_to_dict(AdobeXML):
     metadata_dict = xmltodict.parse(AdobeXML)
     metadata_dict = flatten_dict(metadata_dict)
-
     metadata_dict = simplify_keys(metadata_dict)
 
     return metadata_dict

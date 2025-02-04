@@ -306,124 +306,123 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 
 def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary):
-    camera_filename = tkinter.filedialog.askopenfilename(title='open calibration image')
+	metadata_dict = metadata_tools.get_metadata(image_path)
 
-    exif_dict = metadata_tools.get_metadata(camera_filename)
-    full_user_comment = exif_dict['UserComment']
-    cameraAWIMdictionary = awimlib.de_stringify_tag(full_user_comment)
-    print(cameraAWIMdictionary)
-    
-    AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
+	AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
-    # user inputs etc.
-    source_image_path = tkinter.filedialog.askopenfilename()
-    metadata_source_path = source_image_path
-    current_image_str.set(source_image_path)
-    camera_AWIM = current_camera
-    AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
-    AWIMtag_dictionary['Location Source'] = 'get from exif GPS'
-    AWIMtag_dictionary['Location Altitude'] = 266.7
-    AWIMtag_dictionary['Location Altitude Source'] = 'get from exif GPS'
-    AWIMtag_dictionary['Location AGL'] = 1.7
-    AWIMtag_dictionary['Location AGL Source'] = 'Default: average human height worldwide.'
-    AWIMtag_dictionary['Capture Moment Source'] = 'get from exif'
-    AWIMtag_dictionary['Pixel Angle Models Type'] = 'get from camera AWIM'
-    AWIMtag_dictionary['Ref Pixel'] = 'center, get from image'
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
-    elevation_at_Location = False
-    tz = timezone('US/Eastern')
-    known_px = [1000,750]
-    known_px_azart = 'venus'
-    img_orientation = 'landscape'
-    img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
+	if 'some user selection variable' == 'try camera gps': # todo: use GPS from camera if present, usually not in my case.
+		AWIMtag_dictionary['awim Location'] = ''
+		AWIMtag_dictionary['awim Location Source'] = 'Camera GPS'
+	elif True: # use location from the photoshoot dictionary
+		latlng = photoshoot_dictionary['LatLong'].split(',')
+		AWIMtag_dictionary['awim Location'] = [float(latlng[0]), float(latlng[1])]
+		AWIMtag_dictionary['awim Location Source'] = 'Photoshoot Data'
 
-    AWIMtag_dictionary, AWIMtag_dictionary_string = camera.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
-            elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
+	
+	AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
+	AWIMtag_dictionary['Location Source'] = 'get from exif GPS'
+	AWIMtag_dictionary['Location Altitude'] = 266.7
+	AWIMtag_dictionary['Location Altitude Source'] = 'get from exif GPS'
+	AWIMtag_dictionary['Location AGL'] = 1.7
+	AWIMtag_dictionary['Location AGL Source'] = 'Default: average human height worldwide.'
+	AWIMtag_dictionary['Capture Moment Source'] = 'get from exif'
+	AWIMtag_dictionary['Pixel Angle Models Type'] = 'get from camera AWIM'
+	AWIMtag_dictionary['Ref Pixel'] = 'center, get from image'
+	AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
+	elevation_at_Location = False
+	tz = timezone('US/Eastern')
+	known_px = [1000,750]
+	known_px_azart = 'venus'
+	img_orientation = 'landscape'
+	img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
 
-    with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
-        f.write(AWIMtag_dictionary_string)
+	AWIMtag_dictionary, AWIMtag_dictionary_string = camera.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
+			elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
 
+	with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
+		f.write(AWIMtag_dictionary_string)
 
 
-    round_digits = formatters.AWIMtag_rounding_digits()
-    
-    exif_readable = metadata_tools.get_metadata(metadata_source_path)
 
-    if AWIMtag_dictionary['Location Source'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
-        pass # allows user to specify location without being overridden by the exif GPS
-    elif AWIMtag_dictionary['Location Source'] == 'get from exif GPS':
-        if exif_readable.get('GPSInfo'):
-            location, location_altitude = format_GPS_latlng(exif_readable)
-            if location:
-                AWIMtag_dictionary['Location'] = [round(f, round_digits['lat long']) for f in location]
-                AWIMtag_dictionary['Location Source'] = 'DSC exif GPS'
-            else:
-                AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
-                
-            if location_altitude:
-                AWIMtag_dictionary['Location Altitude'] = round(location_altitude, round_digits['altitude'])
-                AWIMtag_dictionary['Location Altitude Source'] = 'DSC exif GPS'
-            else:
-                AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
-        else:
-            AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
-            AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
-    else:
-        print('Error')
-    
-    if AWIMtag_dictionary['Location AGL Source'] == 'get from altitude minus terrain elevation':
-        location_AGL = get_LocationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_location)
-        if location_AGL:
-            AWIMtag_dictionary['Location AGL'] = [round(f, round_digits['AGL']) for f in location_AGL]
-            AWIMtag_dictionary['Location AGL Source'] = 'Subtracted terrain elevation from altitude.'
-        else:
-            AWIMtag_dictionary['Location AGL Source'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
+	round_digits = formatters.AWIMtag_rounding_digits()
 
-    if AWIMtag_dictionary['Capture Moment Source'] == 'get from exif':
-        UTC_datetime_str, UTC_source = formatters.capture_moment_from_exif(exif_readable, tz)
-        if UTC_datetime_str:
-            AWIMtag_dictionary['Capture Moment'] = UTC_datetime_str
-            AWIMtag_dictionary['Capture Moment Source'] = UTC_source
-        else:
-            AWIMtag_dictionary['Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
+	exif_readable = metadata_tools.get_metadata(metadata_source_path)
 
-    pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
-                                                    (source_image_path, img_orientation, img_tilt)
-    AWIMtag_dictionary['Pixel Angle Models Type'] = pixel_map_type
-    AWIMtag_dictionary['Angles Model'] = xyangs_model_df
-    AWIMtag_dictionary['Pixels Model'] = px_model_df
-    
-    ref_px, img_borders_pxs = get_ref_px_and_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['Ref Pixel'])
-    AWIMtag_dictionary['Ref Pixel'] = [round(f, round_digits['pixels']) for f in ref_px]
-    AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
+	if AWIMtag_dictionary['Location Source'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
+		pass # allows user to specify location without being overridden by the exif GPS
+	elif AWIMtag_dictionary['Location Source'] == 'get from exif GPS':
+		if exif_readable.get('GPSInfo'):
+			location, location_altitude = format_GPS_latlng(exif_readable)
+			if location:
+				AWIMtag_dictionary['Location'] = [round(f, round_digits['lat long']) for f in location]
+				AWIMtag_dictionary['Location Source'] = 'DSC exif GPS'
+			else:
+				AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+				
+			if location_altitude:
+				AWIMtag_dictionary['Location Altitude'] = round(location_altitude, round_digits['altitude'])
+				AWIMtag_dictionary['Location Altitude Source'] = 'DSC exif GPS'
+			else:
+				AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+		else:
+			AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+			AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+	else:
+		print('Error')
 
-    if AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] == 'from known px':
-        if isinstance(known_px_azart, str):
-            ref_azart_source = 'From celestial object in photo: ' + known_px_azart
-            known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
+	if AWIMtag_dictionary['Location AGL Source'] == 'get from altitude minus terrain elevation':
+		location_AGL = get_LocationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_location)
+		if location_AGL:
+			AWIMtag_dictionary['Location AGL'] = [round(f, round_digits['AGL']) for f in location_AGL]
+			AWIMtag_dictionary['Location AGL Source'] = 'Subtracted terrain elevation from altitude.'
+		else:
+			AWIMtag_dictionary['Location AGL Source'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
-        ref_azart = ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae'] = ref_azart.round(round_digits['degrees'])
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = ref_azart_source
+	if AWIMtag_dictionary['Capture Moment Source'] == 'get from exif':
+		UTC_datetime_str, UTC_source = formatters.capture_moment_from_exif(exif_readable, tz)
+		if UTC_datetime_str:
+			AWIMtag_dictionary['Capture Moment'] = UTC_datetime_str
+			AWIMtag_dictionary['Capture Moment Source'] = UTC_source
+		else:
+			AWIMtag_dictionary['Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
 
-    img_borders_angs = pxs_to_xyangs(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(round_digits['degrees'])
+	pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
+													(source_image_path, img_orientation, img_tilt)
+	AWIMtag_dictionary['Pixel Angle Models Type'] = pixel_map_type
+	AWIMtag_dictionary['Angles Model'] = xyangs_model_df
+	AWIMtag_dictionary['Pixels Model'] = px_model_df
 
-    img_borders_azarts = pxs_to_azarts(AWIMtag_dictionary, img_borders_pxs)
-    AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(round_digits['degrees'])
+	ref_px, img_borders_pxs = get_ref_px_and_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['Ref Pixel'])
+	AWIMtag_dictionary['Ref Pixel'] = [round(f, round_digits['pixels']) for f in ref_px]
+	AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 
-    img_borders_RADecs = astropytools.AzArts_to_RADecs(AWIMtag_dictionary, img_borders_azarts)
-    img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(round_digits['hourangle'])
-    img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(round_digits['degrees'])
-    AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs
+	if AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] == 'from known px':
+		if isinstance(known_px_azart, str):
+			ref_azart_source = 'From celestial object in photo: ' + known_px_azart
+			known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
 
-    px_size_center, px_size_average = get_pixel_sizes(source_image_path, AWIMtag_dictionary)
-    AWIMtag_dictionary['Pixel Size Center Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
-    AWIMtag_dictionary['Pixel Size Average Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
+		ref_azart = ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
+	AWIMtag_dictionary['Ref Pixel Azimuth Artifae'] = ref_azart.round(round_digits['degrees'])
+	AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = ref_azart_source
 
-    AWIMtag_dictionary_string = stringify_dictionary(AWIMtag_dictionary, 'dictionary')
+	img_borders_angs = pxs_to_xyangs(AWIMtag_dictionary, img_borders_pxs)
+	AWIMtag_dictionary['BorderAngles'] = img_borders_angs.round(round_digits['degrees'])
 
-    return AWIMtag_dictionary, AWIMtag_dictionary_string
+	img_borders_azarts = pxs_to_azarts(AWIMtag_dictionary, img_borders_pxs)
+	AWIMtag_dictionary['BordersAzimuthArtifae'] = img_borders_azarts.round(round_digits['degrees'])
+
+	img_borders_RADecs = astropytools.AzArts_to_RADecs(AWIMtag_dictionary, img_borders_azarts)
+	img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(round_digits['hourangle'])
+	img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(round_digits['degrees'])
+	AWIMtag_dictionary['BordersRADec'] = img_borders_RADecs
+
+	px_size_center, px_size_average = get_pixel_sizes(source_image_path, AWIMtag_dictionary)
+	AWIMtag_dictionary['Pixel Size Center Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
+	AWIMtag_dictionary['Pixel Size Average Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
+
+	AWIMtag_dictionary_string = stringify_dictionary(AWIMtag_dictionary, 'dictionary')
+
+	return AWIMtag_dictionary, AWIMtag_dictionary_string
 
 
 # ----- unknown below this line -----

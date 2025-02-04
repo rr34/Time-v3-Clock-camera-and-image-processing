@@ -12,42 +12,42 @@ import metadata_tools, formatters
 
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['Location'] = [-999.9, -999.9]
-    AWIMtag_dictionary['Location Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
-    AWIMtag_dictionary['Location Source'] = ''
-    AWIMtag_dictionary['Location Altitude'] = -999.9
-    AWIMtag_dictionary['Location Altitude Unit'] = 'Meters above sea level; to 1 decimal place so 10cm'
-    AWIMtag_dictionary['Location Altitude Source'] = ''
-    AWIMtag_dictionary['Location AGL'] = -999.9
-    AWIMtag_dictionary['Location AGL Unit'] = 'Meters above ground level; to 2 decimal places so 1cm'
-    AWIMtag_dictionary['Location AGL Source'] = ''
-    AWIMtag_dictionary['Capture Moment'] = '0000-01-01T00:00:00Z'
-    AWIMtag_dictionary['Capture Moment Unit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY:MM:DDTHH:MM:SSZ'
-    AWIMtag_dictionary['Capture Moment Source'] = ''
-    AWIMtag_dictionary['Pixel Angle Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
-    AWIMtag_dictionary['Ref Pixel'] = [-999.9, -999.9]
-    AWIMtag_dictionary['Ref Pixel Coord Type'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae'] = [-999.9, -999.9]
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = ''
-    AWIMtag_dictionary['Ref Pixel Azimuth Artifae Unit'] = 'Degrees; to hundredth of a degree'
-    AWIMtag_dictionary['Grid Pixels'] = []
-    AWIMtag_dictionary['Grid Angles'] = []
-    AWIMtag_dictionary['Grid Azimuth Artifae'] = []
-    AWIMtag_dictionary['Grid RA Dec'] = []
-    AWIMtag_dictionary['RA Dec Unit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
-    AWIMtag_dictionary['Pixel Size Center Horizontal Vertical'] = [-999.9, -999.9]
-    AWIMtag_dictionary['Pixel Size Average Horizontal Vertical'] = [-999.9, -999.9]
-    AWIMtag_dictionary['Pixel Size Unit'] = 'Pixels per Degree; to tenth of a pixel'
+    AWIMtag_dictionary['awim Location'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Location Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
+    AWIMtag_dictionary['awim Location Source'] = ''
+    AWIMtag_dictionary['awim Location Altitude'] = -999.9
+    AWIMtag_dictionary['awim Location Altitude Unit'] = 'Meters above sea level; to 1 decimal place so 10cm'
+    AWIMtag_dictionary['awim Location Altitude Source'] = ''
+    AWIMtag_dictionary['awim Location AGL'] = -999.9
+    AWIMtag_dictionary['awim Location AGL Unit'] = 'Meters above ground level; to 2 decimal places so 1cm'
+    AWIMtag_dictionary['awim Location AGL Source'] = ''
+    AWIMtag_dictionary['awim Capture Moment'] = '0000-01-01T00:00:00Z'
+    AWIMtag_dictionary['awim Capture Moment Unit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY:MM:DDTHH:MM:SSZ'
+    AWIMtag_dictionary['awim Capture Moment Source'] = ''
+    AWIMtag_dictionary['awim Pixel Angle Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
+    AWIMtag_dictionary['awim Ref Pixel'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Ref Pixel Coord Type'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
+    AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Source'] = ''
+    AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Unit'] = 'Degrees; to hundredth of a degree'
+    AWIMtag_dictionary['awim Grid Pixels'] = []
+    AWIMtag_dictionary['awim Grid Angles'] = []
+    AWIMtag_dictionary['awim Grid Azimuth Artifae'] = []
+    AWIMtag_dictionary['awim Grid RA Dec'] = []
+    AWIMtag_dictionary['awim RA Dec Unit'] = 'ICRS J2000 Epoch, to thousandth of an hour, hundredth of a degree'
+    AWIMtag_dictionary['awim Pixel Size Center Horizontal Vertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Pixel Size Average Horizontal Vertical'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Pixel Size Unit'] = 'Pixels per Degree; to tenth of a pixel'
 
     if not default_units:
-        AWIMtag_dictionary['Location Unit'] = ''
-        AWIMtag_dictionary['Location Altitude Unit'] = ''
-        AWIMtag_dictionary['Location AGL Unit'] = ''
-        AWIMtag_dictionary['Capture Moment Unit'] = ''
-        AWIMtag_dictionary['Ref Pixel Coord Type'] = ''
-        AWIMtag_dictionary['Ref Pixel Azimuth Artifae Unit'] = ''
-        AWIMtag_dictionary['RA Dec Unit'] = ''
-        AWIMtag_dictionary['Pixel Size Unit'] = ''
+        AWIMtag_dictionary['awim Location Unit'] = ''
+        AWIMtag_dictionary['awim Location Altitude Unit'] = ''
+        AWIMtag_dictionary['awim Location AGL Unit'] = ''
+        AWIMtag_dictionary['awim Capture Moment Unit'] = ''
+        AWIMtag_dictionary['awim Ref Pixel Coord Type'] = ''
+        AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Unit'] = ''
+        AWIMtag_dictionary['awim RA Dec Unit'] = ''
+        AWIMtag_dictionary['awim Pixel Size Unit'] = ''
 
     return AWIMtag_dictionary
 

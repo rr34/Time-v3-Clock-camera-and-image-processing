@@ -24,7 +24,14 @@ def cam_calibration():
 
 def generate_metatext_files():
     workingpath = os.path.join(os.getcwd(), 'working')
-    metadata_tools.meta_to_textfiles(os.path.join(workingpath)) # todo: is this os.path.join really necessary? Why did I do this?
+    for file in os.listdir(workingpath):
+        file_path = os.path.join(workingpath, file)
+        metadata_dict = metadata_tools.get_metadata(file_path)
+        file_base = os.path.splitext(file_path)[0]
+        json_file_name = file_base + '.json'
+        with open(json_file_name, "w") as text_file:
+            json.dump(metadata_dict, text_file, indent=4, sort_keys=True)
+
 
 
 def generate_image_tags():

@@ -31,7 +31,7 @@ This function is not really necessary, but useful to visualize the metadata of a
 - The calibration image itself is also required to be in the `working/` folder for things like dimensions. It must be named `calimage.jpg`
 - Run `actions.camcalibration()`
 - The output files all start with the word 'output'.
-- The main output file is the `awim.json` file.
+- The main output file is the `cam_awim.json` file.
 
 ## Generate awim Tags for a Photoshoot
 - The information required to make an awim tag is:
@@ -51,7 +51,7 @@ This function is not really necessary, but useful to visualize the metadata of a
 - Already made quick image file processor to extract metadata to text files. In the case of PNG, this means XML format.
 - Save awim information as a separate .awimjson sidecar file.
 - Abandon XML in favor of JSON, but maybe save the data with the file because I'm going to process the PNG files server-side and PIL can save text blocks in the PNG file. Check first if the PNG file maintains its quality.
-- todonext: `camera.generate_tag_from_exif_plus_misc()` using the photos of Tim's house. ALSO, clean up the awimlib file, especially move the formatting functions to the formatters file. Don't be afraid to depete obsolete formatters.
+- todonext: generate awim tags using photoshoot database data
 
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 
