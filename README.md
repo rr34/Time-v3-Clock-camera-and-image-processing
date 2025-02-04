@@ -1,3 +1,10 @@
+# Project Summary
+## AWIM Functions
+- Generate all tags to include camera and photo tags.
+- Lightroom time-lapse sequences.
+- Determine if celestial bodies are in the photo at given time or not and ...
+	- determine if the celestial bodies are visible in the photo or behind an obstacle, like a building or tower (or even clouds as applicable). This function is the only one that requires more than the metadata from the photo. This function requires the transparency layer from the png, so there either that has to be part of the metadata somehow, or the photo has to be available "server-side"
+Convert 
 # Instructions
 This code is intended to never have a built-in GUI. I made a GUI for it in the past, but that was a mistake because the overall goal of this project is to read from and generate files. Therefore, it works with files directly that are put into a specific hard-coded location for the code to work on. That said, I do want this code to support GUIs of all kinds as an API, and the first such "GUI" I want to support is an astronomical clock.
 ## To Process a Lightroom Time-Lapse Sequence

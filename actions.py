@@ -42,7 +42,7 @@ def generate_image_tags():
 
     tz_offset = -4 # just because DST at Tim's house in Apr 2022.
     shoot_latlng = [40.2290,-83.2092] # Tim's yard
-    # the rest of the data needs to come from the database and should include enough to give the photos a unique basename + awim.xxx
+    # todonext: the rest of the data needs to come from the database and should include enough to give the photos a unique basename + awim.xxx
 
     for image_path in images_list:
         camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, tz_offset, shoot_latlng, photo_AGL, known_px, known_px_azart, img_orientation, img_tilt)
