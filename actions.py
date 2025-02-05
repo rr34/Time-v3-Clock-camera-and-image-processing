@@ -2,16 +2,16 @@ from tkinter.filedialog import askopenfilename
 import os
 import json
 import numpy as np
-import math
-import PIL
 from matplotlib import pyplot, cm
 from mpl_toolkits.mplot3d import Axes3D
 import datetime
-import pytz
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import camera, awimlib, astropytools, XMPtext, formatters, metadata_tools, DBsqlstatements
+# import math
+# import PIL
+# import pytz
 
 
 def cam_calibration():
@@ -19,7 +19,11 @@ def cam_calibration():
     image_path = os.path.join(workingpath, 'calimage.jpg')
     cal_file_path = os.path.join(workingpath, 'calspreadsheet.xlsx')
 
-    camera.generate_camera_AWIM_from_calibration(image_path, cal_file_path)
+    cam_AWIMtag, filename = camera.generate_camera_AWIM_from_calibration(image_path, cal_file_path)
+
+    file_path = os.path.join(workingpath, filename)
+    with open(file_path, 'w') as json_file:
+        json.dump(cam_AWIMtag, json_file, indent=4, sort_keys=True)
 
 
 def generate_metatext_files():

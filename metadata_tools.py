@@ -1,6 +1,5 @@
 import os, shutil
 import datetime, pytz
-import json
 import pyexiv2
 import PIL
 import formatters
@@ -40,8 +39,8 @@ def get_metadata(image_file_path):
     return metadata_dict
 
 
-# ----- unknown below this line -----
-def capture_moment_from_exif(metadata_dict, tz_default=False):
+def capture_moment_from_metadata(metadata_dict, tz_default=False):
+    # todo: update the exif metadata getter to use the time formatter function
     exif_UTC = UTC_source = UTC_datetime_str = False
     exif_datetime_format = "%Y:%m:%d %H:%M:%S"
 
@@ -80,11 +79,39 @@ def capture_moment_from_exif(metadata_dict, tz_default=False):
                 exif_UTC = exif_datetime_object_naive
                 UTC_source = 'exif DateTimeOriginal not adjusted for timezone, probably not UTC'
 
+    elif metadata_dict.get('origmeta DateTimeOriginal'):
+         metadata_datetime = metadata_dict['origmeta DateTimeOriginal']
+         UTC_datetime_str = formatters.format_datetime(metadata_datetime, 'to string for AWIMtag')
+         UTC_source = 'PNG XML DateTimeOriginal, which includes the timezone offset used by the camera. NMR camera set to not use DST, so offset should match location standard time.'
 
     if exif_UTC:
         UTC_datetime_str = formatters.format_datetime(exif_UTC, 'to string for AWIMtag')
 
     return UTC_datetime_str, UTC_source
+
+
+# ----- unknown below this line -----
+def GPS_location_from_metadata(metadata_dict):
+    if 'get from exif GPS':
+        if exif_readable.get('GPSInfo'):
+            location, location_altitude = format_GPS_latlng(exif_readable)
+            if location:
+                AWIMtag_dictionary['Location'] = [round(f, round_digits['lat long']) for f in location]
+                AWIMtag_dictionary['Location Source'] = 'DSC exif GPS'
+            else:
+                AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+
+            if location_altitude:
+                AWIMtag_dictionary['Location Altitude'] = round(location_altitude, round_digits['altitude'])
+                AWIMtag_dictionary['Location Altitude Source'] = 'DSC exif GPS'
+            else:
+                AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+        else:
+            AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+            AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+    else:
+        print('Error')
+
 
 
 def UserComment_append(filepath, text, overwrite_append='append', modify_copy='copy'):

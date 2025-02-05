@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import os
 import PIL
-import json
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
 import awimlib, metadata_tools, formatters
@@ -70,7 +69,7 @@ def _grid_rotation_error(row_xycm, align_orientation, align1_px, align2_px, alig
 
 # works 30 Jan 2025
 def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_file_path):
-	calimg_exif_readable = metadata_tools.get_metadata(calibration_image_path)
+	calimg_exif_dict = metadata_tools.get_metadata(calibration_image_path)
 	cal_df = pd.read_excel(calibration_file_path)
 
 	camera_name = cal_df[cal_df['type'] == 'camera_name']['misc'].iat[0]
@@ -228,58 +227,58 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	round_digits = formatters.AWIMtag_rounding_digits()
 
 	# get some basic exif for completeness
-	if calimg_exif_readable.get('Exif.Image.GPSTag'):
-		location, location_altitude = formatters.format_GPS_latlng(calimg_exif_readable)
+	if calimg_exif_dict.get('Exif.Image.GPSTag'):
+		location, location_altitude = formatters.format_GPS_latlng(calimg_exif_dict)
 		
 		if location:
-			cam_AWIMtag['Location'] = [round(f, round_digits['lat long']) for f in location]
-			cam_AWIMtag['Location Source'] = 'exif GPS'
+			cam_AWIMtag['awim Location'] = [round(f, round_digits['lat long']) for f in location]
+			cam_AWIMtag['awim Location Source'] = 'exif GPS'
 		else:
-			cam_AWIMtag['Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'	
+			cam_AWIMtag['awim Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'	
 		if location_altitude:
-			cam_AWIMtag['Location Altitude'] = round(location_altitude, round_digits['altitude'])
-			cam_AWIMtag['Location Altitude Source'] = 'exif GPS'
+			cam_AWIMtag['awim Location MSL'] = round(location_altitude, round_digits['altitude'])
+			cam_AWIMtag['awim Location MSL Source'] = 'exif GPS'
 		else:
-			cam_AWIMtag['Location Altitude Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
+			cam_AWIMtag['awim Location MSL Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
 	else:
-		cam_AWIMtag['Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
-		cam_AWIMtag['Location Altitude Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+		cam_AWIMtag['awim Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+		cam_AWIMtag['awim Location MSL Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
     
-	UTC_datetime_str, UTC_source = metadata_tools.capture_moment_from_exif(calimg_exif_readable)
+	UTC_datetime_str, UTC_source = metadata_tools.capture_moment_from_metadata(calimg_exif_dict)
 	if UTC_datetime_str:
-		cam_AWIMtag['Capture Moment'] = UTC_datetime_str
-		cam_AWIMtag['Capture Moment Source'] = UTC_source
+		cam_AWIMtag['awim Capture Moment'] = UTC_datetime_str
+		cam_AWIMtag['awim Capture Moment Source'] = UTC_source
 	else:
-		cam_AWIMtag['Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
+		cam_AWIMtag['awim Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
 
 	# fill in the tag
-	cam_AWIMtag['Angles Models Reference Dimensions'] = cam_image_dimensions.tolist()
-	cam_AWIMtag['Pixel Angle Models Type'] = pixel_map_type
+	cam_AWIMtag['awim Models Reference Dimensions'] = cam_image_dimensions.tolist()
+	cam_AWIMtag['awim Models Type'] = pixel_map_type
 
 	xyangs_model_df = pd.DataFrame(xyangs_model.coef_, columns=xyangs_model.feature_names_in_, index=['xang_predict', 'yang_predict'])
 	# xyangs_model_df.to_csv(os.path.join('working', 'output_xyangs_model_df.csv'))
 	xyangs_model_features = list(xyangs_model.feature_names_in_)
-	cam_AWIMtag['Angles Models Features'] = xyangs_model_features
+	cam_AWIMtag['awim Angles Models Features'] = xyangs_model_features
 	xang_coeffs = list(xyangs_model_df.loc['xang_predict'].values)
 	xang_coeffs = [float(x) for x in xang_coeffs]
-	cam_AWIMtag['Angles Model xang_coeffs'] = xang_coeffs
+	cam_AWIMtag['awim Angles Model xang_coeffs'] = xang_coeffs
 	yang_coeffs = list(xyangs_model_df.loc['yang_predict'].values)
 	yang_coeffs = [float(x) for x in yang_coeffs]
-	cam_AWIMtag['Angles Model yang_coeffs'] = yang_coeffs
+	cam_AWIMtag['awim Angles Model yang_coeffs'] = yang_coeffs
 
 
 	px_model_df = pd.DataFrame(px_model.coef_, columns=px_model.feature_names_in_, index=['x_px_predict', 'y_px_predict'])
 	# px_model_df.to_csv(os.path.join('working', 'output_px_model_df.csv'))
 	px_model_features = list(px_model.feature_names_in_)
-	cam_AWIMtag['Pixels Model Features'] = px_model_features
+	cam_AWIMtag['awim Pixels Model Features'] = px_model_features
 	xpx_coeffs = list(px_model_df.loc['x_px_predict'].values)
 	xpx_coeffs = [float(x) for x in xpx_coeffs]
-	cam_AWIMtag['Pixels Model xpx_coeffs'] = xpx_coeffs
+	cam_AWIMtag['awim Pixels Model xpx_coeffs'] = xpx_coeffs
 	ypx_coeffs = list(px_model_df.loc['y_px_predict'].values)
 	ypx_coeffs = [float(x) for x in ypx_coeffs]
-	cam_AWIMtag['Pixels Model ypx_coeffs'] = ypx_coeffs
+	cam_AWIMtag['awim Pixels Model ypx_coeffs'] = ypx_coeffs
 
-	filler_variable, cam_grid_pxs, cam_TBLR_pxs = awimlib.get_ref_px_and_thirds_grid_TBLR(calibration_image_path, 'center, get from image')
+	ref_px, cam_grid_pxs, cam_TBLR_pxs = awimlib.get_ref_px_thirds_grid_TBLR(calibration_image_path, 'center, get from image')
 	cam_grid_pxs = cam_grid_pxs.round(round_digits['pixels'])
 	cam_grid_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_image_dimensions, cam_grid_pxs)
 	cam_grid_angs = cam_grid_angs.round(round_digits['degrees'])
@@ -287,50 +286,74 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 	cam_TBLR_angs = awimlib.pxs_to_xyangs(cam_AWIMtag, cam_image_dimensions, cam_TBLR_pxs)
 	cam_TBLR_angs = cam_TBLR_angs.round(round_digits['degrees'])
 
-	cam_AWIMtag['Grid Pixels'] = cam_grid_pxs.tolist()
-	cam_AWIMtag['Grid Angles'] = cam_grid_angs.tolist()
-	cam_AWIMtag['TBLR Pixels'] = cam_TBLR_pxs.tolist()
-	cam_AWIMtag['TBLR Angles'] = cam_TBLR_angs.tolist()
+	cam_AWIMtag['awim Ref Pixel'] = ref_px
+	cam_AWIMtag['awim Grid Pixels'] = cam_grid_pxs.tolist()
+	cam_AWIMtag['awim Grid Angles'] = cam_grid_angs.tolist()
+	cam_AWIMtag['awim TBLR Pixels'] = cam_TBLR_pxs.tolist()
+	cam_AWIMtag['awim TBLR Angles'] = cam_TBLR_angs.tolist()
 
 	px_size_center, px_size_average = awimlib.get_pixel_sizes(cam_AWIMtag, cam_image_dimensions)
-	cam_AWIMtag['Pixel Size Center Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
-	cam_AWIMtag['Pixel Size Average Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
-	cam_AWIMtag['Pixel Size Unit'] = 'Pixels per Degree'
+	cam_AWIMtag['awim Pixel Size Center Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_center]
+	cam_AWIMtag['awim Pixel Size Average Horizontal Vertical'] = [round(f, round_digits['pixels']) for f in px_size_average]
+	cam_AWIMtag['awim Pixel Size Unit'] = 'Pixels per Degree'
 
-	cam_AWIMtag_jsonready = formatters.dict_json_ready(cam_AWIMtag)
-	file_path = os.path.join('working', 'output_cal {} {} cam_awim.json'.format(camera_name, lens_name))
-	with open(file_path, 'w') as text_file:
-		json.dump(cam_AWIMtag_jsonready, text_file, indent=4, sort_keys=True)
+	filename = 'output_cal {} {} cam_awim.json'.format(camera_name, lens_name)
 
-	return True
+	return cam_AWIMtag, filename
 
 
 def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary):
 	metadata_dict = metadata_tools.get_metadata(image_path)
-
+	round_digits = formatters.AWIMtag_rounding_digits()
 	AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
 
 	if 'some user selection variable' == 'try camera gps': # todo: use GPS from camera if present, usually not in my case.
-		AWIMtag_dictionary['awim Location'] = ''
+		gps_location = metadata_tools.GPS_location_from_metadata(metadata_dict)
+		AWIMtag_dictionary['awim Location'] = gps_location
 		AWIMtag_dictionary['awim Location Source'] = 'Camera GPS'
 	elif True: # use location from the photoshoot dictionary
 		latlng = photoshoot_dictionary['LatLong'].split(',')
-		AWIMtag_dictionary['awim Location'] = [float(latlng[0]), float(latlng[1])]
+		latlng = [float(latlng[0]), float(latlng[1])]
+		latlng = [round(f, round_digits['lat long']) for f in latlng]
+		# AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
+		AWIMtag_dictionary['awim Location'] = latlng
 		AWIMtag_dictionary['awim Location Source'] = 'Photoshoot Data'
 
-	
-	AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
-	AWIMtag_dictionary['Location Source'] = 'get from exif GPS'
-	AWIMtag_dictionary['Location Altitude'] = 266.7
-	AWIMtag_dictionary['Location Altitude Source'] = 'get from exif GPS'
-	AWIMtag_dictionary['Location AGL'] = 1.7
-	AWIMtag_dictionary['Location AGL Source'] = 'Default: average human height worldwide.'
-	AWIMtag_dictionary['Capture Moment Source'] = 'get from exif'
-	AWIMtag_dictionary['Pixel Angle Models Type'] = 'get from camera AWIM'
-	AWIMtag_dictionary['Ref Pixel'] = 'center, get from image'
+	AWIMtag_dictionary['awim Location MSL'] = photoshoot_dictionary['PhotoMSL'] # todo: check for GPS MSL
+	AWIMtag_dictionary['awim Location MSL Source'] = 'Photoshoot Data'
+
+	AWIMtag_dictionary['awim Location Terrain Elevation'] = photoshoot_dictionary['PhotoMSL']
+	AWIMtag_dictionary['awim Location Terrain Elevation Source'] = 'Photoshoot Data'
+
+	AWIMtag_dictionary['awim Location AGL'] = photoshoot_dictionary['PhotoAGL'] # todo: use to compare MSL and terrain elevation
+	AWIMtag_dictionary['awim Location AGL Description'] = photoshoot_dictionary['PhotoAGLDescription']
+	AWIMtag_dictionary['awim Location AGL Source'] = 'Photoshoot Data'
+
+	datetime_str, datetime_source = metadata_tools.capture_moment_from_metadata(metadata_dict)
+	adjustment = photoshoot_dictionary['CamTimeError']
+	datetime_str = formatters.adjust_datetime_byseconds(datetime_str, adjustment)
+	AWIMtag_dictionary['awim Capture Moment'] = datetime_str
+	AWIMtag_dictionary['awim Capture Moment Source'] = datetime_source
+
+	AWIMtag_dictionary['awim Models Type'] = cam_AWIMtag_dictionary['awim Models Type']
+
+	ref_px, img_grid_pxs, img_TBLR_pxs = awimlib.get_ref_px_thirds_grid_TBLR(image_path, 'center, get from image')
+	AWIMtag_dictionary['Ref Pixel'] = ref_px
+
+	AWIMtag_dictionary['awim Models Reference Dimensions'] = cam_AWIMtag_dictionary['awim Models Reference Dimensions']
+	AWIMtag_dictionary['awim Angles Models Features'] = cam_AWIMtag_dictionary['awim Angles Models Features']
+	AWIMtag_dictionary['awim Angles Model xang_coeffs'] = cam_AWIMtag_dictionary['awim Angles Model xang_coeffs']
+	AWIMtag_dictionary['awim Angles Model yang_coeffs'] = cam_AWIMtag_dictionary['awim Angles Model yang_coeffs']
+
+	AWIMtag_dictionary['awim Pixels Model Features'] = cam_AWIMtag_dictionary['awim Pixels Model Features']
+	AWIMtag_dictionary['awim Pixels Model xpx_coeffs'] = cam_AWIMtag_dictionary['awim Pixels Model xpx_coeffs']
+	AWIMtag_dictionary['awim Pixels Model ypx_coeffs'] = cam_AWIMtag_dictionary['awim Pixels Model ypx_coeffs']
+
+	# ----------------------------------------------------------------------------------------------------------------------------------------------------
+
 	AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
 	elevation_at_Location = False
-	tz = timezone('US/Eastern')
+	tz = 'US/Eastern'
 	known_px = [1000,750]
 	known_px_azart = 'venus'
 	img_orientation = 'landscape'
@@ -344,32 +367,6 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 
 
 
-	round_digits = formatters.AWIMtag_rounding_digits()
-
-	exif_readable = metadata_tools.get_metadata(metadata_source_path)
-
-	if AWIMtag_dictionary['Location Source'] != 'get from exif GPS' and isinstance(AWIMtag_dictionary['Location'], (list, tuple)):
-		pass # allows user to specify location without being overridden by the exif GPS
-	elif AWIMtag_dictionary['Location Source'] == 'get from exif GPS':
-		if exif_readable.get('GPSInfo'):
-			location, location_altitude = format_GPS_latlng(exif_readable)
-			if location:
-				AWIMtag_dictionary['Location'] = [round(f, round_digits['lat long']) for f in location]
-				AWIMtag_dictionary['Location Source'] = 'DSC exif GPS'
-			else:
-				AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
-				
-			if location_altitude:
-				AWIMtag_dictionary['Location Altitude'] = round(location_altitude, round_digits['altitude'])
-				AWIMtag_dictionary['Location Altitude Source'] = 'DSC exif GPS'
-			else:
-				AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
-		else:
-			AWIMtag_dictionary['Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
-			AWIMtag_dictionary['Location Altitude Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
-	else:
-		print('Error')
-
 	if AWIMtag_dictionary['Location AGL Source'] == 'get from altitude minus terrain elevation':
 		location_AGL = get_LocationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_location)
 		if location_AGL:
@@ -379,20 +376,19 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 			AWIMtag_dictionary['Location AGL Source'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
 
 	if AWIMtag_dictionary['Capture Moment Source'] == 'get from exif':
-		UTC_datetime_str, UTC_source = formatters.capture_moment_from_exif(exif_readable, tz)
+		UTC_datetime_str, UTC_source = formatters.capture_moment_from_metadata(exif_readable, tz)
 		if UTC_datetime_str:
 			AWIMtag_dictionary['Capture Moment'] = UTC_datetime_str
 			AWIMtag_dictionary['Capture Moment Source'] = UTC_source
 		else:
 			AWIMtag_dictionary['Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
 
-	pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models\
-													(source_image_path, img_orientation, img_tilt)
-	AWIMtag_dictionary['Pixel Angle Models Type'] = pixel_map_type
+	pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models(source_image_path, img_orientation, img_tilt)
+	AWIMtag_dictionary['Models Type'] = pixel_map_type
 	AWIMtag_dictionary['Angles Model'] = xyangs_model_df
 	AWIMtag_dictionary['Pixels Model'] = px_model_df
 
-	ref_px, img_borders_pxs = get_ref_px_and_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['Ref Pixel'])
+	ref_px, img_borders_pxs = get_ref_px_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['Ref Pixel'])
 	AWIMtag_dictionary['Ref Pixel'] = [round(f, round_digits['pixels']) for f in ref_px]
 	AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
 

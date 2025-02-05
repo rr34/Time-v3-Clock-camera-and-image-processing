@@ -67,6 +67,16 @@ def format_datetime(input_datetime, direction):
     return output
 
 
+def adjust_datetime_byseconds(datetime_str, adjustment):
+    datetime_numpy1 = np.datetime64(datetime_str)
+    timedelta_numpy = np.timedelta64(adjustment, 's')
+    datetime_numpy2 = datetime_numpy1 - timedelta_numpy
+
+    result_str = str(np.datetime_as_string(datetime_numpy2, unit='s')) + 'Z'
+
+    return result_str
+
+
 def round_to_string(numbers, type):
     rounding_digits_dict = {}
     rounding_digits_dict['lat long'] = 6
@@ -175,20 +185,20 @@ def format_individual_exif_values(exif_value):
     return value_readable
 
 
-def format_GPS_latlng(exif_readable):
+def format_GPS_latlng(exif_dict):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
-    if exif_readable.get('Exif.GPSInfo.GPSLatitudeRef') == 'N':
+    if exif_dict.get('Exif.GPSInfo.GPSLatitudeRef') == 'N':
         lat_sign = 1
-    elif exif_readable.get('Exif.GPSInfo.GPSLatitudeRef') == 'S':
+    elif exif_dict.get('Exif.GPSInfo.GPSLatitudeRef') == 'S':
         lat_sign = -1
-    if exif_readable.get('Exif.GPSInfo.GPSLongitudeRef') == 'E':
+    if exif_dict.get('Exif.GPSInfo.GPSLongitudeRef') == 'E':
         lng_sign = 1
-    elif exif_readable.get('Exif.GPSInfo.GPSLongitudeRef') == 'W':
+    elif exif_dict.get('Exif.GPSInfo.GPSLongitudeRef') == 'W':
         lng_sign = -1
-    if lat_sign and lng_sign and exif_readable.get('Exif.GPSInfo.GPSLatitude') and exif_readable.get('Exif.GPSInfo.GPSLongitude'):
-        lat_dms_list = re.split(' |\/', exif_readable['Exif.GPSInfo.GPSLatitude'])
-        lng_dms_list = re.split(' |\/', exif_readable['Exif.GPSInfo.GPSLongitude'])
+    if lat_sign and lng_sign and exif_dict.get('Exif.GPSInfo.GPSLatitude') and exif_dict.get('Exif.GPSInfo.GPSLongitude'):
+        lat_dms_list = re.split(' |\/', exif_dict['Exif.GPSInfo.GPSLatitude'])
+        lng_dms_list = re.split(' |\/', exif_dict['Exif.GPSInfo.GPSLongitude'])
         lat_deg = float(lat_dms_list[0]) / float(lat_dms_list[1])
         lat_min = float(lat_dms_list[2]) / float(lat_dms_list[3])
         lat_sec = float(lat_dms_list[4]) / float(lat_dms_list[5])
@@ -199,30 +209,16 @@ def format_GPS_latlng(exif_readable):
         img_lng = lng_sign * lng_deg + lng_min/60 + lng_sec/3600
         GPS_latlng = [img_lat, img_lng]
 
-    if exif_readable.get('Exif.GPSInfo.GPSAltitudeRef') and exif_readable.get('Exif.GPSInfo.GPSAltitude'):
-        if exif_readable['Exif.GPSInfo.GPSAltitudeRef'] == '0':
+    if exif_dict.get('Exif.GPSInfo.GPSAltitudeRef') and exif_dict.get('Exif.GPSInfo.GPSAltitude'):
+        if exif_dict['Exif.GPSInfo.GPSAltitudeRef'] == '0':
             GPS_alt_sign = 1
         else:
             print('Elevation is something unusual, probably less than zero like in Death Valley or something. Look here.')
             GPS_alt_sign = -1
-        GPS_alt_rational = exif_readable['Exif.GPSInfo.GPSAltitude'].split('/')
+        GPS_alt_rational = exif_dict['Exif.GPSInfo.GPSAltitude'].split('/')
         GPS_alt = float(GPS_alt_rational[0]) / float(GPS_alt_rational[1]) * GPS_alt_sign
 
     return GPS_latlng, GPS_alt
-
-
-def dict_json_ready(any_dictionary):
-    jsonable_dict = {}
-    for key, value in any_dictionary.items():
-        if isinstance(value, np.datetime64):
-            jsonable_dict[key] = format_datetime(value, 'to string for AWIMtag')
-        else:
-            jsonable_dict[key] = value
-
-        # if not isinstance(key, str):
-        #     key = str(key)
-
-    return jsonable_dict
 
 
 # ----- unknown below this line -----

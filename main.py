@@ -30,7 +30,7 @@ def tag_image_with_AWIM():
     AWIMtag_dictionary['Location AGL'] = 1.7
     AWIMtag_dictionary['Location AGL Source'] = 'Default: average human height worldwide.'
     AWIMtag_dictionary['Capture Moment Source'] = 'get from exif'
-    AWIMtag_dictionary['Pixel Angle Models Type'] = 'get from camera AWIM'
+    AWIMtag_dictionary['Models Type'] = 'get from camera AWIM'
     AWIMtag_dictionary['Ref Pixel'] = 'center, get from image'
     AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
     elevation_at_Location = False

@@ -1,10 +1,6 @@
-import os, io, ast, re
-import json
 import math
 import numpy as np
 import PIL
-import datetime
-import pytz
 import pandas as pd
 import astropytools
 import metadata_tools, formatters
@@ -15,18 +11,29 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['awim Location'] = [-999.9, -999.9]
     AWIMtag_dictionary['awim Location Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
     AWIMtag_dictionary['awim Location Source'] = ''
-    AWIMtag_dictionary['awim Location Altitude'] = -999.9
-    AWIMtag_dictionary['awim Location Altitude Unit'] = 'Meters above sea level; to 1 decimal place so 10cm'
-    AWIMtag_dictionary['awim Location Altitude Source'] = ''
+    AWIMtag_dictionary['awim Location MSL'] = -999.9
+    AWIMtag_dictionary['awim Location MSL Unit'] = 'Photo meters above sea level; to 1 decimal place so 10cm'
+    AWIMtag_dictionary['awim Location MSL Source'] = ''
+    AWIMtag_dictionary['awim Location Terrain Elevation'] = -999.9
+    AWIMtag_dictionary['awim Location Terrain Elevation Unit'] = 'Elevation of ground, meters above sea level; to 1 decimal place so 10cm'
+    AWIMtag_dictionary['awim Location Terrain Elevation Source'] = ''
     AWIMtag_dictionary['awim Location AGL'] = -999.9
     AWIMtag_dictionary['awim Location AGL Unit'] = 'Meters above ground level; to 2 decimal places so 1cm'
+    AWIMtag_dictionary['awim Location AGL Description'] = ''
     AWIMtag_dictionary['awim Location AGL Source'] = ''
     AWIMtag_dictionary['awim Capture Moment'] = '0000-01-01T00:00:00Z'
-    AWIMtag_dictionary['awim Capture Moment Unit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY:MM:DDTHH:MM:SSZ'
+    AWIMtag_dictionary['awim Capture Moment Unit'] = 'Gregorian New Style Calendar in ISO 8601 YYYY-MM-DDTHH:MM:SSZ'
     AWIMtag_dictionary['awim Capture Moment Source'] = ''
-    AWIMtag_dictionary['awim Pixel Angle Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
+    AWIMtag_dictionary['awim Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
     AWIMtag_dictionary['awim Ref Pixel'] = [-999.9, -999.9]
     AWIMtag_dictionary['awim Ref Pixel Coord Type'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
+    AWIMtag_dictionary['awim Models Reference Dimensions'] = []
+    AWIMtag_dictionary['awim Angles Models Features'] = []
+    AWIMtag_dictionary['awim Angles Model xang_coeffs'] = []
+    AWIMtag_dictionary['awim Angles Model yang_coeffs'] = []
+    AWIMtag_dictionary['awim Pixels Model Features'] = []
+    AWIMtag_dictionary['awim Pixels Model xpx_coeffs'] = []
+    AWIMtag_dictionary['awim Pixels Model ypx_coeffs'] = []
     AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'] = [-999.9, -999.9]
     AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Source'] = ''
     AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Unit'] = 'Degrees; to hundredth of a degree'
@@ -41,7 +48,9 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
 
     if not default_units:
         AWIMtag_dictionary['awim Location Unit'] = ''
-        AWIMtag_dictionary['awim Location Altitude Unit'] = ''
+        AWIMtag_dictionary['awim Location MSL Unit'] = ''
+        AWIMtag_dictionary['awim Location Terrain Elevation Unit'] = ''
+        AWIMtag_dictionary['awim Location Elevation Unit'] = ''
         AWIMtag_dictionary['awim Location AGL Unit'] = ''
         AWIMtag_dictionary['awim Capture Moment Unit'] = ''
         AWIMtag_dictionary['awim Ref Pixel Coord Type'] = ''
@@ -52,26 +61,27 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     return AWIMtag_dictionary
 
 
-def get_ref_px_and_thirds_grid_TBLR(source_image_path, ref_px):
-    with PIL.Image.open(source_image_path) as source_image:
+def get_ref_px_thirds_grid_TBLR(source_image_path, ref_px):
+    with PIL.Image.open(source_image_path) as source_image: # todo: do for jpg, not just png
         img_pxsize = source_image.size
-    img_pointsize = np.subtract(img_pxsize, 1)
+    img_pointsize = np.subtract(img_pxsize, 1) # the size from pixel center to pixel center is 1 pixel smaller because it excludes all the edge pixels' outer halves
 
-    if ref_px == 'center, get from image':
-        img_half = np.divide(img_pxsize, 2)
-        img_third = np.divide(img_pxsize, 3)
-        img_center_index = np.subtract(img_half, 0.5).tolist()
+    img_half = np.divide(img_pxsize, 2)
+    img_third = np.divide(img_pxsize, 3)
+    img_center_index = np.subtract(img_half, 0.5).tolist()
+
+    x1 = -(img_half[0] - 0.5)
+    x2 = -(img_third[0] / 2 - 0.5)
+    x3 = img_third[0] / 2 - 0.5
+    x4 = img_half[0] - 0.5
+    y1 = img_half[1] - 0.5
+    y2 = img_third[1] / 2 - 0.5
+    y3 = -(img_third[1] / 2 - 0.5)
+    y4 = -(img_half[1] - 0.5)
+
+    if ref_px == 'center, get from image': # todo: for ref_px allow for a cropped image where the reference pixel is not the center pixel
         ref_px = img_center_index
 
-        x1 = -(img_half[0] - 0.5)
-        x2 = -(img_third[0] / 2 - 0.5)
-        x3 = img_third[0] / 2 - 0.5
-        x4 = img_half[0] - 0.5
-        y1 = img_half[1] - 0.5
-        y2 = img_third[1] / 2 - 0.5
-        y3 = -(img_third[1] / 2 - 0.5)
-        y4 = -(img_half[1] - 0.5)
-    
     img_grid_pxs = np.array([[x1,y1],[x2,y1],[x3,y1],[x4,y1],[x1,y2],[x2,y2],[x3,y2],[x4,y2],[x1,y3],[x2,y3],[x3,y3],[x4,y3],[x1,y4],[x2,y4],[x3,y4],[x4,y4]])
     img_TBLR_pxs = np.array([[0,y1],[0,y4],[x1,0],[x4,0]])
 
@@ -87,7 +97,7 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
 
     pxs = np.abs(pxs).reshape(-1,2)
 
-    if AWIMtag_dictionary['Pixel Angle Models Type'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['awim Models Type'] == '3d_degree_poly_fit_abs_from_center':
         pxs_poly = np.zeros((pxs.shape[0], 9))
         pxs_poly[:,0] = pxs[:,0]
         pxs_poly[:,1] = pxs[:,1]
@@ -99,9 +109,9 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
         pxs_poly[:,7] = np.multiply(pxs[:,0], np.square(pxs[:,1]))
         pxs_poly[:,8] = np.power(pxs[:,1], 3)
 
-    xang_predict_coeff = AWIMtag_dictionary['Angles Model xang_coeffs']
-    yang_predict_coeff = AWIMtag_dictionary['Angles Model yang_coeffs']
-    coefficients_image_size = AWIMtag_dictionary['Angles Models Reference Dimensions']
+    xang_predict_coeff = AWIMtag_dictionary['awim Angles Model xang_coeffs']
+    yang_predict_coeff = AWIMtag_dictionary['awim Angles Model yang_coeffs']
+    coefficients_image_size = AWIMtag_dictionary['awim Models Reference Dimensions']
     image_size_factor = max(img_dimensions) / max(coefficients_image_size)
     xang_predict_coeff = xang_predict_coeff / image_size_factor
     yang_predict_coeff = yang_predict_coeff / image_size_factor
@@ -128,7 +138,7 @@ def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
     if isinstance(ref_azart_override, (list, tuple, np.ndarray)):
         ref_azart_rad = np.multiply(ref_azart_override, math.pi/180)
     else:
-        ref_azart_rad = np.multiply(AWIMtag_dictionary['Ref Pixel Azimuth Artifae'], math.pi/180)
+        ref_azart_rad = np.multiply(AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'], math.pi/180)
 
     # see photoshop diagram of sphere, circles, and triangles for variable names
     xang_compliment = np.subtract(math.pi/2, xyangs[:,0]) # always (+) because xang < 90
@@ -159,7 +169,7 @@ def azarts_to_xyangs(AWIMtag_dictionary, azarts):
     input_shape = azarts.shape
     azarts = azarts.reshape(-1,2)
 
-    ref_px_azart = AWIMtag_dictionary['Ref Pixel Azimuth Artifae']
+    ref_px_azart = AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae']
 
     # find az_rels, convert to -180 < x <= 180, then abs value + direction matrix
     # also need az_rel compliment angle + store which are behind camera
@@ -209,7 +219,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
     xy_angs_direction = np.where(xy_angs < 0, -1, 1)
     xy_angs_abs = np.abs(xy_angs)
 
-    if AWIMtag_dictionary['Pixel Angle Models Type'] == '3d_degree_poly_fit_abs_from_center':
+    if AWIMtag_dictionary['awim Models Type'] == '3d_degree_poly_fit_abs_from_center':
         xy_angs_poly = np.zeros((xy_angs.shape[0], 9))
         xy_angs_poly[:,0] = xy_angs_abs[:,0]
         xy_angs_poly[:,1] = xy_angs_abs[:,1]
@@ -222,7 +232,7 @@ def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
         xy_angs_poly[:,8] = np.power(xy_angs_abs[:,1], 3)
 
     pxs = np.zeros(input_shape)
-    px_models_df = AWIMtag_dictionary['Pixels Model']
+    px_models_df = AWIMtag_dictionary['awim Pixels Model']
     x_px_predict_coeff = px_models_df['']
     pxs[:,0] = np.dot(xy_angs_poly, self.x_px_predict_coeff)
     pxs[:,1] = np.dot(xy_angs_poly, self.y_px_predict_coeff)
@@ -264,7 +274,7 @@ def get_pixel_sizes(AWIMtag_dictionary, dimensions):
     px_size_center_horizontal = (abs(little_cross_LRUD[0,0]) + abs(little_cross_LRUD[1,0])) / (abs(little_cross_angs[0,0]) + abs(little_cross_angs[1,0]))
     px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
 
-    border_angles = np.array(AWIMtag_dictionary['TBLR Angles'])
+    border_angles = np.array(AWIMtag_dictionary['awim TBLR Angles'])
     horizontal_angle_width = abs(border_angles[2,0]) + abs(border_angles[3,0])
     vertical_angle_width = abs(border_angles[0,1]) + abs(border_angles[1,1])
     px_size_average_horizontal = (dimensions[0] - 1) / horizontal_angle_width
