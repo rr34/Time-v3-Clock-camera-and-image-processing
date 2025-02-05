@@ -5,7 +5,7 @@ import os
 import PIL
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.linear_model import LinearRegression
-import awimlib, metadata_tools, formatters
+import awimlib, metadata_tools, formatters, astropytools
 
 
 # theta is CCW from the positive x axis. r is cm from center
@@ -303,9 +303,14 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 
 def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary):
+	# AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
+	# tz = 'US/Eastern'
 	metadata_dict = metadata_tools.get_metadata(image_path)
 	round_digits = formatters.AWIMtag_rounding_digits()
 	AWIMtag_dictionary = awimlib.generate_empty_AWIMtag_dictionary()
+	with PIL.Image.open(image_path) as image:
+		image_dimensions = np.array(image.size)
+
 
 	if 'some user selection variable' == 'try camera gps': # todo: use GPS from camera if present, usually not in my case.
 		gps_location = metadata_tools.GPS_location_from_metadata(metadata_dict)
@@ -315,7 +320,6 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 		latlng = photoshoot_dictionary['LatLong'].split(',')
 		latlng = [float(latlng[0]), float(latlng[1])]
 		latlng = [round(f, round_digits['lat long']) for f in latlng]
-		# AWIMtag_dictionary['Location'] = [40.298648, -83.055772] # Time v3 Technology shop default for now.
 		AWIMtag_dictionary['awim Location'] = latlng
 		AWIMtag_dictionary['awim Location Source'] = 'Photoshoot Data'
 
@@ -330,15 +334,15 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Location AGL Source'] = 'Photoshoot Data'
 
 	datetime_str, datetime_source = metadata_tools.capture_moment_from_metadata(metadata_dict)
-	adjustment = photoshoot_dictionary['CamTimeError']
-	datetime_str = formatters.adjust_datetime_byseconds(datetime_str, adjustment)
+	camtime_adjustment = photoshoot_dictionary['CamTimeError']
+	datetime_str = formatters.adjust_datetime_byseconds(datetime_str, camtime_adjustment)
 	AWIMtag_dictionary['awim Capture Moment'] = datetime_str
 	AWIMtag_dictionary['awim Capture Moment Source'] = datetime_source
 
 	AWIMtag_dictionary['awim Models Type'] = cam_AWIMtag_dictionary['awim Models Type']
 
 	ref_px, img_grid_pxs, img_TBLR_pxs = awimlib.get_ref_px_thirds_grid_TBLR(image_path, 'center, get from image')
-	AWIMtag_dictionary['Ref Pixel'] = ref_px
+	AWIMtag_dictionary['Ref Pixel'] = [round(f, round_digits['pixels']) for f in ref_px]
 
 	AWIMtag_dictionary['awim Models Reference Dimensions'] = cam_AWIMtag_dictionary['awim Models Reference Dimensions']
 	AWIMtag_dictionary['awim Angles Models Features'] = cam_AWIMtag_dictionary['awim Angles Models Features']
@@ -349,48 +353,60 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Pixels Model xpx_coeffs'] = cam_AWIMtag_dictionary['awim Pixels Model xpx_coeffs']
 	AWIMtag_dictionary['awim Pixels Model ypx_coeffs'] = cam_AWIMtag_dictionary['awim Pixels Model ypx_coeffs']
 
-	# ----------------------------------------------------------------------------------------------------------------------------------------------------
+	img_orientation = photoshoot_dictionary['Orientation']
+	azart_source = photoshoot_dictionary['AzArtSource']
 
-	AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = 'from known px'
-	elevation_at_Location = False
-	tz = 'US/Eastern'
-	known_px = [1000,750]
-	known_px_azart = 'venus'
-	img_orientation = 'landscape'
-	img_tilt = 0 # placeholder for image tilted. (+) image tilt is horizon tilted CW in the image, so left down, right up, i.e. camera was tilted CCW as viewing from behind. Which axis? I think should be around the camera axis.
+	# AzArt option 1 ... of several
+	if azart_source == 'az offset from reference':
+		artifae = photoshoot_dictionary['Artifae']
+		ref_az = photoshoot_dictionary['RefAz'] # this is the guess direction of the reference object, not of the photo direction
+		obj_type = photoshoot_dictionary['ObjAzType']
+		# get a reference azimuth from an object or from shooting an azimuth between two points
+		if azart_source == 'two points':
+			latlng1 = photoshoot_dictionary['LatLongPt1']
+			latlng2 = photoshoot_dictionary['LatLongPt2']
+			obj_az = 'get azimuth from the two lat long coordinates'
+		elif azart_source != 'two points':
+			obj_az = photoshoot_dictionary['ObjAz']
+		if obj_type == 'rectangle':
+			obj_sides = 4
+		elif obj_type in ('halves', 'two points'):
+			obj_sides = 2
+		obj_az = awimlib.closest_to_x_sides(ref_az, obj_az, obj_sides) # adjusts object azimuth to the actual measured azimuth of the object using a close enough guess
 
-	AWIMtag_dictionary, AWIMtag_dictionary_string = camera.generate_tag_from_exif_plus_misc(source_image_path, metadata_source_path, camera_AWIM, AWIMtag_dictionary, \
-			elevation_at_Location, tz, known_px, known_px_azart, img_orientation, img_tilt)
+		# adjust the photo azimuth from the reference azimuth using tripod readings
+		tripod1 = photoshoot_dictionary['RefTripod1']
+		tripod2 = photoshoot_dictionary['RefTripod2']
+		angle_moved = abs(tripod2 - tripod1)
+		tripod_direction = photoshoot_dictionary['RefTripodDirectionMoved']
+		if tripod_direction == 'left':
+			sign = -1
+		elif tripod_direction == 'right':
+			sign = 1
+		azimuth = obj_az + sign*angle_moved
+		azimuth = (azimuth + 360) % 360
+		azart = [azimuth, artifae]
+		AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'] = azart
+		AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Source'] = 'Adjustment from reference object using tripod readings.'
+	# AzArt option 2 ...
+	elif 'option 2':
+		pass
 
-	with open(r'code-output-dump-folder/image awim data.txt', 'w') as f:
-		f.write(AWIMtag_dictionary_string)
+	# get grid angles, azimuth artifae, RA Dec. Pixels from above. Unless cropped, should be the same as the camera
+	AWIMtag_dictionary['awim Grid Pixels'] = img_grid_pxs.tolist()
+	grid_angs = awimlib.pxs_to_xyangs(AWIMtag_dictionary, image_dimensions, img_grid_pxs)
+	grid_angs = grid_angs.round(round_digits['degrees'])
+	AWIMtag_dictionary['awim Grid Angles'] = grid_angs.tolist()
 
+	grid_azarts = awimlib.xyangs_to_azarts(AWIMtag_dictionary, grid_angs)
+	AWIMtag_dictionary['awim Grid Azimuth Artifae'] = grid_azarts
 
+	image_moment = AWIMtag_dictionary['awim Capture Moment']
+	image_location = AWIMtag_dictionary['awim Location']
+	grid_RADecs = astropytools.AzArts_to_RADecs(image_location, image_moment, grid_azarts)
+	AWIMtag_dictionary['awim Grid RA Dec'] = grid_RADecs
 
-	if AWIMtag_dictionary['Location AGL Source'] == 'get from altitude minus terrain elevation':
-		location_AGL = get_LocationAGL_from_alt_minus_elevation(AWIMtag_dictionary, elevation_at_location)
-		if location_AGL:
-			AWIMtag_dictionary['Location AGL'] = [round(f, round_digits['AGL']) for f in location_AGL]
-			AWIMtag_dictionary['Location AGL Source'] = 'Subtracted terrain elevation from altitude.'
-		else:
-			AWIMtag_dictionary['Location AGL Source'] = 'Attempted to subtract elevation from altitude, but required information was not complete.'
-
-	if AWIMtag_dictionary['Capture Moment Source'] == 'get from exif':
-		UTC_datetime_str, UTC_source = formatters.capture_moment_from_metadata(exif_readable, tz)
-		if UTC_datetime_str:
-			AWIMtag_dictionary['Capture Moment'] = UTC_datetime_str
-			AWIMtag_dictionary['Capture Moment Source'] = UTC_source
-		else:
-			AWIMtag_dictionary['Capture Moment Source'] = 'Attempted to get from exif, but was not present or not complete.'
-
-	pixel_map_type, xyangs_model_df, px_model_df = camera_AWIM.generate_xyang_pixel_models(source_image_path, img_orientation, img_tilt)
-	AWIMtag_dictionary['Models Type'] = pixel_map_type
-	AWIMtag_dictionary['Angles Model'] = xyangs_model_df
-	AWIMtag_dictionary['Pixels Model'] = px_model_df
-
-	ref_px, img_borders_pxs = get_ref_px_thirds_grid_TBLR(source_image_path, AWIMtag_dictionary['Ref Pixel'])
-	AWIMtag_dictionary['Ref Pixel'] = [round(f, round_digits['pixels']) for f in ref_px]
-	AWIMtag_dictionary['BorderPixels'] = img_borders_pxs.round(round_digits['pixels'])
+	# todonext: continue here ----------------------------------------------------------------------------------------------------------------------------------------------------
 
 	if AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] == 'from known px':
 		if isinstance(known_px_azart, str):

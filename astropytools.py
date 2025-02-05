@@ -46,11 +46,10 @@ def get_AzArts(earth_latlng, moments, celestial_object):
     return azimuths, artifaes
 
 
-def AzArts_to_RADecs(AWIMtag_dictionary, azarts):
+def AzArts_to_RADecs(earth_latlng, moment, azarts):
     input_shape = azarts.shape
     azarts = azarts.reshape(-1,2)
-    capture_moment = formatters.format_datetime_old(AWIMtag_dictionary['Capture Moment'], 'from AWIM string')
-    earth_latlng = AWIMtag_dictionary['Location']
+    capture_moment = formatters.format_datetime(moment, 'from string')
 
     astropy_moment = Time(capture_moment)
     img_astropy_location = EarthLocation(lat=earth_latlng[0]*u.deg, lon=earth_latlng[1]*u.deg)

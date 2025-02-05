@@ -98,6 +98,9 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
     pxs = np.abs(pxs).reshape(-1,2)
 
     if AWIMtag_dictionary['awim Models Type'] == '3d_degree_poly_fit_abs_from_center':
+        tagged_image_size = AWIMtag_dictionary['awim Models Reference Dimensions']
+        pxs_size_factor = max(tagged_image_size) / max(img_dimensions)
+        pxs = pxs * pxs_size_factor
         pxs_poly = np.zeros((pxs.shape[0], 9))
         pxs_poly[:,0] = pxs[:,0]
         pxs_poly[:,1] = pxs[:,1]
@@ -111,10 +114,6 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
 
     xang_predict_coeff = AWIMtag_dictionary['awim Angles Model xang_coeffs']
     yang_predict_coeff = AWIMtag_dictionary['awim Angles Model yang_coeffs']
-    coefficients_image_size = AWIMtag_dictionary['awim Models Reference Dimensions']
-    image_size_factor = max(img_dimensions) / max(coefficients_image_size)
-    xang_predict_coeff = xang_predict_coeff / image_size_factor
-    yang_predict_coeff = yang_predict_coeff / image_size_factor
 
     xyangs = np.zeros(pxs.shape)
     xyangs[:,0] = np.dot(pxs_poly, xang_predict_coeff)
@@ -125,9 +124,25 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
     return xyangs_pretty
 
 
-# ----- unknown below this line -----
-def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
+def closest_to_x_sides(guess_angle, oneside_angle, number_sides):
+    sides_angles = []
+    for x in range(0,number_sides):
+        side_angle = oneside_angle + (x/number_sides)*360
+        sides_angles.append(side_angle)
 
+    differences = []
+    for side_angle in sides_angles:
+        difference = guess_angle - side_angle
+        difference = (difference + 180) % 360 - 180
+        differences.append(abs(difference))
+
+    min_index = differences.index(min(differences))
+    correct_angle = sides_angles[min_index]
+
+    return correct_angle
+
+
+def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
     # prepare to convert xyangs to azarts. Already have angs_direction from above. abs of xangs only, keep negative yangs
     input_shape = xyangs.shape
     angs_direction = np.where(xyangs < 0, -1, 1)
@@ -135,7 +150,7 @@ def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
     angs_direction = angs_direction.reshape(-1,2)
     xyangs[:,0] = np.abs(xyangs[:,0])
     xyangs *= math.pi/180
-    if isinstance(ref_azart_override, (list, tuple, np.ndarray)):
+    if isinstance(ref_azart_override, (list, tuple, np.ndarray)): # This gives the option to use the awim tag of any photo and point the photo in any direction.
         ref_azart_rad = np.multiply(ref_azart_override, math.pi/180)
     else:
         ref_azart_rad = np.multiply(AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'], math.pi/180)
@@ -161,6 +176,7 @@ def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
     return azarts
 
 
+# ----- unknown below this line -----
 # TODO this function is untested 1 jul 2022
 def azarts_to_xyangs(AWIMtag_dictionary, azarts):
     if isinstance(azarts, list):
