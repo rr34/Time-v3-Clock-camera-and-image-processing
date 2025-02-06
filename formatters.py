@@ -19,6 +19,41 @@ def AWIMtag_rounding_digits():
     return rounding_digits_dict
 
 
+def round_AWIMtag(AWIMtag):
+    round_digits_dict = AWIMtag_rounding_digits()
+    for key, value in AWIMtag.items():
+        round_this = False
+        if key in ('awim Location'):
+            round_digits = round_digits_dict['lat long']
+            round_this = True
+        elif key in ('Location MSL', 'awim Location Terrain Elevation'):
+            round_digits = round_digits_dict['altitude']
+            round_this = True
+        elif key in ('awim Location AGL'):
+            round_digits = round_digits_dict['AGL']
+            round_this = True
+        elif key in ('awim Ref Pixel', 'awim Models Reference Dimensions', 'awim Grid Pixels', 'awim Pixel Size Center Horizontal Vertical', 'awim Pixel Size Average Horizontal Vertical', 'awim TBLR Pixels'):
+            round_digits = round_digits_dict['pixels']
+            round_this = True
+        elif key in ('awim Ref Pixel Azimuth Artifae', 'awim Grid Angles', 'awim Grid Azimuth Artifae', 'awim TBLR Angles', 'awim TBLR Azimuth Artifae'):
+            round_digits = round_digits_dict['degrees']
+            round_this = True
+        elif key in ('awim Grid RA Dec','awim TBLR RA Dec'):
+            round_digits = round_digits_dict['hourangle']
+            round_this = True
+            # todo: the declination should be rounded to a hundredth instead of thousandth, a problem for another day, something like this:
+            # img_borders_RADecs[:,[0,2,4]] = img_borders_RADecs[:,[0,2,4]].round(round_digits['hourangle'])
+	        # img_borders_RADecs[:,[1,3,5]] = img_borders_RADecs[:,[1,3,5]].round(round_digits['degrees'])
+
+        if isinstance(value, list) and round_this:
+            rounded = np.array(value).round(round_digits).tolist()
+            AWIMtag[key] = rounded
+        elif isinstance(value, (float)) and round_this:
+            AWIMtag[key] = round(value, round_digits)
+
+    return AWIMtag
+
+
 # numpy datetime64 is International Atomic Time (TAI), not UTC, so it ignores leap seconds.
 # numpy datetime64 uses astronomical year numbering, i.e. year 2BC = year -1, 1BC = year 0, 1AD = year 1
 def format_datetime(input_datetime, direction):

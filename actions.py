@@ -1,5 +1,5 @@
 from tkinter.filedialog import askopenfilename
-import os
+import os, shutil
 import json
 import numpy as np
 from matplotlib import pyplot, cm
@@ -25,6 +25,8 @@ def cam_calibration():
     with open(file_path, 'w') as json_file:
         json.dump(cam_AWIMtag, json_file, indent=4, sort_keys=True)
 
+    return
+
 
 def generate_metatext_files():
     workingpath = os.path.join(os.getcwd(), 'working')
@@ -36,6 +38,7 @@ def generate_metatext_files():
         with open(json_file_name, "w") as text_file:
             json.dump(metadata_dict, text_file, indent=4, sort_keys=True)
 
+    return
 
 
 def generate_image_tags():
@@ -72,7 +75,7 @@ def generate_image_tags():
         print('Lonely files list: ' + str(lonely_files))
         print('Lonely photoshoot entries list: ' + str(lonely_shootentries))
 
-    # 3. Iterate over the image files using the basename to get the corresponding entry in the database.
+    # 3. Iterate over the image files using the basename to get the unique corresponding entry in the database.
     for image in images_list_iterable:
         image_path = image[0]
         image_basename = image[1]
@@ -84,7 +87,20 @@ def generate_image_tags():
         elif len(photoshoot_dictionary) < 1:
             print('Some unknown error for : ' + image_basename)
         
-        camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary)
+        AWIMtag_dict = camera.generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photoshoot_dictionary)
+
+        # 4. Save each awim tag json file, along with a copy of the image file of the same base name.
+        image_filetype = os.path.splitext(image_path)[1]
+        new_basename = photoshootID + ' - ' + image_basename
+        new_image_path = os.path.join(workingpath, new_basename) + image_filetype
+        json_path = os.path.join(workingpath, new_basename) + '.json'
+
+        with open(json_path, "w") as text_file:
+            json.dump(AWIMtag_dict, text_file, indent=4, sort_keys=True)
+
+        shutil.copy2(image_path, new_image_path) # todo: generate the tag in place, then rename the file later? copy2 preserves metadata like time stamps
+
+    return
 
 
 def lightroom_timelapse_XMP_process():
