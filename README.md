@@ -35,7 +35,8 @@ This function is not really necessary, but useful to visualize the metadata of a
 
 ## Generate awim Tags for a Photoshoot
 - The information required to make an awim tag is:
-- todonext: Use the photoshoot template to incorporate photoshoot tools into the app and make a database that accepts photoshoot data real-time during photoshoots.
+- todonext: sanity check the results from the photoshoot data in the database, especially photo 550. ALSO, concatenate the original metadata onto the awim tag.
+- Use the photoshoot template to incorporate photoshoot tools into the app and make a database that accepts photoshoot data real-time during photoshoots.
 
 
 # 27 January 2024 Resurrecting the Project with Many Updates

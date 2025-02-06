@@ -320,7 +320,7 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Location MSL'] = photoshoot_dictionary['PhotoMSL'] # todo: check for GPS MSL
 	AWIMtag_dictionary['awim Location MSL Source'] = 'Photoshoot Data'
 
-	AWIMtag_dictionary['awim Location Terrain Elevation'] = photoshoot_dictionary['PhotoMSL']
+	AWIMtag_dictionary['awim Location Terrain Elevation'] = photoshoot_dictionary['TerrainElevation']
 	AWIMtag_dictionary['awim Location Terrain Elevation Source'] = 'Photoshoot Data'
 
 	AWIMtag_dictionary['awim Location AGL'] = photoshoot_dictionary['PhotoAGL'] # todo: use to compare MSL and terrain elevation
@@ -336,7 +336,7 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Models Type'] = cam_AWIMtag_dictionary['awim Models Type']
 
 	ref_px, img_grid_pxs, img_TBLR_pxs = awimlib.get_ref_px_thirds_grid_TBLR(image_path, 'center, get from image')
-	AWIMtag_dictionary['Ref Pixel'] = ref_px
+	AWIMtag_dictionary['awim Ref Pixel'] = ref_px
 
 	AWIMtag_dictionary['awim Models Reference Dimensions'] = cam_AWIMtag_dictionary['awim Models Reference Dimensions']
 	AWIMtag_dictionary['awim Angles Models Features'] = cam_AWIMtag_dictionary['awim Angles Models Features']
@@ -384,14 +384,14 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 		AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Source'] = 'Adjustment from reference object using tripod readings.'
 	# AzArt option 2 ...
 	elif azart_source == 'option 2, celestial object':
-		# if AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] == 'from known px':
+		# if AWIMtag_dictionary['awim Azimuth Artifae Source'] == 'from known px':
 		# 	if isinstance(known_px_azart, str):
 		# 		ref_azart_source = 'From celestial object in photo: ' + known_px_azart
 		# 		known_px_azart = astropytools.get_AzArt(AWIMtag_dictionary, known_px_azart)
 
 		# 	ref_azart = ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart)
-		# AWIMtag_dictionary['Ref Pixel Azimuth Artifae'] = ref_azart.round(round_digits['degrees'])
-		# AWIMtag_dictionary['Ref Pixel Azimuth Artifae Source'] = ref_azart_source
+		# AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae'] = ref_azart.round(round_digits['degrees'])
+		# AWIMtag_dictionary['awim Ref Pixel Azimuth Artifae Source'] = ref_azart_source
 		pass
 
 	# get grid angles, azimuth artifae, RA Dec. Grid pixels from above. Unless cropped, should be the same as the camera
