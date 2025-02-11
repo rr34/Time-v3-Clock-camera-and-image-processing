@@ -8,9 +8,9 @@ import metadata_tools, formatters
 
 def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary = {}
-    AWIMtag_dictionary['awim Location'] = [-999.9, -999.9]
-    AWIMtag_dictionary['awim Location Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
-    AWIMtag_dictionary['awim Location Source'] = ''
+    AWIMtag_dictionary['awim Location Coordinates'] = [-999.9, -999.9]
+    AWIMtag_dictionary['awim Location Coordinates Unit'] = 'Latitude, Longitude; to 6 decimal places so ~11cm'
+    AWIMtag_dictionary['awim Location Coordinates Source'] = ''
     AWIMtag_dictionary['awim Location MSL'] = -999.9
     AWIMtag_dictionary['awim Location MSL Unit'] = 'Photo meters above sea level; to 1 decimal place so 10cm'
     AWIMtag_dictionary['awim Location MSL Source'] = ''
@@ -51,7 +51,7 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['awim Pixel Size Unit'] = 'Pixels per Degree; to tenth of a pixel'
 
     if not default_units:
-        AWIMtag_dictionary['awim Location Unit'] = ''
+        AWIMtag_dictionary['awim Location Coordinates Unit'] = ''
         AWIMtag_dictionary['awim Location MSL Unit'] = ''
         AWIMtag_dictionary['awim Location Terrain Elevation Unit'] = ''
         AWIMtag_dictionary['awim Location Elevation Unit'] = ''

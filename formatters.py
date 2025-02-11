@@ -23,7 +23,7 @@ def round_AWIMtag(AWIMtag):
     round_digits_dict = AWIMtag_rounding_digits()
     for key, value in AWIMtag.items():
         round_this = False
-        if key in ('awim Location'):
+        if key in ('awim Location Coordinates'):
             round_digits = round_digits_dict['lat long']
             round_this = True
         elif key in ('Location MSL', 'awim Location Terrain Elevation'):

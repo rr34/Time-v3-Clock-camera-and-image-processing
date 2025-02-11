@@ -230,17 +230,17 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 		location, location_altitude = formatters.format_GPS_latlng(calimg_exif_dict)
 		
 		if location:
-			cam_AWIMtag['awim Location'] = location
-			cam_AWIMtag['awim Location Source'] = 'exif GPS'
+			cam_AWIMtag['awim Location Coordinates'] = location
+			cam_AWIMtag['awim Location Coordinates Source'] = 'exif GPS'
 		else:
-			cam_AWIMtag['awim Location Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'	
+			cam_AWIMtag['awim Location Coordinates Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'	
 		if location_altitude:
 			cam_AWIMtag['awim Location MSL'] = location_altitude
 			cam_AWIMtag['awim Location MSL Source'] = 'exif GPS'
 		else:
 			cam_AWIMtag['awim Location MSL Source'] = 'Attempted to get from exif GPS, but was not present or not complete.'
 	else:
-		cam_AWIMtag['awim Location Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
+		cam_AWIMtag['awim Location Coordinates Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
 		cam_AWIMtag['awim Location MSL Source'] = 'Attempted to get from exif GPS, but GPSInfo was not present at all in exif.'
     
 	UTC_datetime_str, UTC_source = metadata_tools.capture_moment_from_metadata(calimg_exif_dict)
@@ -295,6 +295,8 @@ def generate_camera_AWIM_from_calibration(calibration_image_path, calibration_fi
 
 	filename = 'output_cal {} {} cam_awim.json'.format(camera_name, lens_name)
 
+	cam_AWIMtag.update(calimg_exif_dict)
+
 	return cam_AWIMtag, filename
 
 
@@ -309,13 +311,13 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 
 	if 'some user selection variable' == 'try camera gps': # todo: use GPS from camera if present, usually not in my case.
 		gps_location = metadata_tools.GPS_location_from_metadata(metadata_dict)
-		AWIMtag_dictionary['awim Location'] = gps_location
-		AWIMtag_dictionary['awim Location Source'] = 'Camera GPS'
+		AWIMtag_dictionary['awim Location Coordinates'] = gps_location
+		AWIMtag_dictionary['awim Location Coordinates Source'] = 'Camera GPS'
 	elif True: # use location from the photoshoot dictionary
 		latlng = photoshoot_dictionary['LatLong'].split(',')
 		latlng = [float(latlng[0]), float(latlng[1])]
-		AWIMtag_dictionary['awim Location'] = latlng
-		AWIMtag_dictionary['awim Location Source'] = 'Photoshoot Data'
+		AWIMtag_dictionary['awim Location Coordinates'] = latlng
+		AWIMtag_dictionary['awim Location Coordinates Source'] = 'Photoshoot Data'
 
 	AWIMtag_dictionary['awim Location MSL'] = photoshoot_dictionary['PhotoMSL'] # todo: check for GPS MSL
 	AWIMtag_dictionary['awim Location MSL Source'] = 'Photoshoot Data'
@@ -403,7 +405,7 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Grid Azimuth Artifae'] = grid_azarts.tolist()
 
 	image_moment = AWIMtag_dictionary['awim Capture Moment']
-	image_location = AWIMtag_dictionary['awim Location']
+	image_location = AWIMtag_dictionary['awim Location Coordinates']
 	grid_RADecs = astropytools.AzArts_to_RADecs(image_location, image_moment, grid_azarts)
 	AWIMtag_dictionary['awim Grid RA Dec'] = grid_RADecs.tolist()
 
@@ -416,7 +418,7 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim TBLR Azimuth Artifae'] = TBLR_azarts.tolist()
 
 	image_moment = AWIMtag_dictionary['awim Capture Moment']
-	image_location = AWIMtag_dictionary['awim Location']
+	image_location = AWIMtag_dictionary['awim Location Coordinates']
 	TBLR_RADecs = astropytools.AzArts_to_RADecs(image_location, image_moment, TBLR_azarts)
 	AWIMtag_dictionary['awim TBLR RA Dec'] = TBLR_RADecs.tolist()
 
@@ -425,6 +427,8 @@ def generate_tag_from_exif_plus_misc(image_path, cam_AWIMtag_dictionary, photosh
 	AWIMtag_dictionary['awim Pixel Size Average Horizontal Vertical'] = px_size_average
 
 	AWIMtag_dictionary = formatters.round_AWIMtag(AWIMtag_dictionary)
+
+	AWIMtag_dictionary.update(metadata_dict)
 
 	return AWIMtag_dictionary
 

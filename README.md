@@ -25,6 +25,7 @@ This code is intended to never have a built-in GUI. I made a GUI for it in the p
 This function is not really necessary, but useful to visualize the metadata of a group of files without needing to use exiv2 or some other tool.
 - Copy a group of image files to the directory `working/`, and simply run the function `actions.generate_metatext_files()`.
 - Text files with the metadata will be generated and saved in `working/` along with the image files.
+- For PNG, flattened the XML and simplified the keys.
 
 ## To Generate a Camera awim Tag File from a Calibration Spreadsheet
 - Use the calspreadsheet Excel file in `example-files`, and fill in the yellow boxes based on the reference grid. It must be named `calspreadsheet.xlsx`
@@ -34,25 +35,23 @@ This function is not really necessary, but useful to visualize the metadata of a
 - The main output file is the `cam_awim.json` file.
 
 ## Generate awim Tags for a Photoshoot
-- The information required to make an awim tag is:
-- todonext: sanity check the results from the photoshoot data in the database, especially photo 550. ALSO, concatenate the original metadata onto the awim tag.
-- Use the photoshoot template to incorporate photoshoot tools into the app and make a database that accepts photoshoot data real-time during photoshoots.
-
+- Put the `cam_awim.json` file in the `working/` folder.
+- Put all the PNG files in the `working/` folder. PNG files should exactly match the list in the database, but if there are missing files, no problem really since it iterates over the files when making the tags.
+- awim tag json files include any original metadata on the photo as well.
 
 # 27 January 2024 Resurrecting the Project with Many Updates
 ## Notes
-- Going to standardize on dictionary representation of data and whatever text version of dictionary information is most convenient. This will be a text file of the dictionary or text file of the dictionary jsonified, or always something like a dictionary. BECAUSE, the most common text sidecar file standard is XMP, but supposedly Adobe made XMP just to avoid writing to proprietary files (XMP is a way to store Lightroom edits to RAW files, which are proprietary to the camera maker). Even XMP has limited support and not-so-wide usage. Also because the only reliable way to store metadata in PNG files is with a text data chunk stored along with the image.
+- Going to standardize on dictionary representation of data, jsonified.
 - Going to operate as an API rather than as a GUI.
-- Assume final product file is PNG because of transparency, but doesn't matter so much because using XMP.
-- todo: Merge in the Lightroom tools from AWIM2.
 
 ## Workflow
 - Take photos in RAW format.
-- Process photos in Lightroom and export to PNG. The PNG files have the XMP text embedded in them as the metadata, but there is no easy way for Lightroom to export the XMP files with the PNG.
-- Already made quick image file processor to extract metadata to text files. In the case of PNG, this means XML format.
-- Save awim information as a separate .awimjson sidecar file.
-- Abandon XML in favor of JSON, but maybe save the data with the file because I'm going to process the PNG files server-side and PIL can save text blocks in the PNG file. Check first if the PNG file maintains its quality.
-- todonext: generate awim tags using photoshoot database data
+- During photoshoot, record required information to tag the photos:
+	- Azimuth references.
+	- Artifae.
+	- Camera clock offset.
+- Process photos in Lightroom or Photoshop and export to PNG. The PNG files have metadata embedded as XML.
+- If the database information is complete, should be able to auto-generate the awim tag json files, which include the original photo metadata.
 
 - There is so much to do to go from recording the direction of a RAW image on paper to animating the movement of Earth using the data. What is first?
 
@@ -72,7 +71,8 @@ There really needs to be one format I use. For now, I am committing to not save 
 	- flattened
 	- keys simplified as necessary
 	- datetimes converted to ISO 8601 in Zulu with trailing Z.
-	- Weird fractional values converted to float, at least any I'm going to use.
+	- Weird fractional values converted to float, at least any fields I'm going to use.
+	- All coordinates like lat long and X,Y pixels to be a list of two floats.
 	- All awim data with a leading 'awim ' in the key.
 - Save to file
 	- Same dictionary from above.

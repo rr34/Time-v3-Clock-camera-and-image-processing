@@ -16,7 +16,7 @@ def get_metadata(image_file_path):
         if 'XML:com.adobe.xmp' in png_text_dictionary: # check for correct key for XMP data
             AdobeXML = png_text_dictionary['XML:com.adobe.xmp']
             metadata_dict = formatters.AdobeXML_to_dict(AdobeXML)
-            metadata_dict['Metadata Source'] = 'Adobe XML from PNG file'
+            metadata_dict['Metadata Source'] = 'Adobe XML from PNG file, flattened with simplified keys.'
 
             # txt_file_name = file_base + '.XML'
             # with open(txt_file_name, "w") as text_file:
