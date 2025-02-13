@@ -27,7 +27,8 @@ def generate_empty_AWIMtag_dictionary(default_units=True):
     AWIMtag_dictionary['awim Models Type'] = '' # 3d_degree_poly_fit_abs_from_center
     AWIMtag_dictionary['awim Ref Pixel'] = [-999.9, -999.9]
     AWIMtag_dictionary['awim Ref Pixel Coord Type'] = 'top-left is (0,0) so standard; to 1 decimal so to tenth of a pixel'
-    AWIMtag_dictionary['awim Models Reference Dimensions'] = []
+    AWIMtag_dictionary['awim Ref Image Size'] = []
+    AWIMtag_dictionary['awim Ref Image Size Note'] = 'awim tag contains ONLY the size of the original reference image of the camera calibration - not the particular instance of the image - for two reasons: 1. The digital image itself contains its own size, so metadata size would be duplicate information, 2. The user may use some other scaled size in practice. ONLY the original reference size is necessary and appropriate for metadata.'
     AWIMtag_dictionary['awim Angles Models Features'] = []
     AWIMtag_dictionary['awim Angles Model xang_coeffs'] = []
     AWIMtag_dictionary['awim Angles Model yang_coeffs'] = []
@@ -92,7 +93,7 @@ def get_ref_px_thirds_grid_TBLR(source_image_path, ref_px):
     return ref_px, img_grid_pxs, img_TBLR_pxs
 
 
-def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
+def pxs_to_xyangs(AWIMtag_dictionary, pxs, imgsize_relative=1):
     if isinstance(pxs, (list, tuple)): # models require numpy arrays
         pxs = np.asarray(pxs)
 
@@ -102,9 +103,7 @@ def pxs_to_xyangs(AWIMtag_dictionary, img_dimensions, pxs):
     pxs = np.abs(pxs).reshape(-1,2)
 
     if AWIMtag_dictionary['awim Models Type'] == '3d_degree_poly_fit_abs_from_center':
-        tagged_image_size = AWIMtag_dictionary['awim Models Reference Dimensions']
-        pxs_size_factor = max(tagged_image_size) / max(img_dimensions)
-        pxs = pxs * pxs_size_factor
+        pxs = pxs / imgsize_relative
         pxs_poly = np.zeros((pxs.shape[0], 9))
         pxs_poly[:,0] = pxs[:,0]
         pxs_poly[:,1] = pxs[:,1]
@@ -287,18 +286,21 @@ def pxs_to_azarts(AWIMtag_dictionary, pxs):
     return azarts
 
 
-def get_pixel_sizes(AWIMtag_dictionary, dimensions):
+def get_pixel_sizes(AWIMtag_dictionary, imgsize_relative=1):
     small_px = 10
     little_cross_LRUD = np.array([-small_px,0,small_px,0,0,small_px,0,-small_px]).reshape(-1,2)
-    little_cross_angs = pxs_to_xyangs(AWIMtag_dictionary, dimensions, little_cross_LRUD)
+    little_cross_angs = pxs_to_xyangs(AWIMtag_dictionary, little_cross_LRUD, imgsize_relative)
     px_size_center_horizontal = (abs(little_cross_LRUD[0,0]) + abs(little_cross_LRUD[1,0])) / (abs(little_cross_angs[0,0]) + abs(little_cross_angs[1,0]))
     px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
 
     border_angles = np.array(AWIMtag_dictionary['awim TBLR Angles'])
-    horizontal_angle_width = abs(border_angles[2,0]) + abs(border_angles[3,0])
-    vertical_angle_width = abs(border_angles[0,1]) + abs(border_angles[1,1])
-    px_size_average_horizontal = (dimensions[0] - 1) / horizontal_angle_width
-    px_size_average_vertical = (dimensions[1] - 1) / vertical_angle_width
+    horizontal_angle_total = abs(border_angles[2,0]) + abs(border_angles[3,0])
+    vertical_angle_total = abs(border_angles[0,1]) + abs(border_angles[1,1])
+    border_pixels = np.array(AWIMtag_dictionary['awim TBLR Pixels'])
+    horizontal_pixels = (abs(border_pixels[2,0]) + abs(border_pixels[3,0])) * imgsize_relative
+    vertical_pixels = (abs(border_pixels[0,1]) + abs(border_pixels[1,1])) * imgsize_relative
+    px_size_average_horizontal = horizontal_pixels / horizontal_angle_total
+    px_size_average_vertical = vertical_pixels / vertical_angle_total
 
     return [px_size_center_horizontal, px_size_center_vertical], [px_size_average_horizontal, px_size_average_vertical]
 
