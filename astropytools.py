@@ -73,6 +73,7 @@ def day_night_twilight(sun_arts, moon_arts):
 
     sun_movement = sun_arts[1] - sun_arts[0]
     moon_movement = moon_arts[1] - moon_arts[0]
+    # todo: make a count string prefix that puts the periods in order
     day_count = 0
     night_count = 0
     ECT_count = 0

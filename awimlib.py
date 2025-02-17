@@ -179,6 +179,25 @@ def xyangs_to_azarts(AWIMtag_dictionary, xyangs, ref_azart_override=False):
     return azarts
 
 
+def get_pixel_sizes(AWIMtag_dictionary, imgsize_relative=1):
+    small_px = 10
+    little_cross_LRUD = np.array([-small_px,0,small_px,0,0,small_px,0,-small_px]).reshape(-1,2)
+    little_cross_angs = pxs_to_xyangs(AWIMtag_dictionary, little_cross_LRUD, imgsize_relative)
+    px_size_center_horizontal = (abs(little_cross_LRUD[0,0]) + abs(little_cross_LRUD[1,0])) / (abs(little_cross_angs[0,0]) + abs(little_cross_angs[1,0]))
+    px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
+
+    border_angles = np.array(AWIMtag_dictionary['awim TBLR Angles'])
+    horizontal_angle_total = abs(border_angles[2,0]) + abs(border_angles[3,0])
+    vertical_angle_total = abs(border_angles[0,1]) + abs(border_angles[1,1])
+    border_pixels = np.array(AWIMtag_dictionary['awim TBLR Pixels'])
+    horizontal_pixels = (abs(border_pixels[2,0]) + abs(border_pixels[3,0])) * imgsize_relative
+    vertical_pixels = (abs(border_pixels[0,1]) + abs(border_pixels[1,1])) * imgsize_relative
+    px_size_average_horizontal = horizontal_pixels / horizontal_angle_total
+    px_size_average_vertical = vertical_pixels / vertical_angle_total
+
+    return [px_size_center_horizontal, px_size_center_vertical], [px_size_average_horizontal, px_size_average_vertical]
+
+
 # ----- unknown below this line -----
 # TODO this function is untested 1 jul 2022
 def azarts_to_xyangs(AWIMtag_dictionary, azarts):
@@ -228,87 +247,3 @@ def azarts_to_xyangs(AWIMtag_dictionary, azarts):
     xy_angs[:,1] = np.multiply(yang, 180/math.pi)
 
     return xy_angs
-
-
-# TODO this function is untested 1 jul 2022
-def xyangs_to_pxs(AWIMtag_dictionary, xy_angs):
-
-    input_shape = xy_angs.shape
-
-    xy_angs_direction = np.where(xy_angs < 0, -1, 1)
-    xy_angs_abs = np.abs(xy_angs)
-
-    if AWIMtag_dictionary['awim Models Type'] == '3d_degree_poly_fit_abs_from_center':
-        xy_angs_poly = np.zeros((xy_angs.shape[0], 9))
-        xy_angs_poly[:,0] = xy_angs_abs[:,0]
-        xy_angs_poly[:,1] = xy_angs_abs[:,1]
-        xy_angs_poly[:,2] = np.square(xy_angs_abs[:,0])
-        xy_angs_poly[:,3] = np.multiply(xy_angs_abs[:,0], xy_angs_abs[:,1])
-        xy_angs_poly[:,4] = np.square(xy_angs_abs[:,1])
-        xy_angs_poly[:,5] = np.power(xy_angs_abs[:,0], 3)
-        xy_angs_poly[:,6] = np.multiply(np.square(xy_angs_abs[:,0]), xy_angs_abs[:,1])
-        xy_angs_poly[:,7] = np.multiply(xy_angs_abs[:,0], np.square(xy_angs_abs[:,1]))
-        xy_angs_poly[:,8] = np.power(xy_angs_abs[:,1], 3)
-
-    pxs = np.zeros(input_shape)
-    px_models_df = AWIMtag_dictionary['awim Pixels Model']
-    x_px_predict_coeff = px_models_df['']
-    pxs[:,0] = np.dot(xy_angs_poly, self.x_px_predict_coeff)
-    pxs[:,1] = np.dot(xy_angs_poly, self.y_px_predict_coeff)
-
-    pxs = np.multiply(pxs, xy_angs_direction)
-
-    return pxs
-
-
-# TODO this function is untested 1 jul 2022
-def px_coord_convert(input_pxs, input_type, output_type):
-    if ('top-left' in input_type) and ('center' in output_type):
-        pxs[:,0] = pxs[:,0] + self.center_KVpx[0]
-        pxs[:,1] = pxs[:,1] + self.center_KVpx[1]
-
-
-def ref_px_from_known_px(AWIMtag_dictionary, known_px, known_px_azart):
-    xy_ang = pxs_to_xyangs(AWIMtag_dictionary, known_px)
-
-    xy_ang *= -1
-
-    ref_px_azart = xyangs_to_azarts(AWIMtag_dictionary, xy_ang, ref_azart_override=known_px_azart)
-
-    return ref_px_azart
-
-
-def pxs_to_azarts(AWIMtag_dictionary, pxs):
-    xy_angs = pxs_to_xyangs(AWIMtag_dictionary, pxs)
-
-    azarts = xyangs_to_azarts(AWIMtag_dictionary, xy_angs)
-
-    return azarts
-
-
-def get_pixel_sizes(AWIMtag_dictionary, imgsize_relative=1):
-    small_px = 10
-    little_cross_LRUD = np.array([-small_px,0,small_px,0,0,small_px,0,-small_px]).reshape(-1,2)
-    little_cross_angs = pxs_to_xyangs(AWIMtag_dictionary, little_cross_LRUD, imgsize_relative)
-    px_size_center_horizontal = (abs(little_cross_LRUD[0,0]) + abs(little_cross_LRUD[1,0])) / (abs(little_cross_angs[0,0]) + abs(little_cross_angs[1,0]))
-    px_size_center_vertical = (abs(little_cross_LRUD[2,1]) + abs(little_cross_LRUD[3,1])) / (abs(little_cross_angs[2,1]) + abs(little_cross_angs[3,1]))
-
-    border_angles = np.array(AWIMtag_dictionary['awim TBLR Angles'])
-    horizontal_angle_total = abs(border_angles[2,0]) + abs(border_angles[3,0])
-    vertical_angle_total = abs(border_angles[0,1]) + abs(border_angles[1,1])
-    border_pixels = np.array(AWIMtag_dictionary['awim TBLR Pixels'])
-    horizontal_pixels = (abs(border_pixels[2,0]) + abs(border_pixels[3,0])) * imgsize_relative
-    vertical_pixels = (abs(border_pixels[0,1]) + abs(border_pixels[1,1])) * imgsize_relative
-    px_size_average_horizontal = horizontal_pixels / horizontal_angle_total
-    px_size_average_vertical = vertical_pixels / vertical_angle_total
-
-    return [px_size_center_horizontal, px_size_center_vertical], [px_size_average_horizontal, px_size_average_vertical]
-
-
-# put the AWIMtag in the comment field of the image exif and re-attach the exif to the image
-def add_AWIMtag_to_exif():
-	if img_exif_raw.get(37510):
-		user_comments = img_exif_raw[37510]
-	else:
-		user_comments = ''
-	img_exif_raw[37510] = user_comments + 'AWIMstart' + cam_AWIMtag_string + 'AWIMend'

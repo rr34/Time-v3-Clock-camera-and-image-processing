@@ -158,12 +158,21 @@ def lightroom_timelapse_XMP_process():
     print('Completed step 2 interpolating between the keyframes and writing to XMP files.')
 
 
+def parse_brightstar_text():
+    workingpath = os.path.join(os.getcwd(), 'working')
+    image_path = os.path.join(workingpath, 'V_50.txt')
+    with open(image_path, 'r') as text_file:
+        brightstar_str = text_file.read()
+    brightstars_df =  formatters.parse_brightstar_text(brightstar_str)
+
+
 # ----- unknown below this line -----
+# Would be nice to make this function work again to see the angular shape of lenses.
 def display_camera_lens_shape(awim_dictionary):
     # open the object from a file, run its __repr__ method, use it to predict and plot its own predictions
     this_camera_filename = askopenfilename()
     camera_aim_pickle = open(this_camera_filename, 'rb')
-    this_camera = pickle.load(camera_aim_pickle)
+    this_camera = camera_aim_pickle # used to be pickle.load
     camera_aim_pickle.close()
 
     this_camera.represent_camera()

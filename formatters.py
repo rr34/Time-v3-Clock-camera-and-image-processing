@@ -192,34 +192,11 @@ def AdobeXML_to_dict(AdobeXML):
     return metadata_dict
 
 
+def parse_brightstar_text(brightstar_text):
+    pass
+
+
 # works 11 Oct 2022: todorename formats each individual exif value
-def format_individual_exif_values(exif_value):
-    if isinstance(exif_value, piltiff.IFDRational):
-        if exif_value.denominator != 0:
-            value_readable = exif_value.numerator / exif_value.denominator
-        else:
-            value_readable = float('nan')
-    elif isinstance(exif_value, bytes):
-        try:
-            value_readable = exif_value.decode()
-            if not value_readable.isprintable():
-                value_readable = ''.join([str(ord(x))[1:] for x in value_readable])
-        except (UnicodeDecodeError, AttributeError):
-            print('something unexpected happened look here')
-    elif isinstance(exif_value, str) and not exif_value.isprintable():
-        value_readable = ''
-        string_list = exif_value.split()
-        for element in exif_value:
-            if element.isprintable():
-                value_readable += element
-            else:
-                pass
-    else:
-        value_readable = exif_value
-
-    return value_readable
-
-
 def format_GPS_latlng(exif_dict):
     lat_sign = lng_sign = GPS_latlng = GPS_alt = False
 
@@ -254,101 +231,3 @@ def format_GPS_latlng(exif_dict):
         GPS_alt = float(GPS_alt_rational[0]) / float(GPS_alt_rational[1]) * GPS_alt_sign
 
     return GPS_latlng, GPS_alt
-
-
-# ----- unknown below this line -----
-# output types: 1. 'string' is with new lines 2. 'dictionary' is comma-separated
-def dictionary_to_readable_textfile(any_dictionary):
-    dictionary_string_txtfile = ''
-
-    for key, value in any_dictionary.items():
-        if isinstance(value, (int, float)):
-            value_string = json.dumps(value)
-        elif isinstance(value, (list, tuple)):
-            value_string = []
-            for list_item in value:
-                value_string.append(format_individual_exif_values(list_item))
-            value_string = json.dumps(value_string)
-        elif value is None:
-            value_string = str(value)
-        elif isinstance(value, np.ndarray):
-            value_string = '\n' + json.dumps(value.tolist())
-            value_string = value_string.replace('],', '],\n')
-        elif isinstance(value, pd.DataFrame):
-            value_string = value.to_csv(index_label='features')
-        elif isinstance(value, dict):
-            value_string = dictionary_to_readable_textfile(value)
-        elif isinstance(value, str):
-            value_string = value
-        elif isinstance(value, (bytes, piltiff.IFDRational)):
-            value_string = str(format_individual_exif_values(value))
-        else:
-            value_string = 'unexpected data type'
-
-        if not isinstance(key, str):
-            key = str(key)
-
-        value_string = key + ': ' + value_string + '\n'
-        dictionary_string_txtfile += value_string
-
-    return dictionary_string_txtfile
-
-
-def stringify_dictionary(any_dictionary):
-    dictionary_ofstrings = {}
-
-    for key, value in any_dictionary.items():
-        if isinstance(value, (int, float)):
-            value_string = json.dumps(value)
-        elif isinstance(value, (list, tuple)):
-            value_string = []
-            for list_item in value:
-                value_string.append(format_individual_exif_values(list_item))
-            value_string = json.dumps(value_string)
-        elif value is None:
-            value_string = str(value)
-        elif isinstance(value, np.ndarray):
-            value_string = json.dumps(value.tolist())
-        elif isinstance(value, pd.DataFrame):
-            value_string = value.to_csv()
-        elif isinstance(value, dict):
-            value_string = stringify_dictionary(value)
-        elif isinstance(value, str):
-            value_string = value
-        elif isinstance(value, (bytes, piltiff.IFDRational)):
-            value_string = str(format_individual_exif_values(value))
-        else:
-            value_string = 'unexpected data type'
-
-        if not isinstance(key, str):
-            key = str(key)
-
-        dictionary_ofstrings[key] = value_string
-
-    dictionary_ofstrings_str = str(dictionary_ofstrings)
-
-    return dictionary_ofstrings_str
-
-
-def de_stringify_tag(AWIMtag_dictionary_string):
-    AWIMstart = AWIMtag_dictionary_string.find("AWIMstart")
-    AWIMend = AWIMtag_dictionary_string.find("AWIMend")
-    AWIMtag_dictionary_string = AWIMtag_dictionary_string[AWIMstart+9:AWIMend]
-    AWIMtag_dictionary_ofstrings = ast.literal_eval(AWIMtag_dictionary_string)
-    AWIMtag_dictionary = {}
-    AWIMtag_template = generate_empty_AWIMtag_dictionary()
-    for key, value in AWIMtag_dictionary_ofstrings.items():
-        if value is None or value == '':
-            AWIMtag_dictionary[key] = None
-        elif AWIMtag_template[key] == 'csv':
-            AWIMtag_dictionary[key] = pd.read_csv(io.StringIO(value), index_col=0)
-        elif isinstance(AWIMtag_template[key], (int, float, list, tuple)):
-            AWIMtag_dictionary[key] = json.loads(value)
-        elif isinstance(AWIMtag_template[key], np.datetime64):
-            AWIMtag_dictionary[key] = format_datetime(value, 'from AWIM string')
-        elif isinstance(AWIMtag_template[key], np.ndarray):
-            AWIMtag_dictionary[key] = np.array(json.loads(value))
-        else:
-            AWIMtag_dictionary[key] = value
-
-    return AWIMtag_dictionary
