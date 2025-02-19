@@ -20,14 +20,16 @@ app.add_middleware(
 async def testpost(request: Request):
     print('get here?')
     try:
-        whatsthis = await request.body()
-        print(whatsthis)
-        data_received = json.loads(request.body())
-        print(data_received)
-        awimTag = await request.json()
-        print(awimTag)
+        request_dict = await request.json()
     except:
         print('some error on the post request attempt')
+
+    if request_dict.get('requestType') == 'get time strings':
+        print(request_dict['moments'])
+        response_dict = {'id': 22222}
+        response_dict_json = json.dumps(response_dict)
+
+    return response_dict_json
 
 
 # @app.get("/testget/")
