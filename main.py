@@ -24,8 +24,8 @@ async def timestrings(request: Request):
     except:
         print('some error on the post request attempt')
 
-    response_something = clockactions.get_time_strings(request_dict['location'], request_dict['elevation'], request_dict['currenttime'], request_dict['nowmoments'])
-    response_dict_json = json.dumps(response_something)
+    response_dict = clockactions.get_time_strings(request_dict['location'], request_dict['elevation'], request_dict['currenttime'], request_dict['nowmoments'])
+    response_dict_json = json.dumps(response_dict) # TODO: maybe use orjson at some point? because faster
 
     return response_dict_json
 

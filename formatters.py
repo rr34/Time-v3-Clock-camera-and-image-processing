@@ -77,6 +77,9 @@ def format_datetime(input_datetime, direction):
             output = input_datetime.strftime(ISO8601_datetime_format)
         elif isinstance(input_datetime, np.datetime64):
             output = str(np.datetime_as_string(input_datetime, unit='s')) + 'Z'
+        elif isinstance(input_datetime, np.ndarray):
+            output = np.datetime_as_string(input_datetime, unit='s')
+            output = [str(dt)  + 'Z' for dt in output]
         elif isinstance(input_datetime, str):
             if re.match(ISO8601_pattern, input_datetime):
                 output = str(np.datetime_as_string(np.datetime64(input_datetime), unit='s')) + 'Z'
