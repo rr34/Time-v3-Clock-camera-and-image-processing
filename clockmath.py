@@ -8,56 +8,219 @@ import pandas as pd
 import astropy.units as u
 from astropy.time import Time
 from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun, get_moon, get_body
-import astroimage
 import astroplan
 
 # this function takes a long time to run, greatly affected by the value of gridpts, but is valid for something like 24 hours
-def calculate_astro_risesandsets(moment_now, earth_latlng, elevation):
+def calculate_astro_risesandsets(earth_latlng, moment_now, elevation=0):
     time_now_astropy = Time(moment_now)
     clock_astroplan_observer = astroplan.Observer(longitude=earth_latlng[1]*u.deg, latitude=earth_latlng[0]*u.deg, elevation=elevation*u.m, name='Time v3 Clock', timezone=timezone.utc)
     gridpts = 150
 
     print('calculating sun daily events')
-    sun_daily = np.empty(12, dtype=np.dtype('datetime64[ns]'))
-    thirteen_hours = np.timedelta64(13, 'h')
+    sun_daily = np.empty(13, dtype=np.dtype('datetime64[ns]'))
 
-    sun_daily[0] = clock_astroplan_observer.sun_rise_time(time=time_now_astropy, which='previous', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[1] = clock_astroplan_observer.sun_rise_time(time=time_now_astropy, which='next', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[2] = clock_astroplan_observer.sun_rise_time(time=Time(sun_daily[1]+thirteen_hours), which='next', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[3] = clock_astroplan_observer.noon(time=time_now_astropy, which='previous', n_grid_points=gridpts).datetime64
-    sun_daily[4] = clock_astroplan_observer.noon(time=time_now_astropy, which='next', n_grid_points=gridpts).datetime64
-    sun_daily[5] = clock_astroplan_observer.noon(time=Time(sun_daily[4]+thirteen_hours), which='next', n_grid_points=gridpts).datetime64
-    sun_daily[6] = clock_astroplan_observer.sun_set_time(time=time_now_astropy, which='previous', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[7] = clock_astroplan_observer.sun_set_time(time=time_now_astropy, which='next', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[8] = clock_astroplan_observer.sun_set_time(time=Time(sun_daily[7]+thirteen_hours), which='next', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    sun_daily[9] = clock_astroplan_observer.midnight(time=time_now_astropy, which='previous', n_grid_points=gridpts).datetime64
-    sun_daily[10] = clock_astroplan_observer.midnight(time=time_now_astropy, which='next', n_grid_points=gridpts).datetime64
-    sun_daily[11] = clock_astroplan_observer.midnight(time=Time(sun_daily[10]+thirteen_hours), which='next', n_grid_points=gridpts).datetime64
+    first_midnight = clock_astroplan_observer.midnight(time=time_now_astropy, which='previous', n_grid_points=gridpts)
+    first_sunrise = clock_astroplan_observer.sun_rise_time(time=first_midnight, which='previous', horizon=-0.833*u.deg, n_grid_points=gridpts)
+    sun_daily[0] = first_sunrise.datetime64 # 1st sunrise
+    astropy_temp = clock_astroplan_observer.noon(time=first_sunrise, which='next', n_grid_points=gridpts)
+    sun_daily[1] = astropy_temp.datetime64 # 1st noon
+    astropy_temp = clock_astroplan_observer.sun_set_time(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[2] = astropy_temp.datetime64 # 1st sunset
+    sun_daily[3] = first_midnight.datetime64 # 1st midnight, already calculated
+    astropy_temp = clock_astroplan_observer.sun_rise_time(time=first_midnight, which='next', n_grid_points=gridpts) # second sunrise is the next instead of previous sunrise
+    sun_daily[4] = astropy_temp.datetime64 # 2nd sunrise
+    astropy_temp = clock_astroplan_observer.noon(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[5] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.sun_set_time(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[6] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.midnight(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[7] = astropy_temp.datetime64 # 2nd midnight. The clock could crawl just past this point if moment now were just before midnight because would calculate so far back.
+    astropy_temp = clock_astroplan_observer.sun_rise_time(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[8] = astropy_temp.datetime64 # 2nd sunrise
+    astropy_temp = clock_astroplan_observer.noon(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[9] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.sun_set_time(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[10] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.midnight(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[11] = astropy_temp.datetime64 # 3rd and final midnight. 3 of each event.
+    astropy_temp = clock_astroplan_observer.sun_rise_time(time=astropy_temp, which='next', n_grid_points=gridpts)
+    sun_daily[12] = astropy_temp.datetime64 # 4th sunrise to calculate night length in unlikely event clock crawls past 2nd sunrise
 
     print('calculating moon daily events')
     moon_daily = np.empty(6, dtype=np.dtype('datetime64[ns]'))
-    moon_daily[0] = clock_astroplan_observer.moon_rise_time(time=time_now_astropy, which='previous', horizon=0*u.deg, n_grid_points=gridpts).datetime64
-    moon_daily[1] = clock_astroplan_observer.moon_rise_time(time=time_now_astropy, which='next', horizon=0*u.deg, n_grid_points=gridpts).datetime64
-    moon_daily[2] = clock_astroplan_observer.moon_rise_time(time=Time(moon_daily[1]+thirteen_hours), which='next', horizon=0*u.deg, n_grid_points=gridpts).datetime64
-    moon_daily[3] = clock_astroplan_observer.moon_set_time(time=time_now_astropy, which='previous', horizon=0*u.deg, n_grid_points=gridpts).datetime64
-    moon_daily[4] = clock_astroplan_observer.moon_set_time(time=time_now_astropy, which='next', horizon=0*u.deg, n_grid_points=gridpts).datetime64
-    moon_daily[5] = clock_astroplan_observer.moon_set_time(time=Time(moon_daily[4]+thirteen_hours), which='next', horizon=0*u.deg, n_grid_points=gridpts).datetime64
+
+    first_moonset = clock_astroplan_observer.moon_set_time(time=time_now_astropy, which='previous', horizon=0*u.deg, n_grid_points=gridpts)
+    moon_daily[0] = clock_astroplan_observer.moon_rise_time(time=first_moonset, which='previous', horizon=0*u.deg, n_grid_points=gridpts).datetime64 # first moonrise
+    moon_daily[1] = first_moonset.datetime64
+    astropy_temp = clock_astroplan_observer.moon_rise_time(time=first_moonset, which='next', horizon=0*u.deg, n_grid_points=gridpts)
+    moon_daily[2] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.moon_set_time(time=astropy_temp, which='next', horizon=0*u.deg, n_grid_points=gridpts)
+    moon_daily[3] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.moon_rise_time(time=astropy_temp, which='next', horizon=0*u.deg, n_grid_points=gridpts)
+    moon_daily[4] = astropy_temp.datetime64
+    astropy_temp = clock_astroplan_observer.moon_set_time(time=astropy_temp, which='next', horizon=0*u.deg, n_grid_points=gridpts)
+    moon_daily[5] = astropy_temp.datetime64
 
     return sun_daily, moon_daily
 
 
-# this can be calculated for each moment to the minute and cross over at sun midnight if the big astropy calcs are completed first.
-def calculate_astro_daynightlength(moment_now, sun_daily):
-    # todo: decide what day it is using sun midnight.
-    # todo: update these variables to come from the function parameters
-    print('calculating day / night length')
-    nearest_sunrise_astropy = clock_astroplan_observer.sun_rise_time(time=time_now_astropy, which='nearest', horizon=-0.833*u.deg, n_grid_points=gridpts)
-    next_sunset = clock_astroplan_observer.sun_set_time(time=nearest_sunrise_astropy, which='next', horizon=-0.833*u.deg, n_grid_points=gridpts).datetime64
-    day_length = next_sunset - nearest_sunrise_astropy.datetime64
-    night_length = np.timedelta64(24, 'h') - day_length
-    day_night_length_str = '%i:%.2i day length / %i:%.2i night length.' % (np.timedelta64(day_length, 'h').astype(int), np.timedelta64(day_length, 'm').astype(int)%60, np.timedelta64(night_length, 'h').astype(int), np.timedelta64(night_length, 'm').astype(int)%60)
+def calculate_astro_daynightlength(moments, sun_daily):
+    print('calculating day / night lengths')
+    midnight_bins = np.array([sun_daily[3], sun_daily[7], sun_daily[11]]) # bins comes from the name used for the variable in the digitize function
+    midnights_array = np.digitize(moments.astype('int64'), midnight_bins.astype('int64')) # digitize needs float values and digitize gives the index of the next midnight
+    day_lengths = []
+    day_lengths.append(sun_daily[2] - sun_daily[0])
+    day_lengths.append(sun_daily[6] - sun_daily[4])
+    day_lengths.append(sun_daily[10] - sun_daily[8])
+    day_lengths = np.array(day_lengths)
+    daylengths_array = day_lengths[midnights_array]
 
-    return day_night_length_str
+    sunrise_bins = np.array([sun_daily[0], sun_daily[4], sun_daily[8], sun_daily[12]])
+    sunrises_array = np.digitize(moments.astype('int64'), sunrise_bins.astype('int64')) # digitize needs float values and digitize gives the index of the next sunrise. Should never be 0 unless I change something because moments will never be before first sunrise.
+    night_lengths = []
+    night_lengths.append(sun_daily[4] - sun_daily[2])
+    night_lengths.append(sun_daily[4] - sun_daily[2])
+    night_lengths.append(sun_daily[8] - sun_daily[6])
+    night_lengths.append(sun_daily[12] - sun_daily[10])
+    night_lengths = np.array(night_lengths)
+    nightlengths_array = night_lengths[sunrises_array]
+
+    daynightlength_strings_list = []
+    for i in range(0, len(daylengths_array)):
+        day_length = daylengths_array[i]
+        night_length = nightlengths_array[i]
+        day_hrs = np.timedelta64(day_length, 'h').astype(int)
+        day_minutes = np.timedelta64(day_length, 'm').astype(int)%60
+        night_hrs = np.timedelta64(night_length, 'h').astype(int)
+        night_minutes = np.timedelta64(night_length, 'm').astype(int)%60
+        daynightlength_strings_list.append('%i:%.2i day length / %i:%.2i night length.' % (day_hrs, day_minutes, night_hrs, night_minutes))
+
+    return daynightlength_strings_list
+
+
+def get_nearest_dailyevents(moment_now, sun_daily, moon_daily):
+
+    sun_time_separation_array = np.subtract(sun_daily, moment_now)
+
+    passed_events_indexes = np.where(np.less_equal(sun_time_separation_array, np.timedelta64(0, 's')))[0]
+    passed_events_timesince = np.abs(sun_time_separation_array[passed_events_indexes])
+    sun_just_passed_event = passed_events_indexes[np.argmin(passed_events_timesince)]
+    sun_timesince = passed_events_timesince[np.argmin(passed_events_timesince)]
+
+    future_events_indexes = np.where(np.greater(sun_time_separation_array, np.timedelta64(0, 's')))[0]
+    future_events_timeuntil = np.abs(sun_time_separation_array[future_events_indexes])
+    sun_next_event = future_events_indexes[np.argmin(future_events_timeuntil)]
+    sun_timeuntil = future_events_timeuntil[np.argmin(future_events_timeuntil)]
+
+    sun_times_tuple = (np.timedelta64(sun_timesince, 'h').astype(int), np.timedelta64(sun_timesince, 'm').astype(int)%60, np.timedelta64(sun_timeuntil, 'h').astype(int), np.timedelta64(sun_timeuntil, 'm').astype(int)%60)
+
+    if any(i == sun_just_passed_event for i in (0, 1, 2)):
+        sun_string = '%i:%.2i since sunrise. %i:%.2i until high noon.' % sun_times_tuple
+    elif any(i == sun_just_passed_event for i in (3, 4, 5)):
+        sun_string = '%i:%.2i since high noon. %i:%.2i until sunset.' % sun_times_tuple
+    elif any(i == sun_just_passed_event for i in (6, 7, 8)):
+        sun_string = '%i:%.2i since sunset. %i:%.2i until midnight.' % sun_times_tuple
+    elif any(i == sun_just_passed_event for i in (9, 10, 11)):
+        sun_string = '%i:%.2i since midnight. %i:%.2i until sunrise.' % sun_times_tuple
+
+    moon_time_separation_array = np.abs(np.subtract(moon_daily, moment_now))
+    moon_nearest_event = np.argmin(moon_time_separation_array)
+    moon_nearest_moment = moon_daily[moon_nearest_event]
+    moon_nearest_timedelta = moon_time_separation_array[moon_nearest_event]
+    moon_times_tuple = (np.timedelta64(moon_nearest_timedelta, 'h').astype(int), np.timedelta64(moon_nearest_timedelta, 'm').astype(int)%60)
+
+    if any(i == moon_nearest_event for i in (0, 1, 2)) and np.less(moment_now, moon_nearest_moment):
+        moon_string = '%i:%.2i until moonrise.' % moon_times_tuple
+    elif any(i == moon_nearest_event for i in (0, 1, 2)) and np.greater_equal(moment_now, moon_nearest_moment):
+        moon_string = '%i:%.2i since moonrise.' % moon_times_tuple
+    elif any(i == moon_nearest_event for i in (3, 4, 5)) and np.less(moment_now, moon_nearest_moment):
+        moon_string = '%i:%.2i until moonset.' % moon_times_tuple
+    elif any(i == moon_nearest_event for i in (3, 4, 5)) and np.greater_equal(moment_now, moon_nearest_moment):
+        moon_string = '%i:%.2i since moonset.' % moon_times_tuple
+
+    return sun_string, moon_string
+
+
+# I don't know why this doesn't return exactly a full/new moon - differs by ~30 minutes? Why? phase is different from "ecliptic longitude different by 180°?" - but since I did it here it is...
+# This function is good enough for now because I only really care about the single new or full moon that is the closest. I don't ever care about a full moon 14 days past or future because the new moon would be within a day so obviously closer.
+# TODO calculate the 180deg ecliptic longitude difference full moon and see if different
+# TODO calculate previous and next new and full moons and see which ones are closest.
+# TODO improve this function's interating method.
+def calculate_astro_newfullmoon_andillum(moment_now):
+    moment_now_astropy = Time(moment_now)
+    moon_illumination_percent = astroplan.moon_illumination(moment_now_astropy) * 100
+
+    # get the nearest full moon, which for astroplan is zero / minimum for some UNEXPLAINED reason.
+    check_period = np.timedelta64(30, 'D')
+    check_discretization = np.timedelta64(1, 'D')
+    moments_check_array = np.arange(moment_now-check_period/2, moment_now+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+
+    check_period_start = moments_check_array[np.argmin(moon_phase_check)]
+    check_period = np.timedelta64(2, 'D') # because I use subtract and add with it later
+    check_discretization = np.timedelta64(1, 'h')
+    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+
+    check_period_start = moments_check_array[np.argmin(moon_phase_check)]
+    check_period = np.timedelta64(2, 'h') # because I subtract and add later
+    check_discretization = np.timedelta64(5, 'm')
+    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+    phase_percent = (math.pi - moon_phase_check) / math.pi
+
+    nearest_full_moon = moments_check_array[np.argmin(moon_phase_check)]
+
+    # get the nearest new moon, which for astroplan is pi / maximum for some UNEXPLAINED reason.
+    check_period = np.timedelta64(30, 'D')
+    check_discretization = np.timedelta64(1, 'D')
+    moments_check_array = np.arange(moment_now-check_period/2, moment_now+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+
+    check_period_start = moments_check_array[np.argmax(moon_phase_check)]
+    check_period = np.timedelta64(2, 'D') # because I use subtract and add with it later
+    check_discretization = np.timedelta64(1, 'h')
+    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+
+    check_period_start = moments_check_array[np.argmax(moon_phase_check)]
+    check_period = np.timedelta64(2, 'h') # because I subtract and add later
+    check_discretization = np.timedelta64(5, 'm')
+    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
+    moments_check_astropy = Time(moments_check_array)
+    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
+    phase_percent = (math.pi - moon_phase_check) / math.pi
+
+    nearest_new_moon = moments_check_array[np.argmax(moon_phase_check)]
+
+    return nearest_new_moon, nearest_full_moon, moon_illumination_percent
+
+
+# TODO make this accurate to the minute and accept matrix like the sun daily events
+def get_moon_nearest(moment_now, nearest_new_moon, nearest_full_moon):
+    # lunar_cycle_average = np.timedelta64(29.53, 'D') # not used but here it is
+    delta_newmoon = abs(moment_now - nearest_new_moon)
+    delta_fullmoon = abs(moment_now - nearest_full_moon)
+    if (delta_newmoon < delta_fullmoon) and (moment_now <= nearest_new_moon):
+        moon_tuple = (np.timedelta64(delta_newmoon, 'D').astype(int), np.timedelta64(delta_newmoon, 'h').astype(int)%24)
+        moon_phase_str = '%i days, %i hours until new moon' % moon_tuple
+    elif (delta_newmoon < delta_fullmoon) and (moment_now >= nearest_new_moon):
+        moon_tuple = (np.timedelta64(delta_newmoon, 'D').astype(int), np.timedelta64(delta_newmoon, 'h').astype(int)%24)
+        moon_phase_str = '%i days, %i hours since new moon' % moon_tuple
+    elif (delta_newmoon >= delta_fullmoon) and (moment_now <= nearest_full_moon):
+        moon_tuple = (np.timedelta64(delta_fullmoon, 'D').astype(int), np.timedelta64(delta_fullmoon, 'h').astype(int)%24)
+        moon_phase_str = '%i days, %i hours until full moon' % moon_tuple
+    elif (delta_newmoon >= delta_fullmoon) and (moment_now >= nearest_full_moon):
+        moon_tuple = (np.timedelta64(delta_fullmoon, 'D').astype(int), np.timedelta64(delta_fullmoon, 'h').astype(int)%24)
+        moon_phase_str = '%i days, %i hours since full moon' % moon_tuple
+
+    return moon_phase_str
+
 
 # dictionary of objects, get data for objects at moments, return dictionary
 # for each celestial object in dictionary, numpy array
@@ -213,142 +376,6 @@ def calculate_astro_moon_brightsidedirection(moon_azalts_deg, sun_azalts_deg):
     moon_brightsidedirections = np.multiply(moon_brightsidedirections_abs, az_rels_direction * 180/math.pi)
 
     return moon_brightsidedirections
-
-
-# I don't know why this doesn't return exactly a full/new moon - differs by ~30 minutes? Why? phase is different from "ecliptic longitude different by 180°?" - but since I did it here it is...
-# TODO calculate the 180deg ecliptic longitude difference full moon and see if different
-def calculate_astro_newfullmoon_andillum(moment_now):
-    moment_now_astropy = Time(moment_now)
-    moon_illumination_percent = astroplan.moon_illumination(moment_now_astropy) * 100
-
-    # get the nearest full moon, which for astroplan is zero / minimum for some UNEXPLAINED reason.
-    check_period = np.timedelta64(30, 'D')
-    check_discretization = np.timedelta64(1, 'D')
-    moments_check_array = np.arange(moment_now-check_period/2, moment_now+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-
-    check_period_start = moments_check_array[np.argmin(moon_phase_check)]
-    check_period = np.timedelta64(2, 'D') # because I use subtract and add with it later
-    check_discretization = np.timedelta64(1, 'h')
-    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-
-    check_period_start = moments_check_array[np.argmin(moon_phase_check)]
-    check_period = np.timedelta64(2, 'h') # because I subtract and add later
-    check_discretization = np.timedelta64(5, 'm')
-    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-    phase_percent = (math.pi - moon_phase_check) / math.pi
-
-    nearest_full_moon = moments_check_array[np.argmin(moon_phase_check)]
-    # uhhh. What? The following should not work. Sign of the apocalypse and sign that industrial time is confusing. Coders gave up here. Time objects are a mess.
-    # but it does work. Wow.
-    # full_moon_datetime = nearest_full_moon.tolist().replace(tzinfo=timezone.utc)
-
-    # get the nearest new moon, which for astroplan is pi / maximum for some UNEXPLAINED reason.
-    check_period = np.timedelta64(30, 'D')
-    check_discretization = np.timedelta64(1, 'D')
-    moments_check_array = np.arange(moment_now-check_period/2, moment_now+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-
-    check_period_start = moments_check_array[np.argmax(moon_phase_check)]
-    check_period = np.timedelta64(2, 'D') # because I use subtract and add with it later
-    check_discretization = np.timedelta64(1, 'h')
-    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-
-    check_period_start = moments_check_array[np.argmax(moon_phase_check)]
-    check_period = np.timedelta64(2, 'h') # because I subtract and add later
-    check_discretization = np.timedelta64(5, 'm')
-    moments_check_array = np.arange(check_period_start-check_period/2, check_period_start+check_period/2, check_discretization)
-    moments_check_astropy = Time(moments_check_array)
-    moon_phase_check = astroplan.moon_phase_angle(moments_check_astropy).to_value()
-    phase_percent = (math.pi - moon_phase_check) / math.pi
-
-    nearest_new_moon = moments_check_array[np.argmax(moon_phase_check)]
-    # new_moon_datetime = nearest_new_moon.tolist().replace(tzinfo=timezone.utc)
-
-    return nearest_new_moon, nearest_full_moon, moon_illumination_percent
-
-
-# this is written one moment at a time but could and probably should be written to return a bymoment matrix. Would be a cumbersome matrix though
-def get_moon_nearest_and_quarter(moment_now, nearest_new_moon, nearest_full_moon):
-    # lunar_cycle_average = np.timedelta64(29.53, 'D') # not used but here it is
-    delta_newmoon = abs(moment_now - nearest_new_moon)
-    delta_fullmoon = abs(moment_now - nearest_full_moon)
-    if (delta_newmoon < delta_fullmoon) and (moment_now <= nearest_new_moon):
-        moon_tuple = (np.timedelta64(delta_newmoon, 'D').astype(int), np.timedelta64(delta_newmoon, 'h').astype(int)%24)
-        moon_phase_str = '%i days, %i hours until new moon' % moon_tuple
-        moon_qtr_day = (4, moon_tuple[0])
-        if moon_tuple[0] == 0: # special case return to the start
-            moon_day_index = 0
-        else:
-            moon_day_index = 30-moon_tuple[0] # can be from 30-1=29 to 30-7=23
-    elif (delta_newmoon < delta_fullmoon) and (moment_now >= nearest_new_moon):
-        moon_tuple = (np.timedelta64(delta_newmoon, 'D').astype(int), np.timedelta64(delta_newmoon, 'h').astype(int)%24)
-        moon_phase_str = '%i days, %i hours since new moon' % moon_tuple
-        moon_qtr_day = (1, moon_tuple[0])
-        moon_day_index = moon_tuple[0]
-    elif (delta_newmoon >= delta_fullmoon) and (moment_now <= nearest_full_moon):
-        moon_tuple = (np.timedelta64(delta_fullmoon, 'D').astype(int), np.timedelta64(delta_fullmoon, 'h').astype(int)%24)
-        moon_phase_str = '%i days, %i hours until full moon' % moon_tuple
-        moon_qtr_day = (2, moon_tuple[0])
-        moon_day_index = 15-moon_tuple[0] # can be from 15-7=08 to 15-0=15
-    elif (delta_newmoon >= delta_fullmoon) and (moment_now >= nearest_full_moon):
-        moon_tuple = (np.timedelta64(delta_fullmoon, 'D').astype(int), np.timedelta64(delta_fullmoon, 'h').astype(int)%24)
-        moon_phase_str = '%i days, %i hours since full moon' % moon_tuple
-        moon_qtr_day = (3, moon_tuple[0])
-        moon_day_index = 15+moon_tuple[0] # can be from 15+0=15 to 15+7=22
-
-    return moon_phase_str, moon_day_index, moon_qtr_day
-
-
-def get_nearest_dailyevents(moment_now, sun_daily, moon_daily):
-
-    sun_time_separation_array = np.subtract(sun_daily, moment_now)
-
-    passed_events_indexes = np.where(np.less_equal(sun_time_separation_array, np.timedelta64(0, 's')))[0]
-    passed_events_timesince = np.abs(sun_time_separation_array[passed_events_indexes])
-    sun_just_passed_event = passed_events_indexes[np.argmin(passed_events_timesince)]
-    sun_timesince = passed_events_timesince[np.argmin(passed_events_timesince)]
-
-    future_events_indexes = np.where(np.greater(sun_time_separation_array, np.timedelta64(0, 's')))[0]
-    future_events_timeuntil = np.abs(sun_time_separation_array[future_events_indexes])
-    sun_next_event = future_events_indexes[np.argmin(future_events_timeuntil)]
-    sun_timeuntil = future_events_timeuntil[np.argmin(future_events_timeuntil)]
-
-    sun_times_tuple = (np.timedelta64(sun_timesince, 'h').astype(int), np.timedelta64(sun_timesince, 'm').astype(int)%60, np.timedelta64(sun_timeuntil, 'h').astype(int), np.timedelta64(sun_timeuntil, 'm').astype(int)%60)
-
-    if any(i == sun_just_passed_event for i in (0, 1, 2)):
-        sun_string = '%i:%.2i since sunrise. %i:%.2i until high noon.' % sun_times_tuple
-    elif any(i == sun_just_passed_event for i in (3, 4, 5)):
-        sun_string = '%i:%.2i since high noon. %i:%.2i until sunset.' % sun_times_tuple
-    elif any(i == sun_just_passed_event for i in (6, 7, 8)):
-        sun_string = '%i:%.2i since sunset. %i:%.2i until midnight.' % sun_times_tuple
-    elif any(i == sun_just_passed_event for i in (9, 10, 11)):
-        sun_string = '%i:%.2i since midnight. %i:%.2i until sunrise.' % sun_times_tuple
-
-    moon_time_separation_array = np.abs(np.subtract(moon_daily, moment_now))
-    moon_nearest_event = np.argmin(moon_time_separation_array)
-    moon_nearest_moment = moon_daily[moon_nearest_event]
-    moon_nearest_timedelta = moon_time_separation_array[moon_nearest_event]
-    moon_times_tuple = (np.timedelta64(moon_nearest_timedelta, 'h').astype(int), np.timedelta64(moon_nearest_timedelta, 'm').astype(int)%60)
-
-    if any(i == moon_nearest_event for i in (0, 1, 2)) and np.less(moment_now, moon_nearest_moment):
-        moon_string = '%i:%.2i until moonrise.' % moon_times_tuple
-    elif any(i == moon_nearest_event for i in (0, 1, 2)) and np.greater_equal(moment_now, moon_nearest_moment):
-        moon_string = '%i:%.2i since moonrise.' % moon_times_tuple
-    elif any(i == moon_nearest_event for i in (3, 4, 5)) and np.less(moment_now, moon_nearest_moment):
-        moon_string = '%i:%.2i until moonset.' % moon_times_tuple
-    elif any(i == moon_nearest_event for i in (3, 4, 5)) and np.greater_equal(moment_now, moon_nearest_moment):
-        moon_string = '%i:%.2i since moonset.' % moon_times_tuple
-
-    return sun_string, moon_string
 
 
 def awim_chooser(animation_type, moments, celestial_objs_dictionary, imgs_objs_dictionary, TOC_df, placeholder_image):

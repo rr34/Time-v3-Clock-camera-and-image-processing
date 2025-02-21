@@ -4,7 +4,7 @@ This code is intended to never have a built-in GUI. I made a GUI for it in the p
 - Import the sequence of photos into Lightroom that you want to turn into a time lapse video.
 - Select all photos with Ctrl+A > right-click on one photo > Metadata > Save Metadata to Files. This saves XMP files for each of the photos.
 - Copy or move the XMP files to the directory `working/`
-- Once the XMP files are in the directory, simply run the function `actions.lightroom_timelapse_XMP_process()`
+- Once the XMP files are in the directory, simply run the function `awimactions.lightroom_timelapse_XMP_process()`
 - The XMP files will be modified in-place. It is worthwile to do so right away because the photos will have tags added to them indicating the periods of daylight like day, night, ECT, ENT, EAT, sunrise, sunset, et cetera that can be used to decide which photos to edit.
 - Copy the files back to the Lightroom directory where the RAW files are, replacing the XMP files that are there.
 - In Lightroom, right-click on one photo > Metadata > Read Metadata from Files.
@@ -12,18 +12,18 @@ This code is intended to never have a built-in GUI. I made a GUI for it in the p
 	- You typically want to choose the beginning and end of transition periods.
 	- You do NOT have to keyframe the first and last photos of the sequence because the settings for the first keyframe you select will be extended as-is to the beginnning of the sequence and likewise for the last photo you select as a keyframe, whose settings will be extended as-is to the end of the sequence.
 	- You probably want to avoid keyframing photos too close to one another because it would result in a rapid transition that may not look smooth.
-- Once you have tagged the keyframe photos and edited their settings as you wish in Lightroom, repeat saving metadata to XMP, processing the XMP files with `actions.lightroom_timelapse_XMP_process()`, and reading metadata from XMP files. The settings you applied to the keyframe photos will be interpolated (simple linear) and applied to the photos between the keyframe photos for a smooth transition.
+- Once you have tagged the keyframe photos and edited their settings as you wish in Lightroom, repeat saving metadata to XMP, processing the XMP files with `awimactions.lightroom_timelapse_XMP_process()`, and reading metadata from XMP files. The settings you applied to the keyframe photos will be interpolated (simple linear) and applied to the photos between the keyframe photos for a smooth transition.
 
 ## To Generate Metadata Text / JSON Files for Images
 This function is not really necessary, but useful to visualize the metadata of a group of files without needing to use exiv2 or some other tool.
-- Copy a group of image files to the directory `working/`, and simply run the function `actions.generate_metatext_files()`.
+- Copy a group of image files to the directory `working/`, and simply run the function `awimactions.generate_metatext_files()`.
 - Text files with the metadata will be generated and saved in `working/` along with the image files.
 - For PNG, flattened the XML and simplified the keys.
 
 ## To Generate a Camera awim Tag File from a Calibration Spreadsheet
 - Use the calspreadsheet Excel file in `example-files`, and fill in the yellow boxes based on the reference grid. It must be named `calspreadsheet.xlsx`
 - The calibration image itself is also required to be in the `working/` folder for things like dimensions. It must be named `calimage.jpg`
-- Run `actions.camcalibration()`
+- Run `awimactions.camcalibration()`
 - The output files all start with the word 'output'.
 - The main output file is the `cam_awim.json` file.
 

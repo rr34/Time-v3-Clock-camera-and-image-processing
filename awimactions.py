@@ -1,4 +1,3 @@
-from tkinter.filedialog import askopenfilename
 import os, shutil
 import json
 import numpy as np
@@ -7,11 +6,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import datetime
 import astropy.units as u
 from astropy.time import Time
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz, get_sun
 import camera, awimlib, astropytools, XMPtext, formatters, metadata_tools, DBsqlstatements
-# import math
-# import PIL
-# import pytz
 
 
 def cam_calibration():

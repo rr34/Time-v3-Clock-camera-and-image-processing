@@ -2,7 +2,7 @@ import uvicorn
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import json
-import actions, awimlib, metadata_tools
+import clockactions
 
 app = FastAPI()
 
@@ -20,13 +20,12 @@ app.add_middleware(
 async def timestrings(request: Request):
     print('get here?')
     try:
-        request_list = await request.json()
+        request_dict = await request.json()
     except:
         print('some error on the post request attempt')
 
-    print(request_list)
-    response_dict = {'id': ['11111', '22222']}
-    response_dict_json = json.dumps(response_dict)
+    response_something = clockactions.get_time_strings(request_dict['location'], request_dict['elevation'], request_dict['currenttime'], request_dict['nowmoments'])
+    response_dict_json = json.dumps(response_something)
 
     return response_dict_json
 
